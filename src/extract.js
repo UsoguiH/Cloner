@@ -727,12 +727,21 @@ function inlineSrcset(srcset, assetsDir, cache) {
  * (jobs/<id>/output/assets). Missing/unreadable files leave the original
  * reference untouched (browser shows a broken image, not a corrupted file).
  */
-export function inlineHtmlAssets(html, assetsDir) {
+export function inlineHtmlAssets(html, assetsDir, opts = {}) {
   if (!assetsDir || !fs.existsSync(assetsDir)) return html;
   const cache = new Map();
+  const { skipScripts = false } = opts;
+  // Encoded as data:application/javascript URLs, ES module scripts lose their
+  // origin and can't resolve relative `import "./foo.js"` specifiers. For the
+  // full-clone ZIP we'd rather keep JS in `assets/` so the page works after
+  // extraction, while still inlining CSS/images so it looks right *before*
+  // extraction (Windows Explorer's "open inside ZIP" behavior).
+  const isScriptRel = (rel) => /\.(?:m?js)(?:[?#]|$)/i.test(rel);
 
   // 1. Inline <link rel="stylesheet" href="assets/..."> as <style>.
   html = html.replace(/<link\b[^>]*>/gi, (tag) => {
+    // <link rel="modulepreload"> targets module JS — preserve in skipScripts mode.
+    if (skipScripts && /rel\s*=\s*["']?modulepreload["']?/i.test(tag)) return tag;
     if (!/rel\s*=\s*["']?stylesheet["']?/i.test(tag)) return tag;
     const hrefMatch = tag.match(/href\s*=\s*(["'])([^"']+)\1/i);
     if (!hrefMatch) return tag;
@@ -768,6 +777,7 @@ export function inlineHtmlAssets(html, assetsDir) {
 
   // 4. Inline href/src/poster/data-src for non-stylesheet refs.
   html = html.replace(/(href|src|data-src|poster)\s*=\s*(["'])assets\/([^"']+)\2/gi, (m, attr, q, rel) => {
+    if (skipScripts && isScriptRel(rel)) return m;
     const cleanRel = rel.replace(/[?#].*$/, '');
     const dataUrl = readAssetDataUrl(cleanRel, assetsDir, cache);
     return dataUrl ? `${attr}=${q}${dataUrl}${q}` : m;

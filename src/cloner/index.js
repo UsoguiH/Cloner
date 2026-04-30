@@ -4,6 +4,7 @@ import { chromium } from 'playwright';
 import { CDPNetworkRecorder } from './network.js';
 import { extractRenderedDOM, autoScroll, runInteractions, prefetchCSSAssets } from './dom.js';
 import { rewriteHTML, rewriteCSS, rewriteJS } from './rewriter.js';
+import { inlineHtmlAssets } from '../extract.js';
 import { writeAssets, packageZip } from './packager.js';
 import { hashUrl, extFromMime, sanitizeBasename } from './util.js';
 
@@ -200,12 +201,19 @@ export async function runCloneJob(job, { onProgress }) {
 
   // Rewrite the main HTML
   onProgress({ phase: 'rewriting', message: 'rewriting URLs' });
-  const html = rewriteHTML(extraction.html, job.url, assetMap, {
+  let html = rewriteHTML(extraction.html, job.url, assetMap, {
     stripAnalytics: opts.stripAnalytics,
     analyticsHosts: ANALYTICS_HOSTS,
     strippedScriptUrls,
     adoptedStylesheets: extraction.adoptedStylesheets,
   });
+
+  // Inline CSS/fonts/images as data: URLs so the page renders correctly even
+  // when opened directly inside the ZIP without extracting `assets/` (Windows
+  // Explorer's default double-click behavior). JS stays external — module
+  // imports can't be inlined as data: URLs without breaking — so animations
+  // require extracting the ZIP first, but the page LOOKS right immediately.
+  html = inlineHtmlAssets(html, assetsDir, { skipScripts: true });
 
   await fs.writeFile(path.join(outputDir, 'index.html'), html, 'utf8');
 
