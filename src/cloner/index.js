@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { CDPNetworkRecorder } from './network.js';
 import { extractRenderedDOM, autoScroll, runInteractions, prefetchCSSAssets } from './dom.js';
-import { rewriteHTML, rewriteCSS } from './rewriter.js';
+import { rewriteHTML, rewriteCSS, rewriteJS } from './rewriter.js';
 import { writeAssets, packageZip } from './packager.js';
 import { hashUrl, extFromMime, sanitizeBasename } from './util.js';
 
@@ -175,6 +175,22 @@ export async function runCloneJob(job, { onProgress }) {
     if (entry.isText && /css/i.test(entry.mime || '')) {
       const baseUrl = findUrlForEntry(assetMap, entry);
       const rewritten = rewriteCSS(
+        entry.body.toString('utf8'),
+        baseUrl,
+        assetMap,
+        entry.relPath
+      );
+      entry.body = Buffer.from(rewritten, 'utf8');
+    }
+  }
+
+  // Rewrite asset URL string literals inside JS bundles. Bundlers like Vite
+  // emit dynamic-import paths and worker/wasm/.riv URLs as plain strings;
+  // they fail offline because the local files have hash-prefixed names.
+  for (const entry of assetMap.values()) {
+    if (entry.isText && /javascript|ecmascript/i.test(entry.mime || '')) {
+      const baseUrl = findUrlForEntry(assetMap, entry);
+      const rewritten = rewriteJS(
         entry.body.toString('utf8'),
         baseUrl,
         assetMap,

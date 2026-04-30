@@ -141,6 +141,90 @@ export function rewriteCSS(css, baseUrl, assetMap, consumerRelPath) {
   return rewriteCSSUrls(css, baseUrl, assetMap, consumerRelPath);
 }
 
+/**
+ * Rewrite asset URLs that appear as string literals inside JS bundles.
+ *
+ * Bundlers (Vite, webpack, esbuild) emit dynamic-import target paths and
+ * worker URLs as plain string literals — `"_astro/Foo.HASH.js"`,
+ * `"/assets/anim.HASH.riv"`, etc. The browser resolves these at runtime,
+ * which fails offline because we saved the file under a hash-prefixed
+ * name in `assets/`. We can't safely rewrite arbitrary JS, but a literal
+ * with a content-hash segment is essentially unique — replacing it is
+ * collision-free in practice.
+ *
+ * Strategy: for each asset, register its URL pathname and (when the
+ * basename has a hash-like segment) its basename. Walk every string
+ * literal in the JS, normalize, and if the literal matches a registered
+ * pathname or hashed basename, swap in the local path relative to the
+ * consuming JS file.
+ */
+export function rewriteJS(js, baseUrl, assetMap, consumerRelPath = 'index.html') {
+  const byPath = new Map();      // '/_astro/foo.HASH.js' -> entry
+  const byBasename = new Map();  // 'foo.HASH.js' -> entry (or null when ambiguous)
+
+  // Hash-like basename: 6+ alnum chars adjacent to extension. Matches Vite's
+  // `name.aBcDeF12.js`, webpack's `123.HASH.css`, dato CDN UUIDs, etc.
+  const HASHED_BASENAME = /(^|[._-])[A-Za-z0-9_-]{6,}\.[a-z0-9]+$/i;
+
+  for (const [url, entry] of assetMap.entries()) {
+    let u;
+    try { u = new URL(url); } catch { continue; }
+    const p = u.pathname;
+    if (p && p !== '/') byPath.set(p, entry);
+    const base = p.split('/').pop();
+    if (base && HASHED_BASENAME.test(base)) {
+      if (byBasename.has(base)) byBasename.set(base, null);
+      else byBasename.set(base, entry);
+    }
+  }
+
+  if (byPath.size === 0 && byBasename.size === 0) return js;
+
+  const fromDir = path.posix.dirname(consumerRelPath);
+  const toLocal = (entry) => {
+    if (!entry) return null;
+    if (fromDir === '.' || fromDir === '') return entry.relPath;
+    return path.posix.relative(fromDir, entry.relPath);
+  };
+
+  // Walk string literals: "...", '...', `...`. Inside template literals we
+  // only handle the case with no ${} interpolation (single chunk).
+  return js.replace(
+    /(["'`])((?:\\.|(?!\1)[^\\\n\r])+)\1/g,
+    (match, quote, raw) => {
+      // Strip query/fragment for lookup; re-attach to result.
+      const qIdx = raw.search(/[?#]/);
+      const tail = qIdx >= 0 ? raw.slice(qIdx) : '';
+      const body = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+      if (!body || body.length > 512) return match;
+      // Skip if it looks like data:/blob:/full URL we don't host, but allow
+      // absolute URLs against the same origin (covered by pathname lookup).
+      if (/^(data:|blob:|javascript:|mailto:|tel:|#)/i.test(body)) return match;
+
+      // Try pathname lookup. Accept '/x', 'x', './x', '../x' forms.
+      const pathCandidates = [];
+      const stripped = body.replace(/^\.{1,2}\//, '');
+      pathCandidates.push(stripped.startsWith('/') ? stripped : '/' + stripped);
+      // Also try original with leading slash if it doesn't have one.
+      if (!body.startsWith('/')) pathCandidates.push('/' + body.replace(/^\.{1,2}\//, ''));
+
+      let entry = null;
+      for (const c of pathCandidates) {
+        if (byPath.has(c)) { entry = byPath.get(c); break; }
+      }
+      if (!entry) {
+        const base = body.split('/').pop();
+        if (base && byBasename.has(base)) entry = byBasename.get(base);
+      }
+      if (!entry) return match;
+
+      const local = toLocal(entry);
+      if (!local) return match;
+      return `${quote}${local}${tail}${quote}`;
+    }
+  );
+}
+
 function rewriteCSSUrls(css, baseUrl, assetMap, consumerRelPath = 'index.html') {
   // url("..."), url('...'), url(...)
   let out = css.replace(
