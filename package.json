@@ -1,0 +1,23 @@
+{
+  "name": "clone-saas",
+  "version": "0.1.0",
+  "description": "High-fidelity website cloning service",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "express": "^4.21.1",
+    "mime-types": "^2.1.35",
+    "nanoid": "^5.0.7",
+    "playwright": "^1.48.0",
+    "postcss": "^8.4.47"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

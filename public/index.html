@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>clone-saas — website cloner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>clone-saas</h1>
+      <p class="tag">High-fidelity offline snapshot of any URL.</p>
+    </header>
+
+    <main>
+      <section class="submit">
+        <form id="clone-form">
+          <input
+            id="url"
+            name="url"
+            type="url"
+            required
+            placeholder="https://example.com"
+            autocomplete="off"
+          />
+          <button type="submit" id="submit">Clone</button>
+        </form>
+
+        <details class="options">
+          <summary>Advanced options</summary>
+          <div class="grid">
+            <label>
+              <input type="checkbox" id="opt-scroll" checked />
+              Scroll capture (load lazy content)
+            </label>
+            <label>
+              <input type="checkbox" id="opt-interact" />
+              Full interaction (hover/click selectors)
+            </label>
+            <label>
+              <input type="checkbox" id="opt-strip-analytics" checked />
+              Strip analytics from output
+            </label>
+            <label>
+              Device:
+              <select id="opt-device">
+                <option value="desktop">Desktop</option>
+                <option value="mobile">Mobile</option>
+              </select>
+            </label>
+            <label>
+              Wait after load (ms):
+              <input type="number" id="opt-wait" value="2500" min="0" max="60000" step="250" />
+            </label>
+            <label class="full">
+              Interaction selectors (comma-separated):
+              <input type="text" id="opt-selectors" placeholder=".menu-trigger, [data-tooltip]" />
+            </label>
+            <label class="full">
+              Cookies JSON (Playwright format, optional):
+              <textarea id="opt-cookies" rows="3" placeholder='[{"name":"sid","value":"...","domain":".example.com","path":"/"}]'></textarea>
+            </label>
+            <label class="full ack">
+              <input type="checkbox" id="opt-ack" />
+              I have the right to clone this URL.
+            </label>
+          </div>
+        </details>
+      </section>
+
+      <section class="jobs">
+        <h2>Jobs</h2>
+        <div id="job-list" class="job-list"></div>
+      </section>
+    </main>
+
+    <div id="picker-modal" class="picker-modal" hidden>
+      <div class="picker-modal__inner">
+        <header class="picker-modal__header">
+          <div>
+            <strong>Compose page</strong>
+            <span class="picker-modal__hint">Click components on the left. They land at full size on the right canvas. When the composition looks right, press Complete.</span>
+          </div>
+          <button type="button" class="picker-modal__close" id="picker-close" aria-label="Close">&times;</button>
+        </header>
+        <div class="picker-modal__split">
+          <div class="picker-modal__pane picker-modal__pane--clone">
+            <header class="picker-modal__pane-head">
+              <strong>Cloned page</strong>
+              <span class="picker-modal__pane-hint">click any element to add it</span>
+            </header>
+            <div class="picker-modal__pane-body">
+              <iframe id="picker-iframe" title="Component picker"></iframe>
+            </div>
+          </div>
+          <div class="picker-modal__pane picker-modal__pane--canvas" aria-label="Composition canvas">
+            <header class="picker-modal__pane-head">
+              <strong>Canvas</strong>
+              <span class="picker-canvas__count" id="picker-count">0</span>
+              <span class="picker-canvas__spacer"></span>
+              <button type="button" id="picker-clear" class="picker-canvas__clear" disabled>Clear all</button>
+            </header>
+            <div class="picker-canvas__chips" id="picker-canvas-chips" hidden></div>
+            <div class="picker-canvas__viewport" id="picker-canvas-viewport">
+              <p class="picker-canvas__empty" id="picker-canvas-empty">Click components on the left to start composing.</p>
+              <iframe id="picker-canvas-frame" title="Composed preview" hidden></iframe>
+            </div>
+          </div>
+        </div>
+        <footer class="picker-modal__footer">
+          <label class="picker-modal__sel-label">
+            Last picked
+            <input type="text" id="picker-selector" placeholder="(click an element in the preview)" readonly />
+          </label>
+          <button type="button" id="picker-bundle" disabled>Complete &amp; Download</button>
+          <span id="picker-status" class="picker-modal__status"></span>
+        </footer>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        Local dev only. Don't clone sites you don't have permission to. Read
+        <a href="/RESEARCH.md">RESEARCH.md</a> for fidelity limits.
+      </p>
+    </footer>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
