@@ -790,6 +790,207 @@ export function inlineHtmlAssets(html, assetsDir, opts = {}) {
   return html;
 }
 
+/**
+ * Inline all JS module assets into the HTML so the page works under file://.
+ *
+ * Chrome blocks ES module loads over file:// via CORS ("blocked by CORS policy:
+ * Cross origin requests are only supported for protocol schemes: http, https,
+ * data..."), which kills every modern bundle (Astro/Vite/Remix/Next) when
+ * users open the downloaded HTML directly. Data: URLs don't work either —
+ * relative `import "./foo.js"` inside a data: module can't resolve.
+ *
+ * Workaround: replace external module scripts with an inline classic-script
+ * bootstrap that
+ *   1. decodes a base64 map of every JS asset's source,
+ *   2. wraps each in a Blob and creates an `URL.createObjectURL` per file,
+ *   3. injects a `<script type="importmap">` mapping bare specifiers like
+ *      `@mc/<filename>` to those blob URLs,
+ *   4. then loads the entry modules through those bare specifiers.
+ *
+ * Each module's source is pre-rewritten so its own `import "./X.js"` /
+ * `import("./X.js")` specifiers reference the same `@mc/X.js` keys, letting
+ * the importmap resolve sub-imports through the same blob URL pool.
+ *
+ * Result: a single self-contained HTML file that runs identical JS modules
+ * whether opened via http://, file://, or extracted-from-ZIP.
+ */
+export function inlineModuleScripts(html, assetsDir) {
+  if (!assetsDir || !fs.existsSync(assetsDir)) return html;
+
+  const allFiles = fs.readdirSync(assetsDir);
+  const jsFiles = allFiles.filter((f) => /\.(?:m?js)$/i.test(f));
+  if (jsFiles.length === 0) return html;
+
+  const PREFIX = '@mc/';
+  const fileSet = new Set(jsFiles);
+
+  // Rewrite each module's imports so its sub-imports go through the importmap
+  const sources = {};
+  for (const f of jsFiles) {
+    let code;
+    try { code = fs.readFileSync(path.join(assetsDir, f), 'utf8'); }
+    catch { continue; }
+    sources[f] = rewriteJsImportsToBare(code, fileSet, PREFIX);
+  }
+
+  // Build base64 map keyed by '@mc/<filename>'
+  const moduleMap = {};
+  for (const f of Object.keys(sources)) {
+    moduleMap[PREFIX + f] = Buffer.from(sources[f], 'utf8').toString('base64');
+  }
+
+  // Bootstrap script: decode → blobs → importmap. Lives at the top of <head>
+  // so it runs before any subsequent <script type="module"> begins fetching.
+  // Bootstrap must run BEFORE any <script type="module"> in the HTML so the
+  // importmap is acquired before module loads start. We use document.write
+  // to splice the importmap into the parser stream — Chrome's importmap
+  // acquisition runs during parsing, and DOM-API insertion after a module
+  // begins loading is rejected ("ignored multiple importmap"). document.write
+  // during synchronous parser execution puts the importmap in place before
+  // the parser advances to subsequent module scripts.
+  const bootstrap =
+    '<script data-clone-saas-modulemap>' +
+    '(function(){' +
+    'var M=' + JSON.stringify(moduleMap) + ';' +
+    'var I={};' +
+    'for(var k in M){' +
+    'var s=atob(M[k]);' +
+    'var u=new Uint8Array(s.length);' +
+    'for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);' +
+    'I[k]=URL.createObjectURL(new Blob([u],{type:"application/javascript"}));' +
+    '}' +
+    'document.write(\'<script type="importmap">\'+JSON.stringify({imports:I})+\'<\\/script>\');' +
+    '})();' +
+    '</script>';
+
+  // 1. Inject bootstrap as the FIRST element inside <head>
+  if (/<head\b[^>]*>/i.test(html)) {
+    html = html.replace(/<head\b([^>]*)>/i, `<head$1>\n${bootstrap}\n`);
+  } else {
+    html = bootstrap + html;
+  }
+
+  // 2. Replace <script type="module" src="assets/X"></script> with an inline
+  //    module that imports the bare specifier. Browser resolves it through the
+  //    importmap to the blob URL.
+  const SCRIPT_TAG_RE = /<script\b([^>]*)\bsrc\s*=\s*(["'])assets\/([^"']+)\2([^>]*)>\s*<\/script>/gi;
+  html = html.replace(SCRIPT_TAG_RE, (m, before, q, rel, after) => {
+    const cleanRel = rel.replace(/[?#].*$/, '');
+    if (!fileSet.has(cleanRel)) return m;
+    const attrs = before + after;
+    if (!/type\s*=\s*["']?module["']?/i.test(attrs)) return m;
+    return `<script type="module">import ${q}${PREFIX}${cleanRel}${q};</script>`;
+  });
+
+  // 3. Drop <link rel="modulepreload" href="assets/X"> — handled by the bootstrap.
+  html = html.replace(/<link\b[^>]*>/gi, (tag) => {
+    if (!/rel\s*=\s*["']?modulepreload["']?/i.test(tag)) return tag;
+    const m = tag.match(/href\s*=\s*(["'])assets\/([^"']+)\1/i);
+    if (!m) return tag;
+    const cleanRel = m[2].replace(/[?#].*$/, '');
+    return fileSet.has(cleanRel) ? '' : tag;
+  });
+
+  // 4. Rewrite imports & asset strings inside INLINE scripts so they also
+  //    resolve through the importmap (React Router / Remix manifests embed
+  //    asset paths as JSON inside <script>window.__reactRouterManifest=...).
+  //    Skip JSON-LD blocks (not JS) and our own bootstrap.
+  html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (m, attrs, body) => {
+    if (/\bsrc\s*=/i.test(attrs)) return m;
+    if (/data-clone-saas-modulemap/i.test(attrs)) return m;
+    if (/type=["']?application\/(ld\+json|json)["']?/i.test(attrs)) return m;
+    if (!body.trim()) return m;
+    const rewritten = rewriteJsImportsToBare(body, fileSet, PREFIX);
+    if (rewritten === body) return m;
+    return `<script${attrs}>${rewritten}</script>`;
+  });
+
+  return html;
+}
+
+function rewriteJsImportsToBare(js, fileSet, prefix) {
+  // Some module sources skip the cloner's JS rewrite step (e.g. older clones,
+  // or imports inside source maps). Build a suffix index so `./foo.HASH.js`
+  // still resolves to the disk file `<hash>-foo.HASH.js`.
+  const suffixIndex = new Map();
+  for (const f of fileSet) {
+    const dash = f.indexOf('-');
+    if (dash > 0) suffixIndex.set(f.slice(dash + 1), f);
+  }
+
+  const tryMap = (raw) => {
+    if (!raw) return null;
+    let s = raw.replace(/[?#].*$/, '');
+    // Skip absolute URLs (http://, https://, data:, blob:) and protocol-relative.
+    if (/^[a-z][a-z0-9+.-]*:/i.test(s) || s.startsWith('//')) return null;
+    // Anything else with a path separator: pull the basename. Catches
+    // `./foo.js`, `../foo.js`, `/assets/foo.js`, `_astro/foo.js`,
+    // `assets/foo.js` — same lookup. Bare basenames (no `/`) only match if
+    // the literal filename is in the asset set, to avoid false positives on
+    // unrelated short JS-named strings inside random scripts.
+    const basename = s.includes('/') ? path.posix.basename(s) : s;
+    if (!s.includes('/') && !fileSet.has(basename) && !suffixIndex.has(basename)) {
+      return null;
+    }
+    if (fileSet.has(basename)) return prefix + basename;
+    const matched = suffixIndex.get(basename);
+    return matched ? prefix + matched : null;
+  };
+
+  // import ... from "..."
+  js = js.replace(/\bfrom\s*(['"])([^'"\n]+)\1/g, (m, q, raw) => {
+    const mapped = tryMap(raw);
+    return mapped ? `from${q}${mapped}${q}` : m;
+  });
+  // dynamic import("...")
+  js = js.replace(/\bimport\s*\(\s*(['"])([^'"\n]+)\1/g, (m, q, raw) => {
+    const mapped = tryMap(raw);
+    return mapped ? `import(${q}${mapped}${q}` : m;
+  });
+  // side-effect import "..."
+  js = js.replace(/(^|[\s;{}(),=>?:])import\s*(['"])([^'"\n]+)\2/g, (m, pre, q, raw) => {
+    const mapped = tryMap(raw);
+    return mapped ? `${pre}import${q}${mapped}${q}` : m;
+  });
+
+  // String literals matching known JS asset basenames or absolute /assets/ paths.
+  // Catches Vite's __vite__mapDeps and React Router manifest "module":"/assets/foo.js".
+  const STR_RE = /(['"])(\/?(?:[\w@\-./]+\/)?[\w\-.]+\.(?:m?js))\1/g;
+  js = js.replace(STR_RE, (m, q, raw) => {
+    const mapped = tryMap(raw);
+    return mapped ? `${q}${mapped}${q}` : m;
+  });
+
+  // Vite's preload helper resolves each dep against `import.meta.url` (or
+  // prepends "/") when building <link rel="modulepreload"> hints. Since
+  // modules now load as blob: URLs, `import.meta.url` is `blob:null/<uuid>`,
+  // and `new URL('@mc/foo.js', 'blob:null/...')` throws "Invalid URL" (blob
+  // URLs don't support relative resolution). Patch the helper to return the
+  // bare specifier unchanged so the importmap can resolve it. The preload
+  // <link> hints will 404 silently (preload uses URL parsing, not importmap),
+  // but the real `import()` call resolves through the importmap and loads
+  // the blob URL — so animations & dynamic chunks run.
+  if (/vite:preloadError|modulepreload|__vitePreload/.test(js)) {
+    // Pattern A: =function(l){return"/"+l}
+    js = js.replace(
+      /=\s*function\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{\s*return\s*(['"])\/\2\s*\+\s*\1\s*\}/g,
+      '=function($1){return $1}'
+    );
+    // Pattern B: =function(l){return new URL(l,import.meta.url).href}
+    js = js.replace(
+      /=\s*function\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{\s*return\s+new\s+URL\s*\(\s*\1\s*,\s*[^)]+\)\.href\s*\}/g,
+      '=function($1){return $1}'
+    );
+    // Pattern C: =(l)=>new URL(l,import.meta.url).href  (arrow form)
+    js = js.replace(
+      /=\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*=>\s*new\s+URL\s*\(\s*\1\s*,\s*[^)]+\)\.href/g,
+      '=($1)=>$1'
+    );
+  }
+
+  return js;
+}
+
 export function buildComponentDoc(extraction, { selector, sourceUrl }) {
   if (extraction.error) return null;
   const css = [

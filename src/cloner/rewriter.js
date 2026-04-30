@@ -21,6 +21,7 @@ const HTML_URL_ATTRS = [
 const HTML_SRCSET_ATTRS = ['srcset', 'data-srcset', 'data-lazy-srcset'];
 const CSP_META_RE = /<meta[^>]+http-equiv=["']?content-security-policy["']?[^>]*>/gi;
 const STYLE_BLOCK_RE = /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi;
+const SCRIPT_BLOCK_RE = /(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi;
 
 function decodeEntities(s) {
   return String(s)
@@ -122,6 +123,20 @@ export function rewriteHTML(html, baseUrl, assetMap, opts = {}) {
     );
   }
 
+  // Rewrite asset paths inside inline <script> blocks. Frameworks like React
+  // Router (Remix) and Next.js embed JSON manifests with hardcoded module
+  // paths (`window.__reactRouterManifest = {...,"module":"/assets/foo.js",...}`)
+  // in inline scripts. Those bypass the attribute rewriter, so dynamic chunk
+  // loads 404 and animations/lazy components never run. Skip scripts with
+  // `src=` (no body) and JSON-LD blocks (not JS).
+  out = out.replace(SCRIPT_BLOCK_RE, (m, open, body, close) => {
+    if (!body || !body.trim()) return m;
+    if (/\bsrc=/i.test(open)) return m;
+    if (/type=["']?application\/(ld\+json|json)["']?/i.test(open)) return m;
+    const rewritten = rewriteJS(body, baseUrl, assetMap, consumerRelPath, baseUrl);
+    return `${open}${rewritten}${close}`;
+  });
+
   // Append adopted stylesheets as a final <style> in <head>
   if (opts.adoptedStylesheets && opts.adoptedStylesheets.length) {
     const block = `<style data-clone-adopted>${opts.adoptedStylesheets.join(
@@ -200,7 +215,7 @@ export function rewriteJS(js, baseUrl, assetMap, consumerRelPath, docUrl) {
   // them, but they still need to point at our hashed filenames. Match strings
   // with at least one `/` ending in a recognizable extension; resolve returns
   // null for anything not in assetMap, so non-asset strings pass through.
-  const ASSET_STRING_RE = /(['"])((?:[\w\-]+\/)+[\w\-.]+\.(?:js|mjs|css|json|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3|wav))\1/g;
+  const ASSET_STRING_RE = /(['"])(\/?(?:[\w\-]+\/)+[\w\-.]+\.(?:js|mjs|css|json|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3|wav))\1/g;
   js = js.replace(ASSET_STRING_RE, (m, q, raw) => {
     const local = resolve(raw);
     return local ? `${q}${local}${q}` : m;
