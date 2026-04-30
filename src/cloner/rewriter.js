@@ -142,87 +142,84 @@ export function rewriteCSS(css, baseUrl, assetMap, consumerRelPath) {
 }
 
 /**
- * Rewrite asset URLs that appear as string literals inside JS bundles.
+ * Rewrite ES module import/export specifiers in JS so relative imports point
+ * at the cloner's hash-prefixed filenames. Modern bundlers (Vite, Astro,
+ * Rollup, esbuild) emit minified modules whose imports look like:
  *
- * Bundlers (Vite, webpack, esbuild) emit dynamic-import target paths and
- * worker URLs as plain string literals — `"_astro/Foo.HASH.js"`,
- * `"/assets/anim.HASH.riv"`, etc. The browser resolves these at runtime,
- * which fails offline because we saved the file under a hash-prefixed
- * name in `assets/`. We can't safely rewrite arbitrary JS, but a literal
- * with a content-hash segment is essentially unique — replacing it is
- * collision-free in practice.
+ *   import{x}from"./preload-helper.BlTxHScW.js"
+ *   import"./styles.css"
+ *   export*from"./util.js"
+ *   import("./chunk.js")
  *
- * Strategy: for each asset, register its URL pathname and (when the
- * basename has a hash-like segment) its basename. Walk every string
- * literal in the JS, normalize, and if the literal matches a registered
- * pathname or hashed basename, swap in the local path relative to the
- * consuming JS file.
+ * The cloner saves the imported file as `assets/<hash>-preload-helper...js`,
+ * so the original `./preload-helper.BlTxHScW.js` no longer resolves.
+ *
+ * Browsers also reject bare specifiers in modules — `import"foo.js"` errors
+ * with "Failed to resolve module specifier" — so when the resolved relative
+ * path collapses to a bare basename (same directory), prepend `./`.
  */
-export function rewriteJS(js, baseUrl, assetMap, consumerRelPath = 'index.html') {
-  const byPath = new Map();      // '/_astro/foo.HASH.js' -> entry
-  const byBasename = new Map();  // 'foo.HASH.js' -> entry (or null when ambiguous)
-
-  // Hash-like basename: 6+ alnum chars adjacent to extension. Matches Vite's
-  // `name.aBcDeF12.js`, webpack's `123.HASH.css`, dato CDN UUIDs, etc.
-  const HASHED_BASENAME = /(^|[._-])[A-Za-z0-9_-]{6,}\.[a-z0-9]+$/i;
-
-  for (const [url, entry] of assetMap.entries()) {
-    let u;
-    try { u = new URL(url); } catch { continue; }
-    const p = u.pathname;
-    if (p && p !== '/') byPath.set(p, entry);
-    const base = p.split('/').pop();
-    if (base && HASHED_BASENAME.test(base)) {
-      if (byBasename.has(base)) byBasename.set(base, null);
-      else byBasename.set(base, entry);
-    }
-  }
-
-  if (byPath.size === 0 && byBasename.size === 0) return js;
-
-  const fromDir = path.posix.dirname(consumerRelPath);
-  const toLocal = (entry) => {
-    if (!entry) return null;
-    if (fromDir === '.' || fromDir === '') return entry.relPath;
-    return path.posix.relative(fromDir, entry.relPath);
+export function rewriteJS(js, baseUrl, assetMap, consumerRelPath, docUrl) {
+  const fix = (rel) => {
+    if (!rel) return null;
+    return /^(\.\.?\/|\/)/.test(rel) ? rel : `./${rel}`;
   };
 
-  // Walk string literals: "...", '...', `...`. Inside template literals we
-  // only handle the case with no ${} interpolation (single chunk).
-  return js.replace(
-    /(["'`])((?:\\.|(?!\1)[^\\\n\r])+)\1/g,
-    (match, quote, raw) => {
-      // Strip query/fragment for lookup; re-attach to result.
-      const qIdx = raw.search(/[?#]/);
-      const tail = qIdx >= 0 ? raw.slice(qIdx) : '';
-      const body = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
-      if (!body || body.length > 512) return match;
-      // Skip if it looks like data:/blob:/full URL we don't host, but allow
-      // absolute URLs against the same origin (covered by pathname lookup).
-      if (/^(data:|blob:|javascript:|mailto:|tel:|#)/i.test(body)) return match;
-
-      // Try pathname lookup. Accept '/x', 'x', './x', '../x' forms.
-      const pathCandidates = [];
-      const stripped = body.replace(/^\.{1,2}\//, '');
-      pathCandidates.push(stripped.startsWith('/') ? stripped : '/' + stripped);
-      // Also try original with leading slash if it doesn't have one.
-      if (!body.startsWith('/')) pathCandidates.push('/' + body.replace(/^\.{1,2}\//, ''));
-
-      let entry = null;
-      for (const c of pathCandidates) {
-        if (byPath.has(c)) { entry = byPath.get(c); break; }
-      }
-      if (!entry) {
-        const base = body.split('/').pop();
-        if (base && byBasename.has(base)) entry = byBasename.get(base);
-      }
-      if (!entry) return match;
-
-      const local = toLocal(entry);
-      if (!local) return match;
-      return `${quote}${local}${tail}${quote}`;
+  // Try both the script's own URL (for normal `./foo.js` imports) and the
+  // document URL (for Vite `__vite__mapDeps` strings, which the preload helper
+  // resolves relative to `assetsURL`/document origin, not the script).
+  const resolve = (raw) => {
+    let local = resolveLocal(raw, baseUrl, assetMap, consumerRelPath);
+    if (!local && docUrl && docUrl !== baseUrl) {
+      local = resolveLocal(raw, docUrl, assetMap, consumerRelPath);
     }
-  );
+    return fix(local);
+  };
+
+  // import/export ... from "..."
+  js = js.replace(/\bfrom\s*(['"])([^'"\n]+)\1/g, (m, q, raw) => {
+    const local = resolve(raw);
+    return local ? `from${q}${local}${q}` : m;
+  });
+
+  // dynamic import("..." [, ...])
+  js = js.replace(/\bimport\s*\(\s*(['"])([^'"\n]+)\1/g, (m, q, raw) => {
+    const local = resolve(raw);
+    return local ? `import(${q}${local}${q}` : m;
+  });
+
+  // side-effect import "..." — must be at start-of-line or after a separator
+  // so we don't mangle the keyword `import` that appears as a method name.
+  js = js.replace(/(^|[\s;{}(),=>?:])import\s*(['"])([^'"\n]+)\2/g, (m, prefix, q, raw) => {
+    const local = resolve(raw);
+    return local ? `${prefix}import${q}${local}${q}` : m;
+  });
+
+  // String literals that look like asset paths — Vite emits a `__vite__mapDeps`
+  // array of bare strings ("_astro/Foo.HASH.js") that the preload helper feeds
+  // into `import()`. They aren't import statements, so the rules above miss
+  // them, but they still need to point at our hashed filenames. Match strings
+  // with at least one `/` ending in a recognizable extension; resolve returns
+  // null for anything not in assetMap, so non-asset strings pass through.
+  const ASSET_STRING_RE = /(['"])((?:[\w\-]+\/)+[\w\-.]+\.(?:js|mjs|css|json|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|ogg|mp3|wav))\1/g;
+  js = js.replace(ASSET_STRING_RE, (m, q, raw) => {
+    const local = resolve(raw);
+    return local ? `${q}${local}${q}` : m;
+  });
+
+  // Vite's __vitePreload helper hard-codes the asset URL prefix at build
+  // time, e.g. `const v=function(l){return"/"+l}` for sites served from `/`.
+  // Once we rewrite mapDeps to point at hashed neighbors of the helper, that
+  // hard-coded `/` prefix turns `./hashed-foo.js` into `/hashed-foo.js` and
+  // breaks the lookup. Detect by the helper's signature event name and swap
+  // the prefix function for one that resolves against `import.meta.url`.
+  if (/vite:preloadError/.test(js)) {
+    js = js.replace(
+      /return\s*(['"])\/\1\s*\+\s*([A-Za-z_$][\w$]*)/g,
+      'return new URL($2,import.meta.url).href'
+    );
+  }
+
+  return js;
 }
 
 function rewriteCSSUrls(css, baseUrl, assetMap, consumerRelPath = 'index.html') {

@@ -172,8 +172,10 @@ export async function runCloneJob(job, { onProgress }) {
   // Pass each CSS file's own relPath as the consumer so that url() targets
   // get rewritten relative to that file's location, not the document root.
   for (const entry of assetMap.values()) {
-    if (entry.isText && /css/i.test(entry.mime || '')) {
-      const baseUrl = findUrlForEntry(assetMap, entry);
+    if (!entry.isText) continue;
+    const mime = entry.mime || '';
+    const baseUrl = findUrlForEntry(assetMap, entry);
+    if (/css/i.test(mime)) {
       const rewritten = rewriteCSS(
         entry.body.toString('utf8'),
         baseUrl,
@@ -181,20 +183,13 @@ export async function runCloneJob(job, { onProgress }) {
         entry.relPath
       );
       entry.body = Buffer.from(rewritten, 'utf8');
-    }
-  }
-
-  // Rewrite asset URL string literals inside JS bundles. Bundlers like Vite
-  // emit dynamic-import paths and worker/wasm/.riv URLs as plain strings;
-  // they fail offline because the local files have hash-prefixed names.
-  for (const entry of assetMap.values()) {
-    if (entry.isText && /javascript|ecmascript/i.test(entry.mime || '')) {
-      const baseUrl = findUrlForEntry(assetMap, entry);
+    } else if (/javascript|ecmascript|module/i.test(mime)) {
       const rewritten = rewriteJS(
         entry.body.toString('utf8'),
         baseUrl,
         assetMap,
-        entry.relPath
+        entry.relPath,
+        job.url
       );
       entry.body = Buffer.from(rewritten, 'utf8');
     }
