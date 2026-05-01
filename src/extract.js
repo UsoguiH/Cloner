@@ -377,78 +377,12 @@ function prefixCssUrls(css, prefix) {
   });
 }
 
-// Some frameworks (Webflow IX2, Framer Motion, GSAP, theme libraries) hide
-// elements with inline opacity:0 / visibility:hidden / transform offsets and
-// rely on JS to animate them in. With scripts stripped for offline
-// reliability, those hide-states would freeze the page invisible. Force it
-// visible via both CSS (broad strokes) and a small reveal script (specific:
-// undoes inline-style opacity/visibility and Webflow's html-class flags).
-const VISIBILITY_RESET = `
-/* clone-saas: ensure offline visibility */
-html, body { visibility: visible !important; opacity: 1 !important; display: block !important; }
-[data-clone-saas-composed] body { display: block !important; }
-`.trim();
-
-const REVEAL_SCRIPT = `<script data-clone-saas-reveal>
-(function(){
-  function reveal(){
-    var de = document.documentElement;
-    // Webflow gates many CSS hide rules behind these classes — strip them so
-    // the rules don't apply.
-    if (de) de.className = (de.className || '').replace(/\\bw-mod-(js|ix)\\b/g, '').trim();
-    // Inline pre-hide states set by IX2 / Framer / GSAP / Astro stagger
-    // initializers. Clearing the inline value lets the cascade decide.
-    var nodes = document.querySelectorAll('[style*="opacity"], [style*="visibility"], [data-w-id], [data-framer-name], [data-aos]');
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      var s = el.style;
-      if (s.opacity === '0' || s.opacity === '0.0') s.opacity = '';
-      if (s.visibility === 'hidden') s.visibility = '';
-      // IX2 commonly preloads with translate3d(0, 100%, 0) etc. Strip the
-      // offset so the element renders in place.
-      if ((el.hasAttribute && el.hasAttribute('data-w-id')) && /translate|scale|rotate/i.test(s.transform || '')) {
-        s.transform = '';
-      }
-    }
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', reveal);
-  else reveal();
-})();
-</script>`;
-
-// Webflow tags <html> with these classes from a tiny inline bootstrap. With
-// no JS, any CSS rule scoped to them (e.g. .w-mod-js [data-w-id] { hidden })
-// won't fire if we drop the classes. The reveal script also strips them at
-// runtime, but pre-stripping in the static markup means the page already
-// renders correctly on the first paint.
-const JS_GATE_CLASSES = ['w-mod-js', 'w-mod-ix', 'w-mod-touch', 'js', 'has-js', 'js-enabled'];
-function stripJsGateClasses(attrs) {
-  if (!attrs || !attrs.class) return attrs;
-  const cls = String(attrs.class)
-    .split(/\s+/)
-    .filter((c) => c && !JS_GATE_CLASSES.includes(c))
-    .join(' ');
-  const out = { ...attrs };
-  if (cls) out.class = cls; else delete out.class;
-  return out;
-}
-
-// When a doc is opened directly from disk (file://), the original page's
-// boot scripts often error-out — module imports fail under CORS, fetch()
-// hits unreachable origins, SPA routers fail to find a matching route — and
-// many frameworks respond by wiping the body or hiding it behind a "loading"
-// overlay. Strip every <script>, <noscript>, and meta-refresh from the head
-// so the static markup + styling renders reliably offline. The component's
-// declarative shadow DOM, fonts, CSS variables, @keyframes, and @media
-// queries all survive — only the runtime JS is removed.
-function sanitizeHeadForOffline(headHtml) {
-  if (!headHtml) return '';
-  return headHtml
-    .replace(/<script\b[^>]*\/>/gi, '')
-    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
-}
+// Replay mode: the page's own JS is preserved (the bundled service worker
+// replays every recorded URL), so framework reveal animations re-run live.
+// No script stripping, no JS-gate class stripping, no framework-specific
+// reveal regexes. Settled-DOM overrides (captured during settle pass) are
+// belt-and-suspenders to make sure the picked component is visible even
+// before JS hydration finishes.
 
 function formatAttrs(attrs) {
   if (!attrs) return '';
@@ -461,83 +395,36 @@ function formatAttrs(attrs) {
 }
 
 /**
- * Build a single doc that IS the full cloned page, with scripts removed and
- * isolation styling/scripting injected so only the picked sections render.
+ * Build a doc that IS the full cloned page with isolation overlays injected
+ * so only the picked sections render. Scripts are preserved — the bundled
+ * service worker (replay mode) serves every recorded URL, so animations
+ * re-run live.
  *
- * This is dramatically more reliable than re-stitching extracted subtrees
- * because the original DOM tree is preserved verbatim — every parent class,
- * grid container, mount-root wrapper, and CSS variable that the section
- * styling depends on is still in place. The only changes are:
- *   1. <script>, <noscript>, <meta http-equiv=refresh> removed from head and
- *      body (so SPA frameworks can't error during boot under file://).
- *   2. JS-gate classes stripped from <html> and <body> (Webflow's w-mod-js
- *      and w-mod-ix gate hide-rules in webflow.shared.css).
- *   3. Optional asset-path rewrite (when the doc lives in a subfolder).
- *   4. One injected <style> that hides anything not marked keep/pick.
- *   5. One injected <script> that, on DOMContentLoaded, marks the picked
- *      elements (data-clone-saas-pick) and their ancestors
- *      (data-clone-saas-keep), then clears Webflow IX2 / Framer / AOS
- *      pre-hide states (inline opacity:0, visibility:hidden, transform).
+ * Three injections:
+ *   1. <style data-clone-saas-isolate> — hides anything not marked keep/pick.
+ *   2. <style data-clone-saas-settle> — settled-DOM overrides per selector,
+ *      so animated descendants of the picked subtree render visible even
+ *      before JS hydration finishes.
+ *   3. <script data-clone-saas-init> — marks picks (data-clone-saas-pick)
+ *      and ancestors (data-clone-saas-keep). Re-applies marks on a short
+ *      timer to outlast late hydration that re-renders the subtree.
  *
  * Pass selectors = [single] for a per-component file; pass the full array
  * for the composed page.
  */
 export function buildIsolatedFullPage(fullPageHtml, selectors, opts = {}) {
-  const assetsPrefix = opts.assetsPrefix || 'assets/';
+  const settledOverrides = opts.settledOverrides || {};
   let html = fullPageHtml;
 
-  // 1. Strip scripts, noscript, meta-refresh anywhere in the doc.
-  html = html
-    .replace(/<script\b[^>]*\/>/gi, '')
-    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
-
-  // 2. Strip JS-gate classes from <html> and <body> opening tags.
-  html = html.replace(/<(html|body)\b([^>]*)>/i, (m, tag, rest) => {
-    const cleaned = rest.replace(/\sclass\s*=\s*"([^"]*)"/i, (_, cls) => {
-      const out = cls
-        .split(/\s+/)
-        .filter((c) => c && !JS_GATE_CLASSES.includes(c))
-        .join(' ');
-      return out ? ` class="${out}"` : '';
-    }).replace(/\sclass\s*=\s*'([^']*)'/i, (_, cls) => {
-      const out = cls
-        .split(/\s+/)
-        .filter((c) => c && !JS_GATE_CLASSES.includes(c))
-        .join(' ');
-      return out ? ` class="${out}"` : '';
-    });
-    return `<${tag}${cleaned}>`;
-  });
-  // The replace above runs once per regex. Run again for <body> if <html>
-  // matched first.
-  html = html.replace(/<body\b([^>]*)>/i, (m, rest) => {
-    const cleaned = rest.replace(/\sclass\s*=\s*"([^"]*)"/i, (_, cls) => {
-      const out = cls
-        .split(/\s+/)
-        .filter((c) => c && !JS_GATE_CLASSES.includes(c))
-        .join(' ');
-      return out ? ` class="${out}"` : '';
-    });
-    return `<body${cleaned}>`;
-  });
-
-  // 3. Rewrite root-relative-ish asset paths if needed.
-  if (assetsPrefix !== 'assets/') {
-    html = prefixAssetPaths(html, assetsPrefix);
-  }
-
-  // 4 + 5. Inject style + script. The script lives at the end of <body>
-  // so the DOM is fully parsed when it executes (no need to wait for
-  // DOMContentLoaded in most cases — but we still gate on it as a safety).
   const styleTag = `<style data-clone-saas-isolate>${ISOLATE_CSS}</style>`;
+  const settleTag = buildSettleStyleTag(settledOverrides);
   const initTag = buildIsolateInitScript(selectors);
 
+  const headInjection = `${styleTag}${settleTag ? '\n' + settleTag : ''}`;
   if (/<\/head>/i.test(html)) {
-    html = html.replace(/<\/head>/i, `${styleTag}\n</head>`);
+    html = html.replace(/<\/head>/i, `${headInjection}\n</head>`);
   } else {
-    html = styleTag + html;
+    html = headInjection + html;
   }
   if (/<\/body>/i.test(html)) {
     html = html.replace(/<\/body>/i, `${initTag}\n</body>`);
@@ -557,14 +444,31 @@ body *:not([data-clone-saas-keep]):not([data-clone-saas-pick]):not([data-clone-s
 [data-clone-saas-pick] { scroll-margin-top: 0; }
 `.trim();
 
+function buildSettleStyleTag(overrides) {
+  if (!overrides || typeof overrides !== 'object') return '';
+  const rules = [];
+  for (const [sel, decls] of Object.entries(overrides)) {
+    if (!sel || !decls || typeof decls !== 'object') continue;
+    const body = Object.entries(decls)
+      .map(([prop, val]) => `${cssKebab(prop)}: ${String(val).replace(/[<>]/g, '')} !important;`)
+      .join(' ');
+    if (body) rules.push(`${sel.replace(/[<>]/g, '')} { ${body} }`);
+  }
+  if (rules.length === 0) return '';
+  return `<style data-clone-saas-settle>${rules.join('\n')}</style>`;
+}
+
+function cssKebab(s) {
+  return String(s).replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
+}
+
 function buildIsolateInitScript(selectors) {
   const sels = JSON.stringify(selectors);
   return `<script data-clone-saas-init>
 (function(){
   var SELS = ${sels};
-  function init(){
-    var de = document.documentElement;
-    if (de) de.className = (de.className || '').replace(/\\bw-mod-(js|ix|touch)\\b/g, '').trim();
+  function apply(){
+    if (!document.body) return;
     SELS.forEach(function(sel, i){
       var root;
       try { root = document.querySelector(sel); } catch (_) { return; }
@@ -576,25 +480,16 @@ function buildIsolateInitScript(selectors) {
         cur = cur.parentElement;
       }
     });
-    // Reveal pass: undo Webflow IX2 / Framer Motion / AOS pre-hide states
-    // inside any kept ancestor so animated children render at their final
-    // state instead of being stuck invisible.
-    var nodes = document.querySelectorAll('[style*="opacity"], [style*="visibility"], [data-w-id], [data-framer-name], [data-aos]');
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      var s = el.style;
-      if (s.opacity === '0' || s.opacity === '0.0') s.opacity = '';
-      if (s.visibility === 'hidden') s.visibility = '';
-      if ((el.hasAttribute && el.hasAttribute('data-w-id')) && /translate|scale|rotate/i.test(s.transform || '')) {
-        s.transform = '';
-      }
-    }
-    // Scroll the first pick into view for the per-component case.
     var first = document.querySelector('[data-clone-saas-pick="1"]');
     if (first) { try { first.scrollIntoView({ block: 'start' }); } catch(_) {} }
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+  else apply();
+  // Re-apply to outlive framework hydration that may re-render the subtree
+  // and clear our marks.
+  setTimeout(apply, 400);
+  setTimeout(apply, 1200);
+  setTimeout(apply, 3000);
 })();
 </script>`;
 }

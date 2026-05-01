@@ -1,12 +1,17 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { CDPNetworkRecorder } from './network.js';
 import { extractRenderedDOM, autoScroll, runInteractions, prefetchCSSAssets } from './dom.js';
-import { rewriteHTML, rewriteCSS, rewriteJS } from './rewriter.js';
-import { inlineHtmlAssets, inlineModuleScripts } from '../extract.js';
-import { writeAssets, packageZip } from './packager.js';
-import { hashUrl, extFromMime, sanitizeBasename } from './util.js';
+import { settleSnapshots } from './settle.js';
+import { buildReplayBundle, copyLauncher, readBootstrap } from './replay.js';
+import { packageZip } from './packager.js';
+
+const TEMPLATES_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'templates'
+);
 
 const ANALYTICS_HOSTS = new Set([
   'www.google-analytics.com',
@@ -37,8 +42,7 @@ export async function runCloneJob(job, { onProgress }) {
   };
 
   const outputDir = path.join(job.jobDir, 'output');
-  const assetsDir = path.join(outputDir, 'assets');
-  await fs.mkdir(assetsDir, { recursive: true });
+  await fs.mkdir(outputDir, { recursive: true });
 
   onProgress({ phase: 'launching', message: 'launching browser' });
 
@@ -101,148 +105,87 @@ export async function runCloneJob(job, { onProgress }) {
   await prefetchCSSAssets(page);
   try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
 
+  onProgress({ phase: 'extracting', message: 'settling animations' });
+  let settledOverrides = {};
+  try {
+    settledOverrides = await settleSnapshots(page);
+  } catch (e) {
+    console.warn(`[job ${job.id}] settle pass failed:`, e.message);
+  }
+
   onProgress({ phase: 'extracting', message: 'extracting rendered DOM' });
   const extraction = await extractRenderedDOM(page);
 
   await recorder.flush();
   await browser.close();
 
-  // Build asset map from recorded responses, skipping the main HTML and analytics noise
+  // Replay bundle: write every recorded response into replay/bodies/<sha1>
+  // and an index manifest the bundled service worker reads at boot.
   onProgress({
     phase: 'processing',
-    message: 'processing assets',
+    message: 'building replay bundle',
     captured: 0,
     total: recorder.responses.size,
   });
 
-  const docUrl = page.url ? job.url : job.url;
-  const assetMap = new Map(); // url -> { localPath, relPath, mime, bytes }
-  const failures = [];
-  let count = 0;
-
-  const strippedScriptUrls = new Set();
-
-  for (const [url, rec] of recorder.responses.entries()) {
-    count++;
-    if (count % 8 === 0) {
-      onProgress({ captured: count, total: recorder.responses.size });
-    }
-    if (!rec.body) {
-      failures.push({ url, reason: rec.error || 'no body' });
-      continue;
-    }
-    if (url === docUrl) continue; // main HTML handled separately
-    if (opts.stripAnalytics) {
-      if (isAnalytics(url)) {
-        strippedScriptUrls.add(url);
-        continue;
-      }
-      // First-party-proxied analytics (server-side GTM, Cloudflare Web Analytics
-      // proxy, etc.) — hostname looks legit, content gives it away.
-      if (
-        !rec.bodyBase64 &&
-        /javascript/i.test(rec.mimeType || '') &&
-        jsLooksLikeAnalytics(rec.body)
-      ) {
-        strippedScriptUrls.add(url);
-        continue;
-      }
-    }
-
-    const ext = extFromMime(rec.mimeType, url);
-    const basename = sanitizeBasename(new URL(url).pathname);
-    const filename = `${hashUrl(url)}-${basename || 'asset'}${ext}`;
-    const relPath = `assets/${filename}`;
-    const localPath = path.join(assetsDir, filename);
-
-    const buf = rec.bodyBase64
-      ? Buffer.from(rec.body, 'base64')
-      : Buffer.from(rec.body, 'utf8');
-
-    assetMap.set(url, {
-      localPath,
-      relPath,
-      mime: rec.mimeType,
-      bytes: buf.length,
-      isText: !rec.bodyBase64,
-      body: buf,
-    });
-  }
-
-  // Rewrite CSS bodies in place (they may reference other assets).
-  // Pass each CSS file's own relPath as the consumer so that url() targets
-  // get rewritten relative to that file's location, not the document root.
-  for (const entry of assetMap.values()) {
-    if (!entry.isText) continue;
-    const mime = entry.mime || '';
-    const baseUrl = findUrlForEntry(assetMap, entry);
-    if (/css/i.test(mime)) {
-      const rewritten = rewriteCSS(
-        entry.body.toString('utf8'),
-        baseUrl,
-        assetMap,
-        entry.relPath
-      );
-      entry.body = Buffer.from(rewritten, 'utf8');
-    } else if (/javascript|ecmascript|module/i.test(mime)) {
-      const rewritten = rewriteJS(
-        entry.body.toString('utf8'),
-        baseUrl,
-        assetMap,
-        entry.relPath,
-        job.url
-      );
-      entry.body = Buffer.from(rewritten, 'utf8');
-    }
-  }
-
-  // Write assets to disk
-  await writeAssets(assetMap);
-
-  // Rewrite the main HTML
-  onProgress({ phase: 'rewriting', message: 'rewriting URLs' });
-  let html = rewriteHTML(extraction.html, job.url, assetMap, {
-    stripAnalytics: opts.stripAnalytics,
-    analyticsHosts: ANALYTICS_HOSTS,
-    strippedScriptUrls,
-    adoptedStylesheets: extraction.adoptedStylesheets,
+  const replay = await buildReplayBundle({
+    recorder,
+    outputDir,
+    docUrl: job.url,
+    isAnalytics,
+    opts,
   });
+  onProgress({ captured: replay.recorded, total: recorder.responses.size });
 
-  // Inline CSS/fonts/images as data: URLs so the page renders correctly even
-  // when opened directly inside the ZIP without extracting `assets/` (Windows
-  // Explorer's default double-click behavior).
-  html = inlineHtmlAssets(html, assetsDir, { skipScripts: true });
+  // Copy launcher templates (sw.js, serve.cjs, start.bat, start.sh).
+  await copyLauncher(outputDir, TEMPLATES_DIR);
 
-  // Inline JS modules as runtime-decoded blob URLs via importmap, so ES
-  // modules also work under file:// (Chrome blocks data: URL relative imports
-  // and file:// cross-origin module loads). This makes the downloaded HTML
-  // fully self-contained — animations and dynamic chunk loads run identically
-  // to the live preview.
-  html = inlineModuleScripts(html, assetsDir);
+  // Inline the SW-registration bootstrap as the very first thing in <head>
+  // so the service worker is registered before any module script starts
+  // fetching its dependencies.
+  onProgress({ phase: 'rewriting', message: 'wiring service-worker bootstrap' });
+  const bootstrapJs = await readBootstrap(TEMPLATES_DIR);
+  const bootstrapTag =
+    `<script data-clone-saas-boot>${bootstrapJs}</script>`;
+  let html = extraction.html;
+  if (/<head\b[^>]*>/i.test(html)) {
+    html = html.replace(/<head\b[^>]*>/i, (m) => `${m}\n${bootstrapTag}`);
+  } else if (/<html\b[^>]*>/i.test(html)) {
+    html = html.replace(/<html\b[^>]*>/i, (m) => `${m}<head>${bootstrapTag}</head>`);
+  } else {
+    html = bootstrapTag + html;
+  }
 
   await fs.writeFile(path.join(outputDir, 'index.html'), html, 'utf8');
 
-  // Write manifest + HAR
+  // Persist settle + adopted stylesheets for the picker / isolate route.
+  await fs.writeFile(
+    path.join(outputDir, 'extraction.json'),
+    JSON.stringify({
+      settledOverrides,
+      adoptedStylesheets: extraction.adoptedStylesheets || [],
+      shadowRootCount: extraction.shadowRootCount,
+      iframesInlined: extraction.iframesInlined,
+      iframesExternal: extraction.iframesExternal,
+    }),
+    'utf8'
+  );
+
+  // Bundle metadata (separate from the replay manifest the SW reads).
   const manifest = {
     sourceUrl: job.url,
     capturedAt: new Date().toISOString(),
     options: opts,
+    mode: 'replay',
     stats: {
-      assets: assetMap.size,
-      bytes: [...assetMap.values()].reduce((s, e) => s + e.bytes, 0),
       requests: recorder.responses.size,
-      failures: failures.length,
+      replayed: replay.recorded,
+      replayBytes: replay.totalBytes,
+      settledOverrides: Object.keys(settledOverrides || {}).length,
       shadowRoots: extraction.shadowRootCount,
       iframesInlined: extraction.iframesInlined,
       iframesExternal: extraction.iframesExternal,
     },
-    assets: [...assetMap.entries()].map(([url, e]) => ({
-      url,
-      path: e.relPath,
-      mime: e.mime,
-      bytes: e.bytes,
-    })),
-    failures,
   };
   await fs.writeFile(
     path.join(outputDir, 'manifest.json'),
@@ -261,8 +204,8 @@ export async function runCloneJob(job, { onProgress }) {
   onProgress({
     phase: 'done',
     message: 'complete',
-    captured: assetMap.size,
-    total: assetMap.size,
+    captured: replay.recorded,
+    total: recorder.responses.size,
   });
 }
 
@@ -278,45 +221,6 @@ function isAnalytics(url) {
   } catch {
     return false;
   }
-}
-
-function jsLooksLikeAnalytics(body) {
-  if (typeof body !== 'string') return false;
-  const head = body.slice(0, 6000);
-  return ANALYTICS_JS_RE.test(head);
-}
-
-// Centralized so HTML rewriter and asset filter share the same definition.
-export const ANALYTICS_JS_RE = new RegExp(
-  [
-    'googletagmanager',
-    'google-analytics',
-    'google_tag_manager',
-    'google_tags_first_party',
-    'doubleclick\\.net',
-    'gtm\\.start',
-    'gtm\\.js',
-    'GTM-[A-Z0-9]{4,}',
-    'AW-[0-9]{6,}',
-    'gtag\\s*\\(',
-    '_gaq',
-    'fbq\\s*\\(',
-    'connect\\.facebook\\.net',
-    '_satellite',
-    'mixpanel\\.',
-    'amplitude\\.',
-    'segment\\.io',
-    'hotjar',
-    'clarity\\.ms',
-  ].join('|'),
-  'i'
-);
-
-function findUrlForEntry(map, target) {
-  for (const [url, e] of map.entries()) {
-    if (e === target) return url;
-  }
-  return null;
 }
 
 /**

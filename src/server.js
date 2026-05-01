@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import archiver from 'archiver';
 import { JobQueue } from './queue.js';
 import { runCloneJob } from './cloner/index.js';
-import { extractComponent, buildComponentDoc, buildIsolatedFullPage, inlineHtmlAssets } from './extract.js';
+import { extractComponent, buildComponentDoc, buildIsolatedFullPage } from './extract.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -120,12 +120,13 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
     if (fs.existsSync(indexPath)) {
       let html;
       try { html = fs.readFileSync(indexPath, 'utf8'); } catch { return next(); }
+      const settledOverrides = readSettledOverrides(outDir);
       const inserts = [];
       if (wantsPick) {
         inserts.push('<script src="/picker.js" data-clone-saas-picker></script>');
       }
       if (wantsIsolate) {
-        inserts.push(buildIsolateScript(isoList));
+        inserts.push(buildIsolateScript(isoList, settledOverrides));
       }
       const tag = inserts.join('\n');
       if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, `  ${tag}\n</head>`);
@@ -137,35 +138,98 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
     }
   }
 
+  // Try files on disk first (index.html, sw.js, replay/...).
   return express.static(outDir, {
     index: 'index.html',
     redirect: true,
-    fallthrough: false,
-  })(req, res, next);
+    fallthrough: true,
+  })(req, res, (err) => {
+    if (err) return next(err);
+    // Fallback: serve recorded asset bodies from replay/manifest.json so the
+    // live preview renders without depending on the bundled SW (which only
+    // controls the launcher's `/` scope, not `/api/jobs/:id/preview/`).
+    serveReplayAsset(outDir, req, res, next);
+  });
 });
+
+function readSettledOverrides(outDir) {
+  try {
+    const txt = fs.readFileSync(path.join(outDir, 'extraction.json'), 'utf8');
+    const obj = JSON.parse(txt);
+    return obj && obj.settledOverrides ? obj.settledOverrides : {};
+  } catch {
+    return {};
+  }
+}
+
+let _replayCache = new Map(); // outDir -> { entries, byPath, byBasename }
+function loadReplayManifest(outDir) {
+  if (_replayCache.has(outDir)) return _replayCache.get(outDir);
+  let m = null;
+  try {
+    const txt = fs.readFileSync(path.join(outDir, 'replay', 'manifest.json'), 'utf8');
+    m = JSON.parse(txt);
+  } catch {}
+  _replayCache.set(outDir, m);
+  return m;
+}
+
+function serveReplayAsset(outDir, req, res, next) {
+  const manifest = loadReplayManifest(outDir);
+  if (!manifest) return next();
+
+  // The path inside the preview is /something — map to a candidate URL or
+  // basename and look it up.
+  const reqPath = req.path || '/';
+  const basename = reqPath.split('/').pop();
+  let entry = null;
+  if (manifest.byPath && manifest.byPath[reqPath]) {
+    entry = manifest.entries[manifest.byPath[reqPath]];
+  } else if (basename && manifest.byBasename && manifest.byBasename[basename]) {
+    entry = manifest.entries[manifest.byBasename[basename]];
+  }
+  if (!entry) return next();
+
+  const bodyPath = path.join(outDir, 'replay', 'bodies', entry.body);
+  if (!fs.existsSync(bodyPath)) return next();
+
+  res.status(entry.status || 200);
+  for (const [k, v] of Object.entries(entry.headers || {})) {
+    try { res.set(k, v); } catch {}
+  }
+  if (entry.mimeType && !res.get('content-type')) {
+    res.set('content-type', entry.mimeType);
+  }
+  res.set('access-control-allow-origin', '*');
+  fs.createReadStream(bodyPath).pipe(res);
+}
 
 // Inline isolation script — marks each matched element with a pick attr and
 // every ancestor up to <html> with a keep attr, then hides everything else
 // via CSS. Listens for `clone-saas-set-selectors` postMessages so the picker
 // canvas can update the visible set without reloading the iframe. Posts
 // `clone-saas-isolate-ready` to the parent on boot.
-function buildIsolateScript(selectors) {
+function buildIsolateScript(selectors, settledOverrides) {
   const initialJSON = JSON.stringify(Array.isArray(selectors) ? selectors : [String(selectors)]);
+  const settleCss = settledOverridesToCss(settledOverrides);
+  const settleJSON = JSON.stringify(settleCss);
   return `<script data-clone-saas-isolate>
 (function(){
   var SELS = ${initialJSON};
   var STYLE_ID = '__clone_saas_isolate__';
+  var SETTLE_ID = '__clone_saas_settle__';
+  var SETTLE_CSS = ${settleJSON};
   var CSS = 'html,body{background:#fff!important;visibility:visible!important;opacity:1!important}'
     + 'body *:not([data-clone-saas-keep]):not([data-clone-saas-pick]):not([data-clone-saas-pick] *){display:none!important}'
     + '[data-clone-saas-pick],[data-clone-saas-pick] *{opacity:1!important;visibility:visible!important}';
-  function ensureStyle(){
-    var s = document.getElementById(STYLE_ID);
+  function ensureStyle(id, css){
+    var s = document.getElementById(id);
     if (!s) {
       s = document.createElement('style');
-      s.id = STYLE_ID;
+      s.id = id;
       (document.head||document.documentElement).appendChild(s);
     }
-    s.textContent = CSS;
+    s.textContent = css;
   }
   function clearMarks(){
     var picks = document.querySelectorAll('[data-clone-saas-pick]');
@@ -173,18 +237,10 @@ function buildIsolateScript(selectors) {
     var keeps = document.querySelectorAll('[data-clone-saas-keep]');
     for (var j=0;j<keeps.length;j++) keeps[j].removeAttribute('data-clone-saas-keep');
   }
-  function reveal(){
-    var nodes = document.querySelectorAll('[style*="opacity"],[style*="visibility"],[data-w-id],[data-framer-name],[data-aos]');
-    for (var i=0;i<nodes.length;i++){
-      var el=nodes[i], st=el.style;
-      if (st.opacity === '0' || st.opacity === '0.0') st.opacity = '';
-      if (st.visibility === 'hidden') st.visibility = '';
-      if (el.hasAttribute && el.hasAttribute('data-w-id') && /translate|scale|rotate/i.test(st.transform || '')) st.transform = '';
-    }
-  }
   function apply(){
     if (!document.body) return;
-    ensureStyle();
+    ensureStyle(STYLE_ID, CSS);
+    if (SETTLE_CSS) ensureStyle(SETTLE_ID, SETTLE_CSS);
     clearMarks();
     var any = false;
     for (var i=0;i<SELS.length;i++){
@@ -199,7 +255,6 @@ function buildIsolateScript(selectors) {
       }
       any = true;
     }
-    reveal();
     if (any && SELS.length === 1){
       var first = document.querySelector('[data-clone-saas-pick="1"]');
       if (first) setTimeout(function(){ try{first.scrollIntoView({block:'start'});}catch(_){} }, 50);
@@ -219,11 +274,25 @@ function buildIsolateScript(selectors) {
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  // Re-apply once more in case framework JS races with our marks.
+  // Re-apply to outlive framework hydration that may re-render the subtree.
   setTimeout(apply, 400);
   setTimeout(apply, 1200);
+  setTimeout(apply, 3000);
 })();
 </script>`;
+}
+
+function settledOverridesToCss(overrides) {
+  if (!overrides || typeof overrides !== 'object') return '';
+  const rules = [];
+  for (const [sel, decls] of Object.entries(overrides)) {
+    if (!sel || !decls || typeof decls !== 'object') continue;
+    const body = Object.entries(decls)
+      .map(([prop, val]) => `${prop.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}: ${String(val).replace(/[<>]/g, '')} !important;`)
+      .join(' ');
+    if (body) rules.push(`${sel.replace(/[<>]/g, '')} { ${body} }`);
+  }
+  return rules.join('\n');
 }
 
 app.post('/api/jobs/:id/extract', async (req, res) => {
@@ -266,11 +335,12 @@ app.post('/api/jobs/:id/extract', async (req, res) => {
   res.send(doc);
 });
 
-// Bundle: composed page + per-component pages, all built by stripping JS
-// from the full cloned page and revealing only the picked sections via CSS.
-// This preserves the original DOM tree (and therefore parent layout context)
-// instead of extracting subtrees and re-stitching them. Accepts either a
-// single `selector` (legacy) or `selectors: string[]` (multi-pick).
+// Bundle: launcher + composed page + per-component pages. The bundle shares
+// one replay/ directory and one service worker so the same recorded-asset
+// pool serves the composed view and every per-component page. The page's
+// original JS is preserved (no script stripping) — animations re-run live
+// because the SW replays everything. Accepts either a single `selector`
+// (legacy) or `selectors: string[]` (multi-pick).
 app.post('/api/jobs/:id/extract-zip', async (req, res) => {
   const job = queue.get(req.params.id);
   if (!job) return res.status(404).json({ error: 'not found' });
@@ -306,6 +376,8 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
     return res.status(500).json({ error: `read failed: ${err.message}` });
   }
 
+  const settledOverrides = readSettledOverrides(outDir);
+
   const slugify = (s) => {
     const out = s.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40).replace(/^-+|-+$/g, '');
     return out || 'component';
@@ -315,38 +387,48 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
     folder: `${String(i + 1).padStart(2, '0')}-${slugify(sel)}`,
   }));
 
-  const assetsDir = path.join(outDir, 'assets');
-  const hasAssetsDir = fs.existsSync(assetsDir);
-
   let composedDoc;
+  let perComponentDocs;
   try {
-    composedDoc = buildIsolatedFullPage(fullPageHtml, selectors);
-    if (hasAssetsDir) composedDoc = inlineHtmlAssets(composedDoc, assetsDir);
+    composedDoc = buildIsolatedFullPage(fullPageHtml, selectors, { settledOverrides });
+    perComponentDocs = components.map((c) =>
+      buildIsolatedFullPage(fullPageHtml, [c.selector], { settledOverrides })
+    );
   } catch (err) {
-    console.error(`[extract-zip ${job.id}] composed build failed:`, err);
+    console.error(`[extract-zip ${job.id}] build failed:`, err);
     return res.status(500).json({ error: `build failed: ${err.message}` });
   }
-  const perComponentDocs = components.map((c) => {
-    let doc = buildIsolatedFullPage(fullPageHtml, [c.selector]);
-    if (hasAssetsDir) doc = inlineHtmlAssets(doc, assetsDir);
-    return doc;
-  });
+
+  // Files that must exist in outDir for the bundle to boot.
+  const required = ['sw.js', 'serve.cjs', 'start.bat', 'start.sh'];
+  for (const f of required) {
+    if (!fs.existsSync(path.join(outDir, f))) {
+      return res.status(500).json({ error: `bundle missing ${f} — re-clone the job` });
+    }
+  }
+  const replayDir = path.join(outDir, 'replay');
+  if (!fs.existsSync(replayDir)) {
+    return res.status(500).json({ error: 'bundle missing replay/ — re-clone the job' });
+  }
 
   const manifest = {
     sourceUrl: job.url,
     jobId: job.id,
     selectors,
+    mode: 'replay',
     components: components.map((c) => ({
       selector: c.selector,
       folder: `components/${c.folder}/`,
     })),
     files: {
+      'start.bat / start.sh':
+        'Double-click to launch. Boots a 127.0.0.1:8080 static server, opens the default browser. Requires Node.js (https://nodejs.org/).',
       'index.html':
-        'OPEN THIS FIRST. Self-contained: stylesheets, fonts, images, and SVGs are inlined as data: URLs so the file works from anywhere (file://, inside the unextracted ZIP, attached to email). Only the picked sections are visible; layout context (parent wrappers, grids, theme variables) is intact because the original DOM tree is preserved.',
+        'Composed view — every picked section visible together, in original DOM order, with full layout context.',
       'components/<NN-slug>/index.html':
-        'Same self-contained build for a single pick.',
-      'full-page/':
-        'Reference: the complete cloned page with original JS and external asset folder intact. Open full-page/index.html to inspect interactive behavior.',
+        'One picked section in isolation. Open via the launcher (e.g. http://127.0.0.1:8080/components/01-…/).',
+      'replay/':
+        'Recorded URL → response body map. The bundled service worker (sw.js) replays from here so original scripts and animations run live.',
     },
     generated: new Date().toISOString(),
   };
@@ -366,11 +448,21 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
   });
   zip.pipe(res);
 
+  // Top-level: composed-view index + launcher + replay pool.
   zip.append(composedDoc, { name: 'index.html' });
+  for (const f of required) {
+    zip.file(path.join(outDir, f), { name: f });
+  }
+  zip.directory(replayDir, 'replay');
+  if (fs.existsSync(path.join(outDir, 'extraction.json'))) {
+    zip.file(path.join(outDir, 'extraction.json'), { name: 'extraction.json' });
+  }
+
+  // Per-component pages share the top-level launcher and replay pool.
   for (let i = 0; i < components.length; i++) {
     zip.append(perComponentDocs[i], { name: `components/${components[i].folder}/index.html` });
   }
-  zip.directory(outDir, 'full-page');
+
   zip.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
   zip.append(buildReadme({ selectors, sourceUrl: job.url, components }), { name: 'README.txt' });
 
@@ -394,49 +486,60 @@ Picked components (in DOM order)
 --------------------------------
 ${componentList}
 
+How to run
+----------
+Requires Node.js 18+ (https://nodejs.org/).
+
+  Windows : double-click start.bat
+  Mac/Linux: ./start.sh   (or:  node serve.cjs)
+
+The launcher boots http://127.0.0.1:8080 and opens your default browser.
+
 Layout
 ------
 index.html
-    OPEN THIS FIRST. Truly self-contained — stylesheets, fonts, images,
-    and SVGs are inlined as data: URLs. Works from anywhere: opened from
-    file://, viewed without extracting the ZIP, attached to an email.
-    Only your picked sections are visible; everything else is hidden via
-    CSS. Layout context (parent wrappers, container widths, fonts, CSS
-    variables) is intact because the original DOM tree is preserved.
-    Picks render in DOM order.
+    Composed view — every picked section rendered together in the
+    original DOM order, with full layout context (parent wrappers,
+    grids, theme variables) preserved.
 components/<NN-slug>/index.html
-    Same self-contained build for a single pick. Each per-component file
-    is independently portable.
-full-page/
-    Reference: the complete cloned page with original JS and the external
-    assets/ folder intact. Open full-page/index.html (after extracting
-    the ZIP) to inspect interactive behavior — but expect framework
-    errors when opened from file:// (ES module CORS, fetch failures, SPA
-    routing 404s).
+    One picked section in isolation. Visit
+    http://127.0.0.1:8080/components/<NN-slug>/ in the launcher.
+sw.js
+    Service worker. Replays any URL the page asks for from replay/.
+    Original scripts run live, so animations behave like the source.
+serve.cjs / start.bat / start.sh
+    Stdlib-only launcher. Binds 127.0.0.1:8080–8090.
+replay/
+    manifest.json + bodies/<sha1> — every recorded response.
+extraction.json
+    settledOverrides + adoptedStylesheet info captured at clone time.
 manifest.json
-    Metadata: source URL, selectors, file roles.
+    Bundle metadata.
 
 How isolation works
 -------------------
-Each isolated page:
-  1. Strips every <script>, <noscript>, and <meta http-equiv="refresh">.
-  2. Removes JS-gate classes (w-mod-js, w-mod-ix, w-mod-touch, js, etc.)
-     so frameworks don't keep the body hidden waiting for hydration.
-  3. Injects a <style> that hides everything that isn't a picked element,
+Each page:
+  1. Loads the original cloned <head> with the SW bootstrap inlined.
+     The SW takes control on first visit (one-time auto-reload), then
+     replays every recorded URL.
+  2. Injects a <style> that hides anything that isn't a picked element,
      an ancestor of one, or a descendant of one.
-  4. Injects a tiny init script (the only script in the doc) that:
-     - Marks each match with data-clone-saas-pick.
-     - Walks up to <html>, marking ancestors data-clone-saas-keep.
-     - Clears Webflow IX2 / Framer / AOS pre-hide states (inline
-       opacity:0, visibility:hidden, transform offsets) inside kept
-       ancestors so animated children render at their final state.
+  3. Injects a settled-overrides <style> with the rules captured at
+     clone time. This guarantees animated descendants render visible
+     even before JS hydration finishes.
+  4. Injects a tiny init script that marks picks
+     (data-clone-saas-pick) and ancestors (data-clone-saas-keep), and
+     re-applies on a short timer in case framework hydration replaces
+     the subtree.
 
-Limitations (read RESEARCH.md in the parent project)
-----------------------------------------------------
-- Components that only render after JS hydrates (lazy SPA routes,
-  React-only DOM) won't appear. Most static-SSR sites are fine.
-- Closed shadow DOM, DRM video, ServiceWorker registration, and runtime
-  cross-origin fetches — same limits as the cloner itself.
+Limitations
+-----------
+- WebSocket / SSE / streaming responses aren't replayed (initial render
+  only).
+- Live-token, time-keyed, or auth-gated responses replay whatever was
+  recorded — they won't refresh.
+- Service workers require localhost (or https). The launcher binds to
+  127.0.0.1, so it works without admin/root.
 `;
 }
 
@@ -452,9 +555,18 @@ app.use('/api/jobs/:id/files', (req, res) => {
 });
 
 function summary(job) {
+  let hostname = '';
+  let favicon = '';
+  try {
+    const u = new URL(job.url);
+    hostname = u.hostname.replace(/^www\./, '');
+    favicon = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`;
+  } catch {}
   return {
     id: job.id,
     url: job.url,
+    hostname,
+    favicon,
     status: job.status,
     options: job.options,
     progress: job.progress,
