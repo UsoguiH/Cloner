@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import * as cheerio from 'cheerio';
 
 /**
  * Open a cloned preview, find an element by selector, and return:
@@ -414,24 +415,49 @@ function formatAttrs(attrs) {
  */
 export function buildIsolatedFullPage(fullPageHtml, selectors, opts = {}) {
   const settledOverrides = opts.settledOverrides || {};
-  let html = fullPageHtml;
+
+  // Bake the pick/keep marks into the static HTML using cheerio. Without this,
+  // the page only becomes visible after the runtime init script's
+  // querySelector calls — which can fail when (a) the picker selector relied
+  // on hydrated DOM that the static cloned HTML doesn't match exactly, (b) the
+  // user opens index.html via file:// (no SW, no JS modules), or (c)
+  // framework hydration replaces the subtree before our timer re-applies. By
+  // pre-marking, the CSS isolation works on first paint, and the runtime
+  // script becomes a fallback / re-applier that survives hydration.
+  const $ = cheerio.load(fullPageHtml, { decodeEntities: false });
+  const markedSelectors = [];
+  selectors.forEach((sel, i) => {
+    let target;
+    try { target = $(sel).first(); } catch { return; }
+    if (!target || target.length === 0) return;
+    target.attr('data-clone-saas-pick', String(i + 1));
+    let walk = target.parent();
+    while (walk && walk.length > 0) {
+      const tag = (walk.prop && walk.prop('tagName') || walk.get(0) && walk.get(0).tagName || '').toLowerCase();
+      if (tag === 'html') break;
+      walk.attr('data-clone-saas-keep', '');
+      walk = walk.parent();
+    }
+    markedSelectors.push(sel);
+  });
 
   const styleTag = `<style data-clone-saas-isolate>${ISOLATE_CSS}</style>`;
   const settleTag = buildSettleStyleTag(settledOverrides);
   const initTag = buildIsolateInitScript(selectors);
 
-  const headInjection = `${styleTag}${settleTag ? '\n' + settleTag : ''}`;
-  if (/<\/head>/i.test(html)) {
-    html = html.replace(/<\/head>/i, `${headInjection}\n</head>`);
+  if ($('head').length) {
+    $('head').append(`\n${styleTag}`);
+    if (settleTag) $('head').append(`\n${settleTag}`);
   } else {
-    html = headInjection + html;
+    $.root().prepend(`<head>${styleTag}${settleTag || ''}</head>`);
   }
-  if (/<\/body>/i.test(html)) {
-    html = html.replace(/<\/body>/i, `${initTag}\n</body>`);
+  if ($('body').length) {
+    $('body').append(`\n${initTag}`);
   } else {
-    html = html + initTag;
+    $.root().append(initTag);
   }
-  return html;
+
+  return $.html();
 }
 
 const ISOLATE_CSS = `

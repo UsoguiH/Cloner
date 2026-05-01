@@ -163,10 +163,23 @@ export async function autoScroll(page) {
  * an element actually renders that glyph or matches that selector. Walk every
  * stylesheet, collect every url(...) reference (especially @font-face), and
  * fire a fetch() for each so the network recorder picks them up.
+ *
+ * Also force-fetches every <link rel="modulepreload|prefetch|preload"> href.
+ * Browsers often defer prefetch links until idle, so by the time we hit
+ * networkidle they may not yet be in the recorder. Nuxt, Vite, and Astro
+ * route-split bundles rely on these for sub-chunks that are *imported* later
+ * by JS — without forcing them, the launcher can't replay them and the page
+ * shows console 404s for `/_nuxt/<chunk>.js`, `/assets/<chunk>.js` etc.
+ *
+ * Same for <script type="module" src> referenced from the HTML — those
+ * import sub-chunks at runtime; we walk module-script source text for
+ * URL-shaped substrings to coax the imports out at capture time.
  */
 export async function prefetchCSSAssets(page) {
   await page.evaluate(async () => {
     const urls = new Set();
+
+    // 1. CSS url(...) refs (fonts, background-images, mask, etc.)
     for (const sheet of document.styleSheets) {
       const baseHref = sheet.href || location.href;
       try {
@@ -182,14 +195,92 @@ export async function prefetchCSSAssets(page) {
           }
         };
         walk(sheet.cssRules);
-      } catch {
-        // cross-origin stylesheets can't be read — already captured by network layer
-      }
+      } catch {}
     }
-    await Promise.allSettled(
-      [...urls].map((u) => fetch(u, { mode: 'no-cors', credentials: 'include' }).catch(() => {}))
-    );
-    // Also force any pending FontFace promises to resolve
+
+    // 2. Every <link rel="..."> with an href — modulepreload, prefetch,
+    //    preload, dns-prefetch, alternate, stylesheet, icon. Force-fetch
+    //    them all so route-split chunks (Nuxt, Vite, Remix, Astro) land
+    //    in the recorder.
+    document.querySelectorAll('link[href]').forEach((l) => {
+      const rel = (l.getAttribute('rel') || '').toLowerCase();
+      if (!rel) return;
+      if (
+        rel.includes('preload') ||
+        rel.includes('prefetch') ||
+        rel.includes('modulepreload') ||
+        rel.includes('stylesheet') ||
+        rel.includes('icon')
+      ) {
+        try {
+          const abs = new URL(l.getAttribute('href'), location.href).toString();
+          if (!abs.startsWith('data:') && !abs.startsWith('blob:')) urls.add(abs);
+        } catch {}
+      }
+    });
+
+    // 3. Every <script src> too, and inline <script type=module> body
+    //    text scanned for URL-shaped substrings (chunk hashes look like
+    //    `entry.66570678.js` or `_nuxt/foo.js` — the recorder only needs
+    //    the request to fire once).
+    document.querySelectorAll('script[src]').forEach((s) => {
+      try {
+        const abs = new URL(s.getAttribute('src'), location.href).toString();
+        urls.add(abs);
+      } catch {}
+    });
+    const chunkRe = /['"`]((?:\/|\.\/|\.\.\/)?[A-Za-z0-9_./-]+\.(?:js|mjs|css|woff2?|ttf|otf|png|jpe?g|webp|avif|svg|json))['"`]/g;
+    document.querySelectorAll('script:not([src])').forEach((s) => {
+      const txt = s.textContent || '';
+      if (txt.length < 10 || txt.length > 500_000) return;
+      for (const m of txt.matchAll(chunkRe)) {
+        try {
+          const abs = new URL(m[1], location.href).toString();
+          if (!abs.startsWith('data:') && !abs.startsWith('blob:')) urls.add(abs);
+        } catch {}
+      }
+    });
+
+    // 4. <img src>, <img srcset>, <source src/srcset>, <video src>,
+    //    <audio src>, <iframe src>, <object data>, <embed src>.
+    const grabSrc = (sel, attr) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        const v = el.getAttribute(attr);
+        if (!v) return;
+        try { urls.add(new URL(v, location.href).toString()); } catch {}
+      });
+    };
+    grabSrc('img[src]', 'src');
+    grabSrc('img[data-src]', 'data-src');
+    grabSrc('source[src]', 'src');
+    grabSrc('video[src]', 'src');
+    grabSrc('audio[src]', 'src');
+    grabSrc('object[data]', 'data');
+    grabSrc('embed[src]', 'src');
+    document.querySelectorAll('img[srcset], source[srcset]').forEach((el) => {
+      const ss = el.getAttribute('srcset') || '';
+      for (const part of ss.split(',')) {
+        const url = part.trim().split(/\s+/)[0];
+        if (!url) continue;
+        try { urls.add(new URL(url, location.href).toString()); } catch {}
+      }
+    });
+
+    // Fire fetches in batches. `mode: no-cors` lets cross-origin succeed
+    // (CDP records the body even on opaque responses).
+    const list = [...urls];
+    const batchSize = 24;
+    for (let i = 0; i < list.length; i += batchSize) {
+      const batch = list.slice(i, i + batchSize);
+      await Promise.allSettled(
+        batch.map((u) =>
+          fetch(u, { mode: 'no-cors', credentials: 'include', cache: 'force-cache' })
+            .catch(() => {})
+        )
+      );
+    }
+
+    // Force any pending FontFace promises to resolve.
     if (document.fonts && document.fonts.ready) {
       try { await document.fonts.ready; } catch {}
     }

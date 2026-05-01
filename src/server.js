@@ -106,6 +106,12 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
   const outDir = path.join(JOBS_DIR, job.id, 'output');
   if (!fs.existsSync(outDir)) return res.status(404).end();
 
+  // Tag this preview session so transitive sub-requests (module imports
+  // from /_nuxt/foo.js → /_nuxt/bar.js, for example, where the Referer
+  // is the script URL, not the preview URL) can still resolve back to
+  // this job. Picked up by the global fallback middleware below.
+  res.set('Set-Cookie', `clone_saas_preview_job=${encodeURIComponent(job.id)}; Path=/; Max-Age=7200; SameSite=Lax`);
+
   const isIndex = req.path === '/' || req.path === '/index.html';
   const wantsPick = req.query.pick === '1';
   const isoRaw = req.query.isolate;
@@ -176,10 +182,8 @@ function loadReplayManifest(outDir) {
 
 function serveReplayAsset(outDir, req, res, next) {
   const manifest = loadReplayManifest(outDir);
-  if (!manifest) return next();
+  if (!manifest) return sendTypedMiss(req, res);
 
-  // The path inside the preview is /something — map to a candidate URL or
-  // basename and look it up.
   const reqPath = req.path || '/';
   const basename = reqPath.split('/').pop();
   let entry = null;
@@ -188,10 +192,10 @@ function serveReplayAsset(outDir, req, res, next) {
   } else if (basename && manifest.byBasename && manifest.byBasename[basename]) {
     entry = manifest.entries[manifest.byBasename[basename]];
   }
-  if (!entry) return next();
+  if (!entry) return sendTypedMiss(req, res);
 
   const bodyPath = path.join(outDir, 'replay', 'bodies', entry.body);
-  if (!fs.existsSync(bodyPath)) return next();
+  if (!fs.existsSync(bodyPath)) return sendTypedMiss(req, res);
 
   res.status(entry.status || 200);
   for (const [k, v] of Object.entries(entry.headers || {})) {
@@ -203,6 +207,80 @@ function serveReplayAsset(outDir, req, res, next) {
   res.set('access-control-allow-origin', '*');
   fs.createReadStream(bodyPath).pipe(res);
 }
+
+// Reply with the right Content-Type for the request extension so that
+// the browser doesn't shout "MIME type ('text/html') is not a supported
+// stylesheet MIME type" when an asset isn't in our replay pool. The body
+// is empty — the request still 404s, but at least the surrounding console
+// stays quiet.
+const EXT_MIME = {
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.cjs': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.wasm': 'application/wasm',
+};
+function sendTypedMiss(req, res) {
+  const reqPath = (req.path || '/').toLowerCase();
+  const m = reqPath.match(/\.[a-z0-9]+$/);
+  const ct = (m && EXT_MIME[m[0]]) || 'application/octet-stream';
+  res.status(404);
+  res.set('Content-Type', ct);
+  res.set('Cache-Control', 'no-store');
+  res.set('access-control-allow-origin', '*');
+  res.end();
+}
+
+// Referer-based fallback: when the browser fetches an absolute path like
+// `/_nuxt/entry.js` from a page mounted at `/api/jobs/:id/preview/`, the
+// request comes in at `/_nuxt/entry.js` (no preview prefix). The cloned
+// HTML uses absolute paths, framework runtimes import chunks via absolute
+// paths, and we can't rewrite all of them generically. So we look at the
+// Referer header — if the page came from a preview URL, route the asset
+// to that job's replay manifest.
+//
+// This middleware runs after express.static and the existing preview
+// route — it only fires for unmatched requests.
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+
+  let jobId = null;
+  // Primary: Referer directly points at a preview page.
+  const ref = req.get('Referer') || '';
+  const refM = ref.match(/\/api\/jobs\/([^\/?#]+)\/preview\//);
+  if (refM) jobId = refM[1];
+  // Secondary: cookie set when a preview page was served. Catches
+  // transitive sub-requests where Referer is a script URL, not the page.
+  if (!jobId) {
+    const cookie = req.get('Cookie') || '';
+    const ck = cookie.match(/clone_saas_preview_job=([^;]+)/);
+    if (ck) {
+      try { jobId = decodeURIComponent(ck[1]); } catch {}
+    }
+  }
+  if (!jobId) return next();
+
+  const job = queue.get(jobId);
+  if (!job) return next();
+  const outDir = path.join(JOBS_DIR, jobId, 'output');
+  if (!fs.existsSync(outDir)) return next();
+  return serveReplayAsset(outDir, req, res, next);
+});
 
 // Inline isolation script — marks each matched element with a pick attr and
 // every ancestor up to <html> with a keep attr, then hides everything else
@@ -399,11 +477,13 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
     return res.status(500).json({ error: `build failed: ${err.message}` });
   }
 
-  // Files that must exist in outDir for the bundle to boot.
+  // Launcher templates ship from src/cloner/templates so a redownload always
+  // picks up the latest fixes regardless of when the job was cloned.
+  const TEMPLATES_DIR = path.join(__dirname, 'cloner', 'templates');
   const required = ['sw.js', 'serve.cjs', 'start.bat', 'start.sh'];
   for (const f of required) {
-    if (!fs.existsSync(path.join(outDir, f))) {
-      return res.status(500).json({ error: `bundle missing ${f} — re-clone the job` });
+    if (!fs.existsSync(path.join(TEMPLATES_DIR, f))) {
+      return res.status(500).json({ error: `template missing ${f}` });
     }
   }
   const replayDir = path.join(outDir, 'replay');
@@ -451,7 +531,7 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
   // Top-level: composed-view index + launcher + replay pool.
   zip.append(composedDoc, { name: 'index.html' });
   for (const f of required) {
-    zip.file(path.join(outDir, f), { name: f });
+    zip.file(path.join(TEMPLATES_DIR, f), { name: f });
   }
   zip.directory(replayDir, 'replay');
   if (fs.existsSync(path.join(outDir, 'extraction.json'))) {

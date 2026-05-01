@@ -1,46 +1,102 @@
 import { chromium } from 'playwright';
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const URL = process.argv[2] || 'http://127.0.0.1:8080/';
+const ROOT = process.argv[2];
+if (!ROOT) {
+  console.error('usage: node probe-bundle.mjs <bundleDir>');
+  process.exit(1);
+}
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+};
+
+const server = http.createServer((req, res) => {
+  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p === '/') p = '/index.html';
+  const f = path.resolve(ROOT, '.' + p);
+  if (!fs.existsSync(f)) {
+    console.error('miss:', p, '->', f);
+    res.writeHead(404);
+    return res.end();
+  }
+  const st = fs.statSync(f);
+  if (!st.isFile()) {
+    res.writeHead(404);
+    return res.end();
+  }
+  res.writeHead(200, {
+    'Content-Type': MIME[path.extname(f).toLowerCase()] || 'application/octet-stream',
+    'Service-Worker-Allowed': '/',
+  });
+  fs.createReadStream(f).pipe(res);
+});
+
+await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+const port = server.address().port;
+const url = `http://127.0.0.1:${port}/`;
 
 const browser = await chromium.launch({ headless: true });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await ctx.newPage();
 
+const failures = [];
 const errors = [];
-const failedRequests = [];
-const swRequests = [];
+page.on('response', (r) => {
+  if (r.status() >= 400) failures.push({ s: r.status(), u: r.url() });
+});
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
-page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-page.on('console', (msg) => {
-  if (msg.type() === 'error') errors.push('console.error: ' + msg.text());
-});
-page.on('requestfailed', (req) => {
-  failedRequests.push(`${req.failure()?.errorText} ${req.method()} ${req.url()}`);
-});
-page.on('response', (resp) => {
-  if (resp.fromServiceWorker()) {
-    swRequests.push(resp.url());
-  }
+page.on('framenavigated', (f) => {
+  if (f === page.mainFrame()) console.log('nav:', f.url());
 });
 
-await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-try { await page.waitForLoadState('load', { timeout: 10000 }); } catch {}
-try { await page.waitForLoadState('networkidle', { timeout: 8000 }); } catch {}
-await page.waitForTimeout(2500);
+await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+// SW boot triggers a reload on cold start. Wait for the reload to settle.
+try {
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller, { timeout: 15000 });
+} catch (e) {
+  console.log('controller wait timed out');
+}
+// After SW takes control, give the page time to lay out via replayed assets.
+await page.waitForTimeout(8000);
 
-const swActive = await page.evaluate(() => {
-  return navigator.serviceWorker && navigator.serviceWorker.controller != null;
+const dim = await page.evaluate(() => {
+  const picks = document.querySelectorAll('[data-clone-saas-pick]');
+  const keeps = document.querySelectorAll('[data-clone-saas-keep]');
+  const visiblePickRect = picks[0] ? picks[0].getBoundingClientRect() : null;
+  const bodyText = (document.body && document.body.innerText || '').slice(0, 200);
+  return {
+    bodyHeight: document.body.scrollHeight,
+    visibleHeight: window.innerHeight,
+    pickCount: picks.length,
+    keepCount: keeps.length,
+    pickBoundingRect: visiblePickRect,
+    bodyTextSample: bodyText,
+    isControlled: !!navigator.serviceWorker.controller,
+  };
 });
-const docTitle = await page.title();
-const visibleBodyText = await page.evaluate(() => (document.body && document.body.innerText || '').slice(0, 200));
 
-console.log(JSON.stringify({
-  swActive,
-  docTitle,
-  swRequestCount: swRequests.length,
-  failedRequests: failedRequests.slice(0, 8),
-  errors: errors.slice(0, 10),
-  visibleBodyText,
-}, null, 2));
+console.log(JSON.stringify(dim, null, 2));
+console.log('failures:', failures.length);
+for (const f of failures.slice(0, 15)) console.log(' ', f.s, f.u);
+console.log('errors:', errors.length);
+for (const e of errors.slice(0, 5)) console.log(' ', e.slice(0, 200));
+
+await page.screenshot({ path: 'F:/[Claude code]/UI Cloner SaaS/probe-bundle.png', fullPage: false });
 
 await browser.close();
+server.close();
