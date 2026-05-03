@@ -2,6 +2,9 @@
 // clone.saas — sidebar + main view controller
 // =============================================================================
 
+import { toast } from '/toast.js';
+import { progressBar } from '/progress-bar.js';
+
 const $ = (id) => document.getElementById(id);
 
 // Sidebar
@@ -457,7 +460,7 @@ function readOptions() {
   let cookies = [];
   if (cookiesText) {
     try { cookies = JSON.parse(cookiesText); } catch {
-      alert('Cookies field must be valid JSON.');
+      toast.error('Invalid cookies', 'The Cookies field must be valid JSON.');
       throw new Error('bad cookies');
     }
   }
@@ -486,11 +489,11 @@ function normalizeUrl(raw) {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!$('opt-ack').checked) {
-    alert('Please confirm you have the right to clone this URL.');
+    toast.error('Confirmation required', 'Please confirm you have the right to clone this URL.');
     return;
   }
   if (readCredits() <= 0) {
-    alert('You are out of credits. Click "Get more credits" to top up.');
+    toast.error('Out of credits', 'Click "Get more credits" to top up.');
     return;
   }
   const fullUrl = normalizeUrl(urlInput.value);
@@ -510,7 +513,7 @@ form.addEventListener('submit', async (e) => {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      alert(`Submit failed: ${err.error || res.status}`);
+      toast.error('Submit failed', err.error || `HTTP ${res.status}`);
       return;
     }
     const created = await res.json();
@@ -518,6 +521,8 @@ form.addEventListener('submit', async (e) => {
     // Server returns the full summary
     upsertProject(created);
     subscribeToJob(created.id);
+    progressBar.start();
+    toast.success('Clone started', new URL(fullUrl).hostname);
     urlInput.value = '';
     selectProject(created.id);
   } finally {
@@ -563,6 +568,15 @@ function subscribeToJob(id) {
       upsertProject(event.job);
     } else if (event.type === 'progress') {
       upsertProject({ ...cur, progress: event.progress });
+      if (id === activeId) {
+        const p = event.progress || {};
+        const captured = p.captured ?? 0;
+        const total = p.total ?? 0;
+        let frac;
+        if (total > 0) frac = Math.min(0.95, (captured / total) * 0.9 + 0.05);
+        else frac = phaseToPct(p.phase || 'queued') / 100;
+        progressBar.set(frac);
+      }
     } else if (event.type === 'status') {
       const next = { ...cur, status: event.status };
       if (event.error) next.error = event.error;
@@ -570,9 +584,16 @@ function subscribeToJob(id) {
       if (['completed', 'failed'].includes(event.status)) {
         es.close();
         subscriptions.delete(id);
-        if (event.status === 'completed' && id === activeId) {
-          statsCache.delete(id);
-          refreshStats(id);
+        if (event.status === 'completed') {
+          if (id === activeId) {
+            statsCache.delete(id);
+            refreshStats(id);
+            progressBar.done();
+          }
+          toast.success('Clone ready', new URL(cur.url || 'http://localhost').hostname);
+        } else if (event.status === 'failed') {
+          if (id === activeId) progressBar.fail();
+          toast.error('Clone failed', event.error || 'See project detail for the error.');
         }
       }
     }

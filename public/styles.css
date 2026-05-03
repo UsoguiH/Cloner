@@ -910,7 +910,13 @@ a:hover { color: var(--primary); }
   border-radius: var(--r-md);
   padding: 4px 4px 4px 14px;
 }
-.clone-form__row:focus-within { border-color: var(--ink); }
+.clone-form__row {
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.clone-form__row:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(245, 78, 0, 0.14);
+}
 .clone-form__prefix {
   align-self: center;
   font-family: var(--font-mono);
@@ -1382,4 +1388,173 @@ a:hover { color: var(--primary); }
   .features { grid-template-columns: 1fr; }
   .picker-modal__split { grid-template-columns: 1fr; }
   .picker-modal__pane--clone { border-right: 0; border-bottom: 1px solid var(--hairline); }
+}
+
+/* =====================================================================
+   Toast deck (tk-*)
+   Bottom-right stack. Newest in front; older toasts peek behind, scaling
+   down 5% and shifting up 14px per layer. Hover expands to a column.
+   ===================================================================== */
+
+.tk-toaster {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 356px;
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.tk-toast {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 14px 14px 16px;
+  background: #ffffff;
+  color: #171717;
+  border: 1px solid #ededed;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  pointer-events: auto;
+  cursor: default;
+  opacity: 0;
+  transform: translateY(120%) translateX(var(--tk-dx, 0px)) scale(var(--tk-scale, 1));
+  transition:
+    transform 400ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 320ms ease,
+    box-shadow 200ms ease;
+  overflow: hidden;
+}
+.tk-toast--in {
+  opacity: var(--tk-opacity, 1);
+  transform: translateY(var(--tk-y, 0px)) translateX(var(--tk-dx, 0px)) scale(var(--tk-scale, 1));
+}
+.tk-toast--out {
+  opacity: 0;
+  transform: translateY(40%) translateX(var(--tk-dx, 0px)) scale(var(--tk-scale, 0.9));
+}
+.tk-toast--drag { transition: none; opacity: var(--tk-fade, 1); cursor: grabbing; }
+
+.tk-toast:hover { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04); }
+
+.tk-toast__ic {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  width: 18px;
+  height: 18px;
+}
+.tk-toast--info .tk-toast__ic { color: #6b7280; }
+.tk-toast--success .tk-toast__ic { color: var(--success); }
+.tk-toast--error .tk-toast__ic { color: var(--error); }
+.tk-toast--loading .tk-toast__ic { color: var(--primary); }
+
+.tk-spin { animation: tk-spin 900ms linear infinite; }
+@keyframes tk-spin { to { transform: rotate(360deg); } }
+
+.tk-toast__body { flex: 1 1 auto; min-width: 0; }
+.tk-toast__title {
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #171717;
+  word-wrap: break-word;
+}
+.tk-toast__desc {
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #525252;
+  word-wrap: break-word;
+}
+
+.tk-toast__x {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: -2px -4px 0 4px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #737373;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease, background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.tk-toast:hover .tk-toast__x { opacity: 1; }
+.tk-toast__x:hover { background: #f5f5f5; border-color: #ededed; color: #171717; }
+
+.tk-toast__bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, rgba(0,0,0,0.08), rgba(0,0,0,0.16));
+  transform-origin: left center;
+  transform: scaleX(1);
+  animation: tk-bar var(--tk-dur, 4500ms) linear forwards;
+}
+.tk-toast--error .tk-toast__bar { background: linear-gradient(90deg, rgba(207,45,86,0.25), rgba(207,45,86,0.55)); }
+.tk-toast--success .tk-toast__bar { background: linear-gradient(90deg, rgba(31,138,101,0.25), rgba(31,138,101,0.55)); }
+@keyframes tk-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* =====================================================================
+   Top progress bar (pbar)
+   Thin line pinned to the top of the viewport with a glowing peg trail.
+   Driven imperatively by progress-bar.js.
+   ===================================================================== */
+
+.pbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2.5px;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  overflow: hidden;
+}
+.pbar--active { opacity: 1; }
+.pbar--done { transition: opacity 360ms ease 120ms; opacity: 0; }
+.pbar--error .pbar__fill { background: var(--error); }
+.pbar--error .pbar__peg { box-shadow: 0 0 10px var(--error), 0 0 6px var(--error); }
+
+.pbar__fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--primary);
+  transform: translate3d(-100%, 0, 0);
+  transition: transform 320ms cubic-bezier(0.4, 0.05, 0.2, 1);
+}
+
+.pbar__peg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  opacity: 0.9;
+  transform: rotate(3deg) translate(0, -3px);
+  box-shadow: 0 0 10px var(--primary), 0 0 6px var(--primary);
 }
