@@ -159,21 +159,32 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
         ''
       );
 
-      // Strip ALL <script> tags. The captured DOM is post-hydration — its
-      // visual state is final. Letting the SPA's JS run inside the iframe
-      // breaks the page in two common ways: (1) the router treats the
-      // preview prefix as the URL and renders a 404 view; (2) hydration
-      // mismatches tear down the captured DOM. Stripping scripts keeps
-      // the rendered DOM intact while CSS/fonts/images keep loading via
-      // the replay manifest.
-      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-
       // Strengthen <base> so all root-relative URLs (`/foo.css`, `/_next/…`)
       // resolve under the preview prefix and hit our replay handler.
+      // <base> is independent of location.pathname so we can rewrite the
+      // visible URL below without breaking asset resolution.
       const baseTag = `<base href="/api/jobs/${job.id}/preview/">`;
 
+      // Lie to the SPA's router. The iframe loads at /api/jobs/<id>/preview/,
+      // but Vue Router / Next Router / Nuxt read window.location.pathname to
+      // pick a route — and the preview prefix matches no route, so they
+      // render their 404 view and tear down the captured DOM. Calling
+      // replaceState('/') before any framework script runs makes
+      // location.pathname report '/' so routers find the home route.
+      // <base> still scopes asset URLs to the preview prefix.
+      const routerDefuser = '<script data-clone-saas-defuser>'
+        + 'try{history.replaceState(history.state||null,document.title||"","/")}'
+        + 'catch(e){}'
+        + 'try{var _l=window.location;var _p=function(){return"/"};'
+        + 'Object.defineProperty(_l,"pathname",{configurable:true,get:_p})}'
+        + 'catch(e){}'
+        + '</script>';
+
       const settledOverrides = readSettledOverrides(outDir);
-      const inserts = [baseTag];
+      // routerDefuser must come BEFORE baseTag so the URL is rewritten before
+      // any framework script reads location.pathname. baseTag must come before
+      // any <script> in the captured HTML to scope their src attributes.
+      const inserts = [routerDefuser, baseTag];
       if (wantsPick) {
         inserts.push('<script src="/picker.js" data-clone-saas-picker></script>');
       }
