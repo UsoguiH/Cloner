@@ -46,6 +46,7 @@ const actionPreview = $('action-preview');
 const actionManifest = $('action-manifest');
 const extractSelectorInput = $('extract-selector');
 const extractBtn = $('extract-btn');
+const extractAgentBtn = $('extract-agent-btn');
 const extractStatus = $('extract-status');
 const projectStatsCard = $('project-stats');
 const statReplayed = $('stat-replayed');
@@ -379,6 +380,9 @@ function renderProjectDetail() {
     extractBtn.onclick = () => {
       extractAndDownload(job.id, extractSelectorInput.value.trim());
     };
+    extractAgentBtn.onclick = () => {
+      extractAgentAndDownload(job.id, extractSelectorInput.value.trim());
+    };
     extractSelectorInput.onkeydown = (e) => {
       if (e.key === 'Enter') extractAndDownload(job.id, extractSelectorInput.value.trim());
     };
@@ -637,6 +641,44 @@ async function extractAndDownload(jobId, selector) {
   }
 }
 
+// AI-agent export — small ZIP optimized for LLM ingestion
+async function extractAgentAndDownload(jobId, selector) {
+  if (!selector) { extractStatus.textContent = 'enter a selector'; return; }
+  extractAgentBtn.disabled = true;
+  const original = extractAgentBtn.textContent;
+  extractAgentBtn.textContent = 'Bundling…';
+  extractStatus.textContent = '';
+  try {
+    const res = await fetch(`/api/jobs/${jobId}/extract-agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selector }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      extractStatus.textContent = err.error || `failed (${res.status})`;
+      return;
+    }
+    const blob = await res.blob();
+    const dispo = res.headers.get('Content-Disposition') || '';
+    const m = /filename="([^"]+)"/.exec(dispo);
+    const filename = m ? m[1] : `agent-${jobId}.zip`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    extractStatus.textContent = 'agent bundle downloaded';
+  } catch (err) {
+    extractStatus.textContent = err.message;
+  } finally {
+    extractAgentBtn.disabled = false;
+    extractAgentBtn.textContent = original;
+  }
+}
+
 // =============================================================================
 // Picker modal (preserved logic)
 // =============================================================================
@@ -645,6 +687,7 @@ const pickerModal = $('picker-modal');
 const pickerIframe = $('picker-iframe');
 const pickerSelector = $('picker-selector');
 const pickerBundle = $('picker-bundle');
+const pickerAgent = $('picker-agent');
 const pickerStatus = $('picker-status');
 const pickerClose = $('picker-close');
 const pickerChips = $('picker-canvas-chips');
@@ -690,6 +733,7 @@ function renderChips() {
   pickerCount.textContent = String(pickerSelectors.length);
   pickerClear.disabled = pickerSelectors.length === 0;
   pickerBundle.disabled = pickerSelectors.length === 0;
+  pickerAgent.disabled = pickerSelectors.length === 0;
   if (pickerSelectors.length === 0) {
     pickerChips.innerHTML = '';
     pickerChips.hidden = true;
@@ -760,6 +804,52 @@ window.addEventListener('message', (e) => {
   } else if (data.type === 'clone-saas-isolate-ready' && e.source === pickerCanvasFrame.contentWindow) {
     canvasFrameReady = true;
     pushSelectorsToFrame();
+  }
+});
+
+pickerAgent.addEventListener('click', async () => {
+  const jobId = activePickJobId;
+  if (!jobId || pickerSelectors.length === 0) return;
+  // Use the most recently picked selector — the agent endpoint takes one
+  // component at a time. Multi-component agent bundles aren't a meaningful
+  // unit (each component is a self-contained artifact).
+  const selector = pickerSelectors[pickerSelectors.length - 1];
+  pickerAgent.disabled = true;
+  const original = pickerAgent.textContent;
+  pickerAgent.textContent = 'Bundling…';
+  pickerStatus.textContent = `Building agent bundle for ${selector}…`;
+  pickerStatus.className = 'picker-modal__status';
+  try {
+    const res = await fetch(`/api/jobs/${jobId}/extract-agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selector }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      pickerStatus.textContent = err.error || `failed (${res.status})`;
+      pickerStatus.className = 'picker-modal__status error';
+      return;
+    }
+    const blob = await res.blob();
+    const dispo = res.headers.get('Content-Disposition') || '';
+    const m = /filename="([^"]+)"/.exec(dispo);
+    const filename = m ? m[1] : `agent-${jobId}.zip`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    pickerStatus.textContent = `Downloaded ${filename}.`;
+    pickerStatus.className = 'picker-modal__status ok';
+  } catch (err) {
+    pickerStatus.textContent = err.message;
+    pickerStatus.className = 'picker-modal__status error';
+  } finally {
+    pickerAgent.disabled = pickerSelectors.length === 0;
+    pickerAgent.textContent = original;
   }
 });
 

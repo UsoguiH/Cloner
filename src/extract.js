@@ -22,7 +22,10 @@ export async function extractComponent({ previewUrl, selector }) {
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await openPreview(browser, previewUrl);
-    return await page.evaluate(extractInPage, selector);
+    const result = await page.evaluate(extractInPage, selector);
+    if (!result || result.error) return result;
+    result.screenshotBase64 = await captureElementScreenshot(page, selector);
+    return result;
   } finally {
     await browser.close();
   }
@@ -39,7 +42,11 @@ export async function extractMany({ previewUrl, selectors }) {
     const results = [];
     for (const sel of selectors) {
       try {
-        results.push(await page.evaluate(extractInPage, sel));
+        const r = await page.evaluate(extractInPage, sel);
+        if (r && !r.error) {
+          r.screenshotBase64 = await captureElementScreenshot(page, sel);
+        }
+        results.push(r);
       } catch (err) {
         results.push({ error: `extract failed: ${err.message}` });
       }
@@ -47,6 +54,19 @@ export async function extractMany({ previewUrl, selectors }) {
     return results;
   } finally {
     await browser.close();
+  }
+}
+
+async function captureElementScreenshot(page, selector) {
+  try {
+    const buf = await page.locator(selector).first().screenshot({
+      type: 'png',
+      timeout: 8000,
+      animations: 'disabled',
+    });
+    return buf.toString('base64');
+  } catch {
+    return null;
   }
 }
 
@@ -58,7 +78,36 @@ async function openPreview(browser, previewUrl) {
   await page.goto(previewUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   try { await page.waitForLoadState('load', { timeout: 8000 }); } catch {}
   try { await page.waitForLoadState('networkidle', { timeout: 5000 }); } catch {}
-  await page.waitForTimeout(500);
+
+  // Scroll pass — triggers IntersectionObserver-driven lazy mounts (reveal
+  // animations, deferred image hydration, infinite scroll). Without this,
+  // many components are still in their pre-hydration empty state when we
+  // snapshot, and the picked subtree comes back missing content.
+  try {
+    await page.evaluate(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const docHeight = () => Math.max(
+        document.body ? document.body.scrollHeight : 0,
+        document.documentElement ? document.documentElement.scrollHeight : 0
+      );
+      let last = -1;
+      let safety = 0;
+      while (safety++ < 50) {
+        const here = window.scrollY;
+        if (here === last) break;
+        last = here;
+        window.scrollBy(0, Math.max(400, window.innerHeight * 0.8));
+        await sleep(120);
+        if (window.scrollY + window.innerHeight >= docHeight() - 4) break;
+      }
+      window.scrollTo(0, 0);
+      await sleep(120);
+    });
+  } catch {}
+
+  try { await page.waitForLoadState('networkidle', { timeout: 5000 }); } catch {}
+  // Grace period for entrance animations / deferred React hydration to complete
+  await page.waitForTimeout(900);
   return page;
 }
 
@@ -210,10 +259,149 @@ function extractInPage(sel) {
 
   for (const sheet of document.styleSheets) handleSheet(sheet);
 
+  // Constructable stylesheets attached to the document itself (Lit, modern
+  // design systems, some Tailwind v4 setups). Same handling as <link>/<style>
+  // sheets, but they live on document.adoptedStyleSheets and were silently
+  // ignored before — this is a major source of "missing styling" reports.
+  try {
+    for (const s of document.adoptedStyleSheets || []) {
+      try { for (const r of s.cssRules) handleRule(r, []); } catch {}
+    }
+  } catch {}
+
   // Walk computed styles to surface inline element keyframe refs
   for (const el of allEls) {
     const cs = getComputedStyle(el);
     collectKeyframeRefs(cs);
+  }
+
+  // Pseudo-element content capture. A button styled as
+  //   .btn::before { content: "→" }
+  // contains visible text that never appears in serialized HTML. Without
+  // this dump, an agent rebuilding from component.html sees an empty button.
+  const PSEUDO_POSITIONS = ['::before', '::after', '::marker'];
+  const pseudoContent = [];
+  const cssEscape = (s) => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  const elementPath = (el) => {
+    const parts = [];
+    let cur = el;
+    while (cur && cur !== document.documentElement && parts.length < 8) {
+      let p = cur.tagName.toLowerCase();
+      if (cur.id) { p += `#${cur.id}`; parts.unshift(p); break; }
+      if (cur.classList && cur.classList.length) {
+        p += '.' + [...cur.classList].slice(0, 3).map(cssEscape).join('.');
+      }
+      parts.unshift(p);
+      cur = cur.parentElement;
+    }
+    return parts.join(' > ');
+  };
+  for (const el of allEls) {
+    for (const pos of PSEUDO_POSITIONS) {
+      let cs;
+      try { cs = getComputedStyle(el, pos); } catch { continue; }
+      if (!cs) continue;
+      const raw = cs.getPropertyValue('content');
+      if (!raw || raw === 'none' || raw === 'normal' || raw === '""' || raw === "''") continue;
+      // Normalize: strip outer quotes from string content; leave attr()/counter()/url() intact.
+      let display = raw;
+      const strMatch = raw.match(/^"((?:\\.|[^"\\])*)"$/) || raw.match(/^'((?:\\.|[^'\\])*)'$/);
+      if (strMatch) display = strMatch[1].replace(/\\(.)/g, '$1');
+      pseudoContent.push({
+        path: elementPath(el),
+        position: pos,
+        content: display,
+        raw,
+        color: cs.getPropertyValue('color'),
+        background: cs.getPropertyValue('background-color'),
+        font: `${cs.getPropertyValue('font-weight')} ${cs.getPropertyValue('font-size')} ${cs.getPropertyValue('font-family')}`.trim(),
+      });
+    }
+  }
+
+  // Per-element computed styles — ground truth for the agent when CSS rule
+  // matching misses something (utility classes inside @scope, !important
+  // overrides from JS-injected styles, animations frozen at non-default
+  // states, etc.). Capped at the most-relevant property set + first 200
+  // elements so the bundle stays small.
+  const COMPUTED_PROPS = [
+    'display', 'position', 'top', 'right', 'bottom', 'left', 'z-index',
+    'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+    'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+    'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+    'box-sizing', 'overflow', 'overflow-x', 'overflow-y',
+    'flex', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items',
+    'align-self', 'gap', 'order',
+    'grid-template-columns', 'grid-template-rows', 'grid-area',
+    'grid-column', 'grid-row',
+    'color', 'background-color', 'background-image', 'background-size',
+    'background-position', 'background-repeat',
+    'font-family', 'font-size', 'font-weight', 'font-style',
+    'line-height', 'letter-spacing', 'text-align', 'text-transform',
+    'text-decoration', 'white-space', 'word-break',
+    'border-top', 'border-right', 'border-bottom', 'border-left',
+    'border-radius', 'box-shadow', 'opacity', 'transform', 'transform-origin',
+    'transition', 'animation', 'cursor', 'pointer-events', 'visibility',
+    'backdrop-filter', 'filter', 'mix-blend-mode',
+  ];
+  // Defaults that are not interesting to dump (reduces noise massively).
+  const SKIP_VALUES = new Set([
+    'auto', 'normal', 'none', '0px', '0', 'rgba(0, 0, 0, 0)', 'transparent',
+    'visible', 'static', 'baseline', 'currentcolor', 'medium',
+  ]);
+  const elementComputedStyles = [];
+  for (let i = 0; i < Math.min(allEls.length, 200); i++) {
+    const el = allEls[i];
+    const cs = getComputedStyle(el);
+    const props = {};
+    for (const p of COMPUTED_PROPS) {
+      const v = cs.getPropertyValue(p);
+      if (!v) continue;
+      const trimmed = v.trim();
+      if (!trimmed || SKIP_VALUES.has(trimmed)) continue;
+      props[p] = trimmed;
+    }
+    const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    elementComputedStyles.push({
+      path: elementPath(el),
+      tag: el.tagName.toLowerCase(),
+      box: rect ? {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        w: Math.round(rect.width),
+        h: Math.round(rect.height),
+      } : null,
+      props,
+    });
+  }
+
+  // Full stylesheet fallback. If the surgical rule-matcher missed something
+  // (rare combinator, JS-conditional rule, framework's own utility CSS), the
+  // agent still has every CSS rule available from the page as a last resort.
+  // Capped at 500 KB to avoid bundle bloat from huge atomic-CSS dumps.
+  const FULL_CSS_MAX = 500 * 1024;
+  let fullStyles = '';
+  const collectAllRulesFromSheet = (sheet) => {
+    let rules;
+    try { rules = sheet.cssRules; } catch { return; }
+    if (!rules) return;
+    for (const r of rules) {
+      try { fullStyles += r.cssText + '\n'; } catch {}
+      if (fullStyles.length > FULL_CSS_MAX) return;
+    }
+  };
+  for (const s of document.styleSheets) {
+    if (fullStyles.length > FULL_CSS_MAX) break;
+    collectAllRulesFromSheet(s);
+  }
+  try {
+    for (const s of document.adoptedStyleSheets || []) {
+      if (fullStyles.length > FULL_CSS_MAX) break;
+      collectAllRulesFromSheet(s);
+    }
+  } catch {}
+  if (fullStyles.length > FULL_CSS_MAX) {
+    fullStyles = fullStyles.slice(0, FULL_CSS_MAX) + '\n/* truncated */\n';
   }
 
   // Open shadow DOM — capture adoptedStyleSheets and any inline <style> rules
@@ -280,15 +468,30 @@ function extractInPage(sel) {
   }
   if (referencedVars.size > 0) {
     const resolved = {};
-    let cur = root.parentElement;
-    while (cur && cur !== document.documentElement.parentElement) {
-      const cs = getComputedStyle(cur);
-      for (const v of referencedVars) {
-        if (resolved[v] !== undefined) continue;
-        const val = cs.getPropertyValue('--' + v);
-        if (val && val.trim() !== '') resolved[v] = val.trim();
+    // Transitive resolution: when a resolved value contains var(--other), enqueue
+    // --other on the next pass. Loops until the queue is empty or we run out of
+    // ancestors. Without this, themed components miss their second-level tokens
+    // (e.g. --btn-bg: var(--brand-500) → grabs --btn-bg, drops --brand-500).
+    const queue = new Set(referencedVars);
+    let pass = 0;
+    while (queue.size > 0 && pass++ < 6) {
+      const todo = [...queue];
+      queue.clear();
+      let cur = root.parentElement;
+      while (cur && cur !== document.documentElement.parentElement) {
+        const cs = getComputedStyle(cur);
+        for (const v of todo) {
+          if (resolved[v] !== undefined) continue;
+          const val = cs.getPropertyValue('--' + v);
+          if (val && val.trim() !== '') {
+            resolved[v] = val.trim();
+            for (const m of val.matchAll(/var\(\s*--([\w-]+)/g)) {
+              if (resolved[m[1]] === undefined) queue.add(m[1]);
+            }
+          }
+        }
+        cur = cur.parentElement;
       }
-      cur = cur.parentElement;
     }
     const decls = Object.entries(resolved).map(([k, v]) => `  --${k}: ${v};`).join('\n');
     if (decls) rootVars.push(`:root {\n${decls}\n}`);
@@ -355,6 +558,9 @@ function extractInPage(sel) {
       rules: matchingRules,
       media: wrappedRules,
     },
+    fullStyles,
+    pseudoContent,
+    elementComputedStyles,
     referencedUrls: [...referencedUrls],
     headHtml,
     htmlAttrs,

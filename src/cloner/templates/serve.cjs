@@ -14,7 +14,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { exec } = require('node:child_process');
 
-const ROOT = __dirname;
+// Prefer serving the extracted source tree (clone/) when it exists — that's
+// the real organized code with proper file paths. Falls back to the bundle
+// root for older outputs that only have the replay-mode index.html.
+const SOURCE_ROOT = path.join(__dirname, 'clone');
+const ROOT = fs.existsSync(SOURCE_ROOT) ? SOURCE_ROOT : __dirname;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

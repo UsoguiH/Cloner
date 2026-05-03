@@ -6,6 +6,7 @@ import archiver from 'archiver';
 import { JobQueue } from './queue.js';
 import { runCloneJob } from './cloner/index.js';
 import { extractComponent, buildComponentDoc, buildIsolatedFullPage } from './extract.js';
+import { buildAgentBundle } from './agent-bundle.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -83,6 +84,24 @@ app.get('/api/jobs/:id/manifest', (req, res) => {
   res.sendFile(manifestPath);
 });
 
+app.get('/api/jobs/:id/diagnostics', (req, res) => {
+  const job = queue.get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
+  const diagPath = path.join(JOBS_DIR, job.id, 'output', 'diagnostics.json');
+  if (!fs.existsSync(diagPath)) {
+    return res.status(404).json({ error: 'no diagnostics for this job' });
+  }
+  res.sendFile(diagPath);
+});
+
+app.get('/api/jobs/:id/failure-screenshot', (req, res) => {
+  const job = queue.get(req.params.id);
+  if (!job) return res.status(404).end();
+  const shotPath = path.join(JOBS_DIR, job.id, 'output', 'failure.png');
+  if (!fs.existsSync(shotPath)) return res.status(404).end();
+  res.sendFile(shotPath);
+});
+
 app.get('/api/jobs/:id/download', (req, res) => {
   const job = queue.get(req.params.id);
   if (!job) return res.status(404).json({ error: 'not found' });
@@ -94,8 +113,11 @@ app.get('/api/jobs/:id/download', (req, res) => {
   res.download(zipPath, fname);
 });
 
-// Preview the cloned site as a static directory so relative URLs
-// (e.g. assets/foo.js) resolve correctly inside the browser.
+// Preview the cloned site as a live, iframe-friendly SPA. The captured
+// `index.html` (post-hydration DOM + replay-bootstrap SW + asset references)
+// is the source of truth — never the static snapshot. Render fidelity comes
+// from the replay manifest, not from baking everything as data URIs.
+//
 //   ?pick=1                     → inject picker overlay (postMessage capture)
 //   ?isolate=<sel>[&isolate=…]  → hide everything except matched elements + ancestors.
 //   ?isolate-mode=1             → inject isolate script with empty initial selector
@@ -107,9 +129,9 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
   if (!fs.existsSync(outDir)) return res.status(404).end();
 
   // Tag this preview session so transitive sub-requests (module imports
-  // from /_nuxt/foo.js → /_nuxt/bar.js, for example, where the Referer
-  // is the script URL, not the preview URL) can still resolve back to
-  // this job. Picked up by the global fallback middleware below.
+  // from /_nuxt/foo.js → /_nuxt/bar.js, where the Referer is the script
+  // URL not the preview URL) can still resolve back to this job. Picked
+  // up by the global fallback middleware below.
   res.set('Set-Cookie', `clone_saas_preview_job=${encodeURIComponent(job.id)}; Path=/; Max-Age=7200; SameSite=Lax`);
 
   const isIndex = req.path === '/' || req.path === '/index.html';
@@ -121,13 +143,37 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
   const isolateMode = req.query['isolate-mode'] === '1';
   const wantsIsolate = isoList.length > 0 || isolateMode;
 
-  if (isIndex && (wantsPick || wantsIsolate)) {
+  if (isIndex) {
+    // Always serve the live SPA. Strip CSP/TrustedTypes/X-Frame so the
+    // iframe can run scripts, set <base> so root-relative paths route to
+    // our replay endpoint, and inject pick/isolate overlays as needed.
     const indexPath = path.join(outDir, 'index.html');
     if (fs.existsSync(indexPath)) {
       let html;
       try { html = fs.readFileSync(indexPath, 'utf8'); } catch { return next(); }
+
+      // Strip CSP and TrustedTypes meta tags — they block inline picker
+      // scripts and the runtime fetch shim from running in the iframe.
+      html = html.replace(
+        /<meta[^>]*http-equiv\s*=\s*["']?(?:Content-Security-Policy|X-Frame-Options|Referrer-Policy)["']?[^>]*>/gi,
+        ''
+      );
+
+      // Strip ALL <script> tags. The captured DOM is post-hydration — its
+      // visual state is final. Letting the SPA's JS run inside the iframe
+      // breaks the page in two common ways: (1) the router treats the
+      // preview prefix as the URL and renders a 404 view; (2) hydration
+      // mismatches tear down the captured DOM. Stripping scripts keeps
+      // the rendered DOM intact while CSS/fonts/images keep loading via
+      // the replay manifest.
+      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+
+      // Strengthen <base> so all root-relative URLs (`/foo.css`, `/_next/…`)
+      // resolve under the preview prefix and hit our replay handler.
+      const baseTag = `<base href="/api/jobs/${job.id}/preview/">`;
+
       const settledOverrides = readSettledOverrides(outDir);
-      const inserts = [];
+      const inserts = [baseTag];
       if (wantsPick) {
         inserts.push('<script src="/picker.js" data-clone-saas-picker></script>');
       }
@@ -135,25 +181,33 @@ app.use('/api/jobs/:id/preview', (req, res, next) => {
         inserts.push(buildIsolateScript(isoList, settledOverrides));
       }
       const tag = inserts.join('\n');
-      if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, `  ${tag}\n</head>`);
-      else if (/<body[^>]*>/i.test(html)) html = html.replace(/<body[^>]*>/i, (m) => `${m}\n${tag}`);
-      else html = tag + html;
+      if (/<head\b[^>]*>/i.test(html)) {
+        html = html.replace(/<head\b[^>]*>/i, (m) => `${m}\n${tag}`);
+      } else if (/<body[^>]*>/i.test(html)) {
+        html = html.replace(/<body[^>]*>/i, (m) => `${tag}\n${m}`);
+      } else {
+        html = tag + html;
+      }
+
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.set('Cache-Control', 'no-store');
+      // X-Frame-Options/CSP from upstream don't matter — we serve the HTML.
+      res.removeHeader?.('X-Frame-Options');
+      res.set('Service-Worker-Allowed', `/api/jobs/${job.id}/preview/`);
       return res.send(html);
     }
   }
 
-  // Try files on disk first (index.html, sw.js, replay/...).
+  // Sub-resources: try files on disk (assets/, _next/, replay/, sw.js…).
   return express.static(outDir, {
     index: 'index.html',
     redirect: true,
     fallthrough: true,
   })(req, res, (err) => {
     if (err) return next(err);
-    // Fallback: serve recorded asset bodies from replay/manifest.json so the
-    // live preview renders without depending on the bundled SW (which only
-    // controls the launcher's `/` scope, not `/api/jobs/:id/preview/`).
+    // Fallback: serve recorded asset bodies from replay/manifest.json so
+    // every captured byte is reachable even if the cloned page references
+    // it via an absolute URL we didn't materialize on disk.
     serveReplayAsset(outDir, req, res, next);
   });
 });
@@ -185,12 +239,25 @@ function serveReplayAsset(outDir, req, res, next) {
   if (!manifest) return sendTypedMiss(req, res);
 
   const reqPath = req.path || '/';
+  let decodedPath = reqPath;
+  try { decodedPath = decodeURIComponent(reqPath); } catch {}
   const basename = reqPath.split('/').pop();
+  const decodedBase = decodedPath.split('/').pop();
   let entry = null;
+  // 1) exact path match
   if (manifest.byPath && manifest.byPath[reqPath]) {
     entry = manifest.entries[manifest.byPath[reqPath]];
-  } else if (basename && manifest.byBasename && manifest.byBasename[basename]) {
+  }
+  // 2) decoded path match (handles %5B / spaces)
+  if (!entry && decodedPath !== reqPath && manifest.byPath?.[decodedPath]) {
+    entry = manifest.entries[manifest.byPath[decodedPath]];
+  }
+  // 3) basename — last resort, since multiple URLs can share a basename
+  if (!entry && basename && manifest.byBasename?.[basename]) {
     entry = manifest.entries[manifest.byBasename[basename]];
+  }
+  if (!entry && decodedBase && decodedBase !== basename && manifest.byBasename?.[decodedBase]) {
+    entry = manifest.entries[manifest.byBasename[decodedBase]];
   }
   if (!entry) return sendTypedMiss(req, res);
 
@@ -622,6 +689,72 @@ Limitations
   127.0.0.1, so it works without admin/root.
 `;
 }
+
+// Agent-friendly export — small ZIP designed for LLM ingestion. One picked
+// selector becomes a folder of component.html + component.css + assets/ +
+// README.md + metadata.json. See src/agent-bundle.js for details.
+app.post('/api/jobs/:id/extract-agent', async (req, res) => {
+  const job = queue.get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
+  if (job.status !== 'completed') {
+    return res.status(409).json({ error: 'job not yet completed' });
+  }
+  const { selector } = req.body || {};
+  if (!selector || typeof selector !== 'string') {
+    return res.status(400).json({ error: 'selector required' });
+  }
+
+  const previewUrl = `http://127.0.0.1:${PORT}/api/jobs/${job.id}/preview/`;
+  let extraction;
+  try {
+    extraction = await extractComponent({ previewUrl, selector });
+  } catch (err) {
+    console.error(`[extract-agent ${job.id}] ${selector}:`, err);
+    return res.status(500).json({ error: `extract failed: ${err.message}` });
+  }
+  if (extraction.error) return res.status(400).json({ error: extraction.error });
+  if (!extraction.html) {
+    return res.status(500).json({ error: 'extractor returned no html' });
+  }
+
+  let bundle;
+  try {
+    bundle = buildAgentBundle({
+      extraction,
+      sourceUrl: job.url,
+      selector,
+      jobDir: path.join(JOBS_DIR, job.id),
+    });
+  } catch (err) {
+    console.error(`[extract-agent ${job.id}] build:`, err);
+    return res.status(500).json({ error: `bundle build failed: ${err.message}` });
+  }
+
+  const slug = selector.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40).replace(/^-+|-+$/g, '') || 'component';
+  const zipName = `agent-${slug}-${job.id}.zip`;
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+
+  const zip = archiver('zip', { zlib: { level: 9 } });
+  zip.on('warning', (err) => { if (err.code !== 'ENOENT') console.warn(`[extract-agent ${job.id}]`, err); });
+  zip.on('error', (err) => {
+    console.error(`[extract-agent ${job.id}] archive error:`, err);
+    try { res.status(500).end(); } catch {}
+  });
+  zip.pipe(res);
+
+  for (const f of bundle.files) {
+    zip.append(f.body, { name: f.name });
+  }
+  for (const a of bundle.assets) {
+    zip.append(a.body, { name: `assets/${a.filename}` });
+  }
+
+  try { await zip.finalize(); } catch (err) {
+    console.error(`[extract-agent ${job.id}] finalize:`, err);
+  }
+});
 
 app.use('/api/jobs/:id/files', (req, res) => {
   const job = queue.get(req.params.id);

@@ -6,6 +6,8 @@ import { CDPNetworkRecorder } from './network.js';
 import { extractRenderedDOM, autoScroll, runInteractions, prefetchCSSAssets } from './dom.js';
 import { settleSnapshots } from './settle.js';
 import { buildReplayBundle, copyLauncher, readBootstrap } from './replay.js';
+import { buildSnapshotHtml } from './snapshot.js';
+import { buildSourceTree, rewriteCssFiles, writeIndexHtml } from './source-tree.js';
 import { packageZip } from './packager.js';
 
 const TEMPLATES_DIR = path.join(
@@ -44,9 +46,28 @@ export async function runCloneJob(job, { onProgress }) {
   const outputDir = path.join(job.jobDir, 'output');
   await fs.mkdir(outputDir, { recursive: true });
 
-  onProgress({ phase: 'launching', message: 'launching browser' });
+  // Diagnostics — populated as we go so a late failure has full context.
+  const diagnostics = {
+    sourceUrl: job.url,
+    consoleErrors: [],
+    pageErrors: [],
+    failedRequests: [],
+    blockerHints: [],
+    lastPhase: 'launching',
+  };
+  const recordPhase = (phase) => { diagnostics.lastPhase = phase; };
 
-  const browser = await chromium.launch({ headless: true });
+  let browser = null;
+  let page = null;
+  let runFailed = false;
+  let runError = null;
+
+  try {
+
+  onProgress({ phase: 'launching', message: 'launching browser' });
+  recordPhase('launching');
+
+  browser = await launchWithRetry(job);
   const contextOpts = {
     viewport:
       opts.device === 'mobile'
@@ -67,17 +88,40 @@ export async function runCloneJob(job, { onProgress }) {
       console.warn(`[job ${job.id}] cookie import failed:`, e.message);
     }
   }
-  const page = await context.newPage();
+  page = await context.newPage();
+
+  // Wire up diagnostic listeners — kept lightweight so they don't slow the
+  // happy path. The arrays cap at 50 entries per kind so a noisy site can't
+  // blow up memory.
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    if (diagnostics.consoleErrors.length < 50) {
+      diagnostics.consoleErrors.push(msg.text().slice(0, 500));
+    }
+  });
+  page.on('pageerror', (err) => {
+    if (diagnostics.pageErrors.length < 50) {
+      diagnostics.pageErrors.push(String(err && err.message || err).slice(0, 500));
+    }
+  });
+  page.on('requestfailed', (req) => {
+    if (diagnostics.failedRequests.length >= 100) return;
+    diagnostics.failedRequests.push({
+      url: req.url().slice(0, 300),
+      reason: (req.failure() && req.failure().errorText) || 'unknown',
+      method: req.method(),
+    });
+  });
 
   const recorder = new CDPNetworkRecorder({ page });
   await recorder.attach();
 
   onProgress({ phase: 'navigating', message: `navigating to ${job.url}` });
+  recordPhase('navigating');
 
   try {
     await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
-    await browser.close();
     throw new Error(`navigation failed: ${err.message}`);
   }
 
@@ -89,12 +133,14 @@ export async function runCloneJob(job, { onProgress }) {
 
   if (opts.scrollCapture) {
     onProgress({ phase: 'scrolling', message: 'scrolling for lazy content' });
+    recordPhase('scrolling');
     await autoScroll(page);
     try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
   }
 
   if (opts.fullInteraction) {
     onProgress({ phase: 'interacting', message: 'triggering hover/click' });
+    recordPhase('interacting');
     await runInteractions(page, opts.interactionSelectors || []);
     try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
   }
@@ -102,6 +148,7 @@ export async function runCloneJob(job, { onProgress }) {
   await page.waitForTimeout(opts.waitMs);
 
   onProgress({ phase: 'extracting', message: 'forcing font + CSS asset fetch' });
+  recordPhase('extracting');
   await prefetchCSSAssets(page);
   try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
 
@@ -116,8 +163,17 @@ export async function runCloneJob(job, { onProgress }) {
   onProgress({ phase: 'extracting', message: 'extracting rendered DOM' });
   const extraction = await extractRenderedDOM(page);
 
+  // Detect known anti-bot blockers BEFORE we tear down the page so we can
+  // tell the user *why* a clone might look empty (not just "x captured").
+  try {
+    const blockerHints = await detectBlockers(page);
+    if (blockerHints.length) diagnostics.blockerHints = blockerHints;
+  } catch {}
+
   await recorder.flush();
   await browser.close();
+  browser = null;
+  page = null;
 
   // Replay bundle: write every recorded response into replay/bodies/<sha1>
   // and an index manifest the bundled service worker reads at boot.
@@ -157,6 +213,63 @@ export async function runCloneJob(job, { onProgress }) {
   }
 
   await fs.writeFile(path.join(outputDir, 'index.html'), html, 'utf8');
+
+  // Post-hydration snapshot — the reliable file:// preview. Spins up a local
+  // server, lets the SPA fully render, captures the live DOM + computed
+  // stylesheets, then bakes a script-free static HTML with all assets inlined.
+  // CSS animations keep running; JS interactions don't. Saved as the fallback
+  // `preview.html`.
+  onProgress({ phase: 'rewriting', message: 'rendering snapshot' });
+  let snapshotHtml = null;
+  try {
+    snapshotHtml = await buildSnapshotHtml({ outputDir });
+    if (snapshotHtml) {
+      await fs.writeFile(path.join(outputDir, 'preview.html'), snapshotHtml, 'utf8');
+    }
+  } catch (e) {
+    console.warn(`[job ${job.id}] snapshot build failed:`, e.message);
+  }
+
+  // Source tree — the real deliverable. Lays every captured asset under its
+  // original URL pathname (./_next/static/chunks/<hash>.js, ./fonts/..., etc.)
+  // and produces an index.html with all references rewritten to relative
+  // paths plus a small runtime shim so file:// can load lazy chunks. This is
+  // what the user double-clicks to see the cloned component with full CSS,
+  // assets, and JS-driven animations.
+  onProgress({ phase: 'rewriting', message: 'extracting source tree' });
+  try {
+    const sourceDir = path.join(outputDir, 'clone');
+    const replayManifest = JSON.parse(
+      await fs.readFile(path.join(outputDir, 'replay', 'manifest.json'), 'utf8')
+    );
+    const maps = await buildSourceTree({
+      outputDir,
+      docUrl: job.url,
+      manifest: replayManifest,
+      sourceDir,
+    });
+    await rewriteCssFiles({ sourceDir, ...maps });
+    const shimSource = await fs.readFile(
+      path.join(TEMPLATES_DIR, 'file-shim.js'),
+      'utf8'
+    );
+    await writeIndexHtml({
+      capturedHtml: extraction.html,
+      sourceDir,
+      docUrl: job.url,
+      shimSource,
+      ...maps,
+    });
+    // OPEN_ME.html — landing page that explains the three artifacts
+    // (preview, real source, server-mode) and lets the user pick.
+    const openMeTemplate = await fs.readFile(
+      path.join(TEMPLATES_DIR, 'open-me.html'),
+      'utf8'
+    );
+    await fs.writeFile(path.join(outputDir, 'OPEN_ME.html'), openMeTemplate, 'utf8');
+  } catch (e) {
+    console.warn(`[job ${job.id}] source tree build failed:`, e.message);
+  }
 
   // Persist settle + adopted stylesheets for the picker / isolate route.
   await fs.writeFile(
@@ -207,6 +320,132 @@ export async function runCloneJob(job, { onProgress }) {
     captured: replay.recorded,
     total: recorder.responses.size,
   });
+  } catch (err) {
+    runFailed = true;
+    runError = err;
+    // Best-effort: capture a screenshot of whatever the page was showing
+    // when we failed. Skip silently if the page is already gone.
+    if (page && !page.isClosed?.()) {
+      try {
+        await page.screenshot({
+          path: path.join(outputDir, 'failure.png'),
+          fullPage: false,
+        });
+      } catch {}
+      try {
+        const blockerHints = await detectBlockers(page);
+        if (blockerHints.length && !diagnostics.blockerHints.length) {
+          diagnostics.blockerHints = blockerHints;
+        }
+      } catch {}
+    }
+    // Augment the error with the most useful diagnostic clues so the user
+    // sees them in the failure toast without having to download a file.
+    const hints = [];
+    if (diagnostics.blockerHints.length) {
+      hints.push(`possible blocker: ${diagnostics.blockerHints.join(', ')}`);
+    }
+    if (diagnostics.pageErrors.length) {
+      hints.push(`page error: ${diagnostics.pageErrors[0]}`);
+    } else if (diagnostics.consoleErrors.length) {
+      hints.push(`console: ${diagnostics.consoleErrors[0]}`);
+    }
+    const augmented = new Error(
+      hints.length
+        ? `${err.message} (phase: ${diagnostics.lastPhase}; ${hints.join('; ')})`
+        : `${err.message} (phase: ${diagnostics.lastPhase})`
+    );
+    augmented.stack = err.stack;
+    augmented.diagnostics = diagnostics;
+    throw augmented;
+  } finally {
+    diagnostics.completedAt = new Date().toISOString();
+    diagnostics.failed = runFailed;
+    if (runError) diagnostics.errorMessage = String(runError.message || runError);
+    try {
+      await fs.writeFile(
+        path.join(outputDir, 'diagnostics.json'),
+        JSON.stringify(diagnostics, null, 2),
+        'utf8'
+      );
+    } catch {}
+    if (browser) {
+      try { await browser.close(); } catch {}
+    }
+  }
+}
+
+/**
+ * Look for the fingerprints of well-known anti-bot / challenge pages so we
+ * can tell the user *why* a clone came back empty. Runs entirely in-page
+ * and never throws — caller should wrap in try/catch.
+ */
+async function detectBlockers(page) {
+  return await page.evaluate(() => {
+    const hints = [];
+    const has = (sel) => !!document.querySelector(sel);
+
+    if (has('#challenge-form, #cf-challenge-running, #challenge-running, [data-cf-beacon]')) {
+      hints.push('Cloudflare challenge');
+    }
+    if (has('.cf-turnstile, iframe[src*="challenges.cloudflare.com"]')) {
+      hints.push('Cloudflare Turnstile');
+    }
+    if (has('iframe[src*="recaptcha"], .g-recaptcha, #recaptcha')) {
+      hints.push('reCAPTCHA');
+    }
+    if (has('iframe[src*="hcaptcha.com"], .h-captcha')) {
+      hints.push('hCaptcha');
+    }
+    if (has('iframe[src*="datadome"], #datadome-captcha, [data-dd-captcha]')) {
+      hints.push('DataDome');
+    }
+    if (has('#px-captcha, [data-px-captcha]')) {
+      hints.push('PerimeterX');
+    }
+
+    const text = (document.body && document.body.innerText || '').slice(0, 4000);
+    const lower = text.toLowerCase();
+    const phrases = [
+      'access denied',
+      'you have been blocked',
+      'attention required',
+      'verifying you are human',
+      'just a moment',
+      'enable javascript and cookies',
+      'request unsuccessful',
+      'pardon our interruption',
+    ];
+    for (const p of phrases) {
+      if (lower.includes(p)) {
+        hints.push(`page text: "${p}"`);
+        break;
+      }
+    }
+
+    // Empty-body sanity check — if the page rendered virtually nothing, the
+    // user likely hit a soft block (e.g. SSR refused for headless UA).
+    const bodyLen = (document.body && document.body.innerText || '').trim().length;
+    if (bodyLen < 50 && document.querySelectorAll('img, svg, canvas').length < 3) {
+      hints.push('near-empty document body');
+    }
+
+    return Array.from(new Set(hints));
+  });
+}
+
+async function launchWithRetry(job, attempts = 3) {
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await chromium.launch({ headless: true });
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[job ${job.id}] chromium.launch attempt ${i}/${attempts} failed: ${err.message}`);
+      if (i < attempts) await new Promise((r) => setTimeout(r, 1000 * i));
+    }
+  }
+  throw lastErr;
 }
 
 function isAnalytics(url) {

@@ -329,10 +329,12 @@
                   View manifest
                 </a>
               </div>
+              <p class="muted" style="margin-top:8px;font-size:12px">After unzipping, double-click <code>OPEN_ME.html</code> to view the clone — no server needed.</p>
 
               <div class="extract-row">
                 <input type="text" class="extract-row__input" id="extract-selector" placeholder="CSS selector e.g. .hero, #pricing" />
                 <button type="button" class="btn btn--ghost" id="extract-btn">Extract HTML only</button>
+                <button type="button" class="btn btn--secondary" id="extract-agent-btn" title="Bundle component + CSS + assets + README for ingestion by an LLM coding agent">Export for AI agent</button>
                 <span class="extract-row__status muted" id="extract-status"></span>
               </div>
             </div>
@@ -402,6 +404,7 @@
             <span class="caption-uppercase">Last picked</span>
             <input type="text" id="picker-selector" placeholder="(click an element in the preview)" readonly />
           </label>
+          <button type="button" id="picker-agent" class="btn btn--secondary" disabled title="Export the most recently picked component as an AI-agent-friendly bundle (HTML + CSS + assets + README)">Export for AI agent</button>
           <button type="button" id="picker-bundle" class="btn btn--primary" disabled>Complete &amp; Download</button>
           <span id="picker-status" class="picker-modal__status"></span>
         </footer>
