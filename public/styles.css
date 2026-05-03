@@ -166,6 +166,69 @@ a:hover { color: var(--primary); }
 
 .btn--sm { height: 30px; padding: 0 12px; font-size: 13px; border-radius: var(--r-sm); }
 
+/* Swap button — mindmarket-style hover-icon swap.
+   Two circle icons (one absolute on the left, one in flow on the right) and
+   a label that all transition together via cubic-bezier(.17,.67,.3,1.33) over
+   400ms, producing a bouncy left/right swap on hover. */
+.btn--swap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: visible;
+  transition: background 80ms ease;
+}
+.btn--swap:hover { background: var(--primary-active); }
+.btn--swap:active { background: var(--primary-active); }
+.btn--swap:disabled {
+  background: var(--surface-strong);
+  color: var(--muted-soft);
+  cursor: not-allowed;
+}
+.btn--swap__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  flex: 0 0 auto;
+  transition: transform 0.4s cubic-bezier(0.17, 0.67, 0.3, 1.33);
+  will-change: transform;
+}
+.btn--swap__icon--default { transform: scale(1); }
+.btn--swap__icon--hover {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+}
+.btn--swap__label {
+  display: block;
+  padding: 0 10px;
+  transition: transform 0.4s cubic-bezier(0.17, 0.67, 0.3, 1.33);
+  transform: translateX(0);
+  will-change: transform;
+}
+.btn--swap:hover:not(:disabled) .btn--swap__icon--default { transform: scale(0); }
+.btn--swap:hover:not(:disabled) .btn--swap__icon--hover { transform: translateY(-50%) scale(1); }
+.btn--swap:hover:not(:disabled) .btn--swap__label { transform: translateX(42px); }
+.btn--swap:disabled .btn--swap__icon { background: var(--canvas); color: var(--muted-soft); }
+
 .icon-btn {
   height: 32px;
   width: 32px;
@@ -856,7 +919,7 @@ a:hover { color: var(--primary); }
 }
 .clone-form__row input[type="text"] {
   flex: 1;
-  height: 40px;
+  height: 48px;
   background: transparent;
   border: 0;
   outline: 0;

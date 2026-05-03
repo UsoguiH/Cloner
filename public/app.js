@@ -499,8 +499,9 @@ form.addEventListener('submit', async (e) => {
   try { options = readOptions(); } catch { return; }
 
   submitBtn.disabled = true;
-  const original = submitBtn.querySelector('span').textContent;
-  submitBtn.querySelector('span').textContent = 'Submitting…';
+  const labelEl = submitBtn.querySelector('.btn--swap__label');
+  const original = labelEl.textContent;
+  labelEl.textContent = 'Submitting…';
   try {
     const res = await fetch('/api/clone', {
       method: 'POST',
@@ -521,7 +522,7 @@ form.addEventListener('submit', async (e) => {
     selectProject(created.id);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.querySelector('span').textContent = original;
+    labelEl.textContent = original;
   }
 });
 
