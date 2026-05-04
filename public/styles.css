@@ -1558,3 +1558,251 @@ a:hover { color: var(--primary); }
   transform: rotate(3deg) translate(0, -3px);
   box-shadow: 0 0 10px var(--primary), 0 0 6px var(--primary);
 }
+
+/* =====================================================================
+   Sidebar — SnowUI-style pill rows
+   - 48px-tall rows with 16px radius, 12px padding, 12px icon/label gap
+   - Soft black 4% hover/active fill
+   - 14px Inter regular labels, 24px icon column
+   - Background stays var(--canvas)
+   ===================================================================== */
+
+.sidebar {
+  border-right-color: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar:hover,
+.sidebar:focus-within,
+.sidebar.is-pinned {
+  padding: 20px 16px 16px;
+  gap: 12px;
+}
+
+/* Make the projects section take leftover height and scroll inside it,
+   so credits + profile stay pinned to the bottom even with long lists. */
+.sidebar:hover .projects,
+.sidebar:focus-within .projects,
+.sidebar.is-pinned .projects {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar:hover .projects__list.is-scrollable,
+.sidebar:focus-within .projects__list.is-scrollable,
+.sidebar.is-pinned .projects__list.is-scrollable {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.sidebar .hairline { margin: 4px 0; }
+.sidebar .credit-card { margin-top: 0; }
+
+/* Active project header: pill, no card chrome */
+.active-project {
+  height: 48px;
+  padding: 12px;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 0;
+  border-radius: 16px;
+  transition: background 160ms ease;
+}
+.active-project:hover { background: rgba(0, 0, 0, 0.07); border-color: transparent; }
+.active-project__avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 999px;
+}
+.active-project__label { display: none; }
+.active-project__name {
+  font-size: 14px;
+  font-weight: 400;
+  color: #000;
+  line-height: 20px;
+}
+
+/* Primary CTA row: same pill geometry */
+.projects__new {
+  min-height: 48px;
+  padding: 12px;
+  gap: 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #000;
+  transition: background 160ms ease;
+}
+.projects__new:hover { background: rgba(0, 0, 0, 0.04); }
+.projects__new-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.04);
+  color: #000;
+}
+
+/* Cloned-projects rows */
+.projects__list { gap: 4px; }
+.project-item {
+  min-height: 48px;
+  padding: 12px;
+  gap: 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #000;
+  transition: background 160ms ease;
+}
+.project-item:hover { background: rgba(0, 0, 0, 0.04); color: #000; }
+.project-item.is-active {
+  background: rgba(0, 0, 0, 0.04);
+  color: #000;
+  font-weight: 400;
+}
+.project-item .avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+
+/* Section labels: smaller, muted */
+.section-label {
+  padding: 0 12px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+
+/* Secondary nav: same pill */
+.secondary-nav { gap: 4px; }
+.nav-item {
+  min-height: 48px;
+  padding: 12px;
+  gap: 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #000;
+  transition: background 160ms ease;
+}
+.nav-item:hover { background: rgba(0, 0, 0, 0.04); color: #000; }
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: #000;
+}
+.project-item .kbd-hint,
+.projects__new .kbd-hint { display: none; }
+
+/* Footer profile pill — 40px row, 8px radius, 24px avatar */
+.sidebar__footer {
+  padding: 8px 0 0;
+  gap: 4px;
+}
+.profile-btn {
+  min-height: 40px;
+  padding: 8px 12px;
+  gap: 8px;
+  border-radius: 8px;
+}
+.profile-btn:hover { background: rgba(0, 0, 0, 0.04); }
+.profile-btn__avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.04);
+  color: #000;
+  font-size: 11px;
+}
+.profile-btn__name { font-size: 14px; font-weight: 400; color: #000; }
+.profile-btn__email { font-size: 12px; color: rgba(0, 0, 0, 0.4); }
+
+/* Section-label header: title, search icon, count.
+   Click the icon → the row morphs into a full-width search field (ChatGPT-style).
+   No orange focus ring — uses the same neutral fill as the rest of the sidebar. */
+.section-label__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 28px;
+}
+.section-label__title { flex: 1; min-width: 0; }
+.section-label__icon-btn {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.section-label__icon-btn:hover { background: rgba(0, 0, 0, 0.04); color: #000; }
+.section-label__icon-btn svg { display: block; }
+
+.section-label.is-searching .section-label__row { display: none; }
+.section-label.is-searching { padding: 4px 8px; }
+
+.section-label__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+}
+.section-label__search-icon { color: rgba(0, 0, 0, 0.5); flex: 0 0 14px; }
+.section-label__search input {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #000;
+}
+.section-label__search input::placeholder { color: rgba(0, 0, 0, 0.4); }
+.section-label__search-close {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.section-label__search-close:hover { background: rgba(0, 0, 0, 0.08); color: #000; }
+
+/* Empty-state when filter has no matches */
+.projects__no-match {
+  padding: 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: left;
+}

@@ -16,6 +16,13 @@ const projectsCount = $('projects-count');
 const projectsExpand = $('projects-expand');
 const activeAvatar = $('active-avatar');
 const activeName = $('active-name');
+const projectsSectionLabel = $('projects-section-label');
+const projectsSearchBtn = $('projects-search-btn');
+const projectsSearchField = $('projects-search-field');
+const projectsSearchInput = $('projects-search-input');
+const projectsSearchClose = $('projects-search-close');
+
+let projectsFilter = '';
 
 // Topbar
 const crumbActive = $('crumb-active');
@@ -234,16 +241,34 @@ function bootAvatarImages(root = document) {
 
 function renderProjects() {
   projectsList.innerHTML = '';
-  const total = projectOrder.length;
-  projectsEmpty.hidden = total > 0;
+  const filter = projectsFilter.trim().toLowerCase();
+  const matchedIds = filter
+    ? projectOrder.filter((id) => {
+        const j = projects.get(id);
+        if (!j) return false;
+        const hay = `${j.hostname || ''} ${j.url || ''}`.toLowerCase();
+        return hay.includes(filter);
+      })
+    : projectOrder;
+  const total = matchedIds.length;
+  const totalAll = projectOrder.length;
+  projectsEmpty.hidden = totalAll > 0;
 
   // Active project must always be visible — if it's outside the collapsed
   // window, expand automatically.
-  const activeIdx = activeId ? projectOrder.indexOf(activeId) : -1;
+  const activeIdx = activeId ? matchedIds.indexOf(activeId) : -1;
   if (activeIdx >= PROJECTS_COLLAPSED_LIMIT) projectsExpanded = true;
 
-  const limit = projectsExpanded ? total : Math.min(PROJECTS_COLLAPSED_LIMIT, total);
-  const visibleIds = projectOrder.slice(0, limit);
+  // While filtering, show all matches (skip the collapse limit).
+  const limit = filter ? total : (projectsExpanded ? total : Math.min(PROJECTS_COLLAPSED_LIMIT, total));
+  const visibleIds = matchedIds.slice(0, limit);
+
+  if (filter && total === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'projects__no-match';
+    empty.textContent = `No clones match "${projectsFilter}".`;
+    projectsList.appendChild(empty);
+  }
 
   visibleIds.forEach((id, i) => {
     const job = projects.get(id);
@@ -267,17 +292,18 @@ function renderProjects() {
     projectsList.appendChild(li);
   });
 
-  // Header count + expand toggle
-  if (total > 0) {
+  // Header count + expand toggle (count reflects total projects, not filter)
+  if (totalAll > 0) {
     projectsCount.hidden = false;
-    projectsCount.textContent = String(total);
+    projectsCount.textContent = String(totalAll);
   } else {
     projectsCount.hidden = true;
   }
-  if (total > PROJECTS_COLLAPSED_LIMIT) {
+  // Hide the show-more toggle while filtering (we always show every match).
+  if (!filter && totalAll > PROJECTS_COLLAPSED_LIMIT) {
     projectsExpand.hidden = false;
     projectsExpand.classList.toggle('is-open', projectsExpanded);
-    const remaining = total - PROJECTS_COLLAPSED_LIMIT;
+    const remaining = totalAll - PROJECTS_COLLAPSED_LIMIT;
     projectsExpand.querySelector('.projects__expand-text').textContent =
       projectsExpanded ? 'Show less' : `Show ${remaining} more`;
   } else {
@@ -286,7 +312,9 @@ function renderProjects() {
 
   // When expanded, cap the list height + scroll inside it so "Show less"
   // remains in place without forcing the user to scroll the whole sidebar.
-  projectsList.classList.toggle('is-scrollable', projectsExpanded && total > PROJECTS_COLLAPSED_LIMIT);
+  const shouldScroll = (filter && total > PROJECTS_COLLAPSED_LIMIT) ||
+                       (!filter && projectsExpanded && totalAll > PROJECTS_COLLAPSED_LIMIT);
+  projectsList.classList.toggle('is-scrollable', shouldScroll);
 
   renderActiveProjectHeader();
   bootAvatarImages(projectsList);
@@ -538,6 +566,45 @@ activeProjectBtn.addEventListener('click', () => {
 projectsExpand.addEventListener('click', () => {
   projectsExpanded = !projectsExpanded;
   renderProjects();
+});
+
+// Sidebar search: button expands into a full text field that matches sidebar pill design
+function openProjectsSearch() {
+  if (!projectsSearchField.hidden) return;
+  projectsSectionLabel.classList.add('is-searching');
+  projectsSearchField.hidden = false;
+  projectsSearchBtn.setAttribute('aria-expanded', 'true');
+  projectsSearchInput.focus();
+}
+function closeProjectsSearch() {
+  projectsSearchInput.value = '';
+  if (projectsFilter) {
+    projectsFilter = '';
+    renderProjects();
+  }
+  projectsSearchField.hidden = true;
+  projectsSectionLabel.classList.remove('is-searching');
+  projectsSearchBtn.setAttribute('aria-expanded', 'false');
+  projectsSearchBtn.focus();
+}
+projectsSearchBtn.addEventListener('click', openProjectsSearch);
+projectsSearchClose.addEventListener('click', closeProjectsSearch);
+projectsSearchInput.addEventListener('input', () => {
+  projectsFilter = projectsSearchInput.value;
+  renderProjects();
+});
+projectsSearchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeProjectsSearch();
+  }
+});
+
+document.querySelectorAll('.secondary-nav .nav-item[data-view]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const label = btn.querySelector('span')?.textContent || 'View';
+    toast.info(`${label} coming soon`, 'This view is on the roadmap.');
+  });
 });
 
 // =============================================================================
@@ -957,6 +1024,12 @@ document.addEventListener('keydown', (e) => {
   if (!inField && (e.key === 'n' || e.key === 'N') && !e.metaKey && !e.ctrlKey && !e.altKey) {
     e.preventDefault();
     showCloneView();
+  }
+
+  // "/" → focus sidebar search (only when not typing)
+  if (!inField && e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    e.preventDefault();
+    openProjectsSearch();
   }
 });
 
