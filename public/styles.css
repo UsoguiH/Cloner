@@ -1518,48 +1518,6 @@ a:hover { color: var(--primary); }
 @keyframes tk-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 /* =====================================================================
-   Top progress bar (pbar)
-   Thin line pinned to the top of the viewport with a glowing peg trail.
-   Driven imperatively by progress-bar.js.
-   ===================================================================== */
-
-.pbar {
-  position: fixed;
-  inset: 0 0 auto 0;
-  height: 2.5px;
-  pointer-events: none;
-  z-index: 10000;
-  opacity: 0;
-  transition: opacity 200ms ease;
-  overflow: hidden;
-}
-.pbar--active { opacity: 1; }
-.pbar--done { transition: opacity 360ms ease 120ms; opacity: 0; }
-.pbar--error .pbar__fill { background: var(--error); }
-.pbar--error .pbar__peg { box-shadow: 0 0 10px var(--error), 0 0 6px var(--error); }
-
-.pbar__fill {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--primary);
-  transform: translate3d(-100%, 0, 0);
-  transition: transform 320ms cubic-bezier(0.4, 0.05, 0.2, 1);
-}
-
-.pbar__peg {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100%;
-  opacity: 0.9;
-  transform: rotate(3deg) translate(0, -3px);
-  box-shadow: 0 0 10px var(--primary), 0 0 6px var(--primary);
-}
-
-/* =====================================================================
    Sidebar — SnowUI-style pill rows
    - 48px-tall rows with 16px radius, 12px padding, 12px icon/label gap
    - Soft black 4% hover/active fill

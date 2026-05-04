@@ -3,7 +3,6 @@
 // =============================================================================
 
 import { toast } from '/toast.js';
-import { progressBar } from '/progress-bar.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -549,7 +548,6 @@ form.addEventListener('submit', async (e) => {
     // Server returns the full summary
     upsertProject(created);
     subscribeToJob(created.id);
-    progressBar.start();
     toast.success('Clone started', new URL(fullUrl).hostname);
     urlInput.value = '';
     selectProject(created.id);
@@ -635,15 +633,6 @@ function subscribeToJob(id) {
       upsertProject(event.job);
     } else if (event.type === 'progress') {
       upsertProject({ ...cur, progress: event.progress });
-      if (id === activeId) {
-        const p = event.progress || {};
-        const captured = p.captured ?? 0;
-        const total = p.total ?? 0;
-        let frac;
-        if (total > 0) frac = Math.min(0.95, (captured / total) * 0.9 + 0.05);
-        else frac = phaseToPct(p.phase || 'queued') / 100;
-        progressBar.set(frac);
-      }
     } else if (event.type === 'status') {
       const next = { ...cur, status: event.status };
       if (event.error) next.error = event.error;
@@ -655,11 +644,9 @@ function subscribeToJob(id) {
           if (id === activeId) {
             statsCache.delete(id);
             refreshStats(id);
-            progressBar.done();
           }
           toast.success('Clone ready', new URL(cur.url || 'http://localhost').hostname);
         } else if (event.status === 'failed') {
-          if (id === activeId) progressBar.fail();
           toast.error('Clone failed', event.error || 'See project detail for the error.');
         }
       }
