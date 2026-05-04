@@ -119,12 +119,6 @@ function attachSwipe(el, id) {
   let startX = 0;
   let dx = 0;
   let down = false;
-  const onDown = (e) => {
-    down = true;
-    startX = e.touches ? e.touches[0].clientX : e.clientX;
-    dx = 0;
-    el.classList.add('tk-toast--drag');
-  };
   const onMove = (e) => {
     if (!down) return;
     const x = e.touches ? e.touches[0].clientX : e.clientX;
@@ -136,6 +130,10 @@ function attachSwipe(el, id) {
     if (!down) return;
     down = false;
     el.classList.remove('tk-toast--drag');
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
     if (dx > SWIPE_DISMISS) {
       el.style.setProperty('--tk-dx', '420px');
       el.style.setProperty('--tk-fade', '0');
@@ -145,12 +143,18 @@ function attachSwipe(el, id) {
       el.style.setProperty('--tk-fade', '1');
     }
   };
+  const onDown = (e) => {
+    down = true;
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    dx = 0;
+    el.classList.add('tk-toast--drag');
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onUp);
+  };
   el.addEventListener('pointerdown', onDown);
-  window.addEventListener('pointermove', onMove);
-  window.addEventListener('pointerup', onUp);
   el.addEventListener('touchstart', onDown, { passive: true });
-  window.addEventListener('touchmove', onMove, { passive: true });
-  window.addEventListener('touchend', onUp);
 }
 
 function show({ title = '', description = '', kind = 'info', duration } = {}) {

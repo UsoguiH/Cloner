@@ -1101,29 +1101,107 @@ a:hover { color: var(--primary); }
 .badge.failed { background: #fbe6ec; color: var(--error); }
 .badge.queued, .badge.pending { background: var(--surface-strong); color: var(--muted); }
 
-/* Live progress card */
-.card--progress { padding: 18px 20px; }
-.progress-block { display: flex; flex-direction: column; gap: 8px; }
-.progress-block__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+/* Live progress timeline (Vercel deployment-style: stepper rows) */
+.card--timeline { padding: 14px 18px; }
+.timeline { display: flex; flex-direction: column; }
+.timeline__msg {
+  font-size: 12px;
+  margin-top: 8px;
+  padding-left: 32px;
+  min-height: 18px;
+  color: rgba(0, 0, 0, 0.45);
 }
-.progress-bar {
-  height: 6px;
-  background: var(--surface-strong);
-  border-radius: var(--r-pill);
+
+.phase-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  font-size: 13px;
+  position: relative;
+}
+/* Connector line between rows */
+.phase-row + .phase-row::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: -8px;
+  width: 2px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 1px;
+}
+.phase-row--done + .phase-row::before { background: rgba(0, 0, 0, 0.18); }
+
+.phase-row__ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+.phase-row--done .phase-row__ic { color: #1f8a4d; }
+.phase-row--active .phase-row__ic { color: var(--primary); }
+.phase-row--failed .phase-row__ic { color: var(--error); }
+.phase-row--pending .phase-row__ic { color: rgba(0, 0, 0, 0.22); }
+
+.phase-row__label {
+  color: rgba(0, 0, 0, 0.85);
+  font-weight: 400;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
-.progress-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--ink);
-  border-radius: inherit;
-  transition: width 240ms ease;
+.phase-row--pending .phase-row__label { color: rgba(0, 0, 0, 0.4); }
+.phase-row--active .phase-row__label { color: #000; font-weight: 500; }
+
+.phase-row__count,
+.phase-row__time,
+.phase-row__pending,
+.phase-row__failed {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgba(0, 0, 0, 0.5);
 }
-.progress-block__msg { font-size: 13px; }
+.phase-row__pending { color: rgba(0, 0, 0, 0.32); }
+.phase-row__failed { color: var(--error); }
+
+/* Project-row status dot + relative time (Linear projects pattern) */
+.project-item__time {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: rgba(0, 0, 0, 0.4);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.project-item:hover .project-item__time,
+.project-item.is-active .project-item__time { opacity: 1; }
+
+.project-item__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex: 0 0 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.project-item .project-item__time + .project-item__dot { margin-left: 8px; }
+.project-item__dot--queued,
+.project-item__dot--pending { background: rgba(0, 0, 0, 0.2); }
+.project-item__dot--running {
+  background: var(--primary);
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+.project-item__dot--completed { background: #1f8a4d; }
+.project-item__dot--failed { background: var(--error); }
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.78); }
+}
 
 /* Error card */
 .card--error {
@@ -1763,4 +1841,162 @@ a:hover { color: var(--primary); }
   font-size: 13px;
   color: rgba(0, 0, 0, 0.5);
   text-align: left;
+}
+
+/* =====================================================================
+   Command palette (cmdk) — Linear / Vercel-DocSearch pattern
+   Centered modal, scrim with light blur, fade+scale enter, kbd hints.
+   ===================================================================== */
+
+.cmdk-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+}
+.cmdk-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.cmdk {
+  position: absolute;
+  top: 96px;
+  left: 50%;
+  width: min(600px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  transform: translateX(-50%) translateY(-8px) scale(0.98);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 180ms ease, transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cmdk-root.is-open .cmdk-scrim { opacity: 1; }
+.cmdk-root.is-open .cmdk {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.cmdk__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.cmdk__head-ic { color: rgba(0, 0, 0, 0.4); flex: 0 0 16px; }
+.cmdk__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font: 400 15px/1.4 inherit;
+  color: #000;
+  background: transparent;
+}
+.cmdk__input::placeholder { color: rgba(0, 0, 0, 0.4); }
+.cmdk__esc {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cmdk__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  scrollbar-gutter: stable;
+}
+.cmdk__group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.45);
+  padding: 10px 10px 6px;
+}
+.cmdk__group:first-child { padding-top: 4px; }
+.cmdk__item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #000;
+  cursor: pointer;
+  user-select: none;
+}
+.cmdk__item.is-highlighted { background: rgba(0, 0, 0, 0.05); }
+.cmdk__item-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: rgba(0, 0, 0, 0.7);
+}
+.cmdk__item-ic .avatar { width: 22px; height: 22px; flex: 0 0 22px; }
+.cmdk__item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmdk__item-sub {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.4);
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+}
+.cmdk__item-kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cmdk__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.015);
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+}
+.cmdk__hint { font-style: italic; }
+.cmdk__kbds { display: inline-flex; gap: 14px; }
+.cmdk__kbds span { display: inline-flex; gap: 4px; align-items: center; }
+.cmdk__kbds kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #fff;
+  color: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-scrim, .cmdk { transition: none; }
 }

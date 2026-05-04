@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { toast } from '/toast.js';
+import { cmdk } from '/cmdk.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -42,9 +43,7 @@ const projectUrlEl = $('project-url');
 const projectIdEl = $('project-id');
 const projectBadge = $('project-badge');
 const projectProgressCard = $('project-progress');
-const progressPhase = $('progress-phase');
-const progressCounts = $('progress-counts');
-const progressFill = $('progress-fill');
+const phaseTimeline = $('phase-timeline');
 const progressMsg = $('progress-msg');
 const projectErrorCard = $('project-error');
 const projectErrorText = $('project-error-text');
@@ -280,11 +279,13 @@ function renderProjects() {
     btn.dataset.id = id;
     btn.setAttribute('role', 'option');
     btn.setAttribute('aria-selected', id === activeId ? 'true' : 'false');
-    const shortcut = i < 9 ? `<span class="kbd-hint rail-hide">${i + 1}</span>` : '';
+    const status = job.status || 'queued';
+    const time = relativeTime(job.startedAt || job.createdAt);
     btn.innerHTML = `
       ${avatarHTML(job, 'sm')}
       <span class="project-item__name rail-hide" title="${escapeHtml(job.hostname || job.url)}">${escapeHtml(job.hostname || job.url)}</span>
-      ${shortcut}
+      <span class="project-item__time rail-hide">${escapeHtml(time)}</span>
+      <span class="project-item__dot project-item__dot--${status}" aria-label="${status}"></span>
     `;
     btn.addEventListener('click', () => selectProject(id));
     li.appendChild(btn);
@@ -318,6 +319,65 @@ function renderProjects() {
   renderActiveProjectHeader();
   bootAvatarImages(projectsList);
 }
+
+// Cmd-K command palette: build the item list from current state on each open.
+cmdk.setProvider(() => {
+  const items = [
+    {
+      id: 'new-clone',
+      group: 'Actions',
+      label: 'Clone a new site',
+      hint: 'N',
+      icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+      keywords: 'new clone create site url',
+      run: () => showCloneView(),
+    },
+  ];
+  if (activeId) {
+    const j = projects.get(activeId);
+    if (j?.status === 'completed') {
+      items.push({
+        id: 'pick',
+        group: 'Actions',
+        label: 'Pick components from active clone',
+        hint: 'P',
+        icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.5"/></svg>',
+        keywords: 'pick component select extract',
+        run: () => openPicker(activeId),
+      });
+      items.push({
+        id: 'download',
+        group: 'Actions',
+        label: 'Download active clone ZIP',
+        icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+        keywords: 'download zip export bundle',
+        run: () => { window.location.href = `/api/jobs/${activeId}/download`; },
+      });
+    }
+  }
+  for (const id of projectOrder) {
+    const j = projects.get(id);
+    if (!j) continue;
+    items.push({
+      id: `proj-${id}`,
+      group: 'Projects',
+      label: j.hostname || j.url,
+      subtitle: j.status,
+      icon: avatarHTML(j, 'sm'),
+      keywords: `${j.hostname || ''} ${j.url || ''} ${j.status || ''}`,
+      run: () => selectProject(id),
+    });
+  }
+  items.push({
+    id: 'help',
+    group: 'Help',
+    label: 'Keyboard shortcuts',
+    icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="17" r="0.9" fill="currentColor"/></svg>',
+    keywords: 'help shortcuts keys',
+    run: () => toast.info('Shortcuts', 'Cmd+K palette · / search · N new clone · Cmd+1..9 switch'),
+  });
+  return items;
+});
 
 function renderActiveProjectHeader() {
   if (!activeId) {
@@ -375,17 +435,8 @@ function renderProjectDetail() {
   projectBadge.className = `badge ${job.status}`;
   projectBadge.textContent = job.status;
 
-  // Progress
-  const phase = job.progress?.phase || 'queued';
-  progressPhase.textContent = phaseLabels[phase] || phase;
-  const captured = job.progress?.captured ?? 0;
-  const total = job.progress?.total ?? 0;
-  progressCounts.textContent = total > 0 ? `${captured}/${total} assets` : '';
-  let pct;
-  if (job.status === 'completed') pct = 100;
-  else if (total > 0) pct = Math.min(98, Math.round((captured / total) * 90) + 5);
-  else pct = phaseToPct(phase);
-  progressFill.style.width = `${pct}%`;
+  // Progress timeline
+  renderPhaseTimeline(job);
   progressMsg.textContent = job.progress?.message || '';
 
   // Hide progress card if completed (replaced by stats + actions)
@@ -430,6 +481,63 @@ function phaseToPct(phase) {
   const idx = PHASE_ORDER.indexOf(phase);
   if (idx < 0) return 5;
   return Math.round((idx / (PHASE_ORDER.length - 1)) * 100);
+}
+
+// Vercel-deployment-style timeline: one row per phase with a status icon and
+// elapsed-or-pending duration on the right. The "current" row spins; earlier
+// rows are checked; later rows are dim-circled. On failure the active phase
+// row turns into a red x.
+function renderPhaseTimeline(job) {
+  if (!phaseTimeline) return;
+  const currentPhase = job.progress?.phase || 'queued';
+  const failed = job.status === 'failed';
+  const completed = job.status === 'completed';
+  const currentIdx = completed
+    ? PHASE_ORDER.length - 1
+    : Math.max(0, PHASE_ORDER.indexOf(currentPhase));
+  const captured = job.progress?.captured ?? 0;
+  const total = job.progress?.total ?? 0;
+  const startedAt = job.startedAt ? Date.parse(job.startedAt) : null;
+  const finishedAt = job.finishedAt ? Date.parse(job.finishedAt) : null;
+
+  phaseTimeline.innerHTML = PHASE_ORDER.map((phase, idx) => {
+    let state;
+    if (idx < currentIdx) state = 'done';
+    else if (idx === currentIdx) state = failed ? 'failed' : (completed ? 'done' : 'active');
+    else state = 'pending';
+
+    let right = '';
+    if (state === 'active' && phase === currentPhase && total > 0) {
+      right = `<span class="phase-row__count">${captured}/${total}</span>`;
+    } else if (state === 'done' && idx === PHASE_ORDER.length - 1 && finishedAt && startedAt) {
+      const sec = Math.max(1, Math.round((finishedAt - startedAt) / 1000));
+      right = `<span class="phase-row__time">${sec}s</span>`;
+    } else if (state === 'pending') {
+      right = `<span class="phase-row__pending">queued</span>`;
+    } else if (state === 'failed') {
+      right = `<span class="phase-row__failed">failed</span>`;
+    }
+    return `
+      <div class="phase-row phase-row--${state}">
+        <span class="phase-row__ic">${phaseIcon(state)}</span>
+        <span class="phase-row__label">${escapeHtml(phaseLabels[phase] || phase)}</span>
+        ${right}
+      </div>
+    `;
+  }).join('');
+}
+
+function phaseIcon(state) {
+  if (state === 'done') {
+    return '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="m5 8.2 2.2 2 4-4.4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  if (state === 'active') {
+    return '<svg viewBox="0 0 16 16" width="14" height="14" class="tk-spin"><circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-dasharray="22 18" stroke-linecap="round"/></svg>';
+  }
+  if (state === 'failed') {
+    return '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  }
+  return '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>';
 }
 
 // =============================================================================
@@ -545,6 +653,8 @@ form.addEventListener('submit', async (e) => {
     }
     const created = await res.json();
     decrementCredits(1);
+    // Clear any active sidebar filter so the new clone shows up immediately
+    if (projectsFilter) closeProjectsSearch();
     // Server returns the full summary
     upsertProject(created);
     subscribeToJob(created.id);
@@ -1013,10 +1123,10 @@ document.addEventListener('keydown', (e) => {
     showCloneView();
   }
 
-  // "/" → focus sidebar search (only when not typing)
+  // "/" → open command palette (works regardless of sidebar state)
   if (!inField && e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
     e.preventDefault();
-    openProjectsSearch();
+    cmdk.open();
   }
 });
 
@@ -1030,6 +1140,18 @@ function escapeHtml(s) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+function relativeTime(ts) {
+  if (!ts) return '';
+  const t = typeof ts === 'string' ? Date.parse(ts) : ts;
+  if (!Number.isFinite(t)) return '';
+  const diff = Date.now() - t;
+  if (diff < 45_000) return 'now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d`;
+  return `${Math.floor(diff / 604_800_000)}w`;
 }
 
 // =============================================================================
