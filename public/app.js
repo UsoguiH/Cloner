@@ -281,11 +281,14 @@ function renderProjects() {
     btn.setAttribute('aria-selected', id === activeId ? 'true' : 'false');
     const status = job.status || 'queued';
     const time = relativeTime(job.startedAt || job.createdAt);
+    const dot = (status === 'running' || status === 'failed')
+      ? `<span class="project-item__dot project-item__dot--${status}" aria-label="${status}"></span>`
+      : '';
     btn.innerHTML = `
       ${avatarHTML(job, 'sm')}
       <span class="project-item__name rail-hide" title="${escapeHtml(job.hostname || job.url)}">${escapeHtml(job.hostname || job.url)}</span>
       <span class="project-item__time rail-hide">${escapeHtml(time)}</span>
-      <span class="project-item__dot project-item__dot--${status}" aria-label="${status}"></span>
+      ${dot}
     `;
     btn.addEventListener('click', () => selectProject(id));
     li.appendChild(btn);
