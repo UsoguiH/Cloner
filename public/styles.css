@@ -421,6 +421,125 @@ a:hover { color: var(--primary); }
 }
 .active-project__chev { color: var(--muted); }
 
+/* Project switcher popover — opens from .active-project button */
+.sidebar { position: relative; }
+.switcher {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 130px;
+  z-index: 60;
+  background: var(--surface-card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: calc(100vh - 160px);
+}
+.switcher[hidden] { display: none; }
+.switcher__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 32px;
+  border-radius: var(--r-md);
+  background: var(--surface-strong);
+}
+.switcher__search-icon { color: var(--muted); flex: 0 0 14px; }
+.switcher__search input {
+  flex: 1;
+  margin-left: 8px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+}
+.switcher__search input::placeholder { color: var(--muted-soft); }
+.switcher__list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  max-height: 360px;
+}
+.switcher__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: left;
+}
+.switcher__row:hover,
+.switcher__row.is-focused { background: var(--surface-strong); }
+.switcher__row .avatar { width: 22px; height: 22px; flex: 0 0 22px; font-size: 11px; }
+.switcher__row-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.switcher__row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  flex: 0 0 8px;
+}
+.switcher__row-dot--running   { background: var(--primary); }
+.switcher__row-dot--failed    { background: var(--error); }
+.switcher__row-dot--completed { background: var(--success); }
+.switcher__empty {
+  padding: 12px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.switcher__new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  margin-top: 2px;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  text-align: left;
+}
+.switcher__new:hover { background: var(--surface-strong); }
+.switcher__new-icon {
+  width: 22px; height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+/* Hide the switcher when the sidebar is collapsed (rail mode) — there's no
+   trigger to anchor to. */
+.sidebar:not(:hover):not(:focus-within):not(.is-pinned) .switcher { display: none; }
+
 /* Projects list */
 .projects {
   display: flex;
@@ -1198,6 +1317,7 @@ a:hover { color: var(--primary); }
 }
 .project-item__dot--completed { background: #1f8a4d; }
 .project-item__dot--failed { background: var(--error); }
+.project-item__dot--warnings { background: #d97706; }
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.45; transform: scale(0.78); }

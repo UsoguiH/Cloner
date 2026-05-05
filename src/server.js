@@ -579,10 +579,12 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
       folder: `components/${c.folder}/`,
     })),
     files: {
+      'OPEN_ME.html':
+        'Self-contained snapshot. Double-click to view — no launcher, no Node, no service worker needed. Same picked subtree, all styling and assets baked in.',
       'start.bat / start.sh':
-        'Double-click to launch. Boots a 127.0.0.1:8080 static server, opens the default browser. Requires Node.js (https://nodejs.org/).',
+        'Optional launcher for live JS / animations. Boots a 127.0.0.1:8080 static server with service-worker replay. Requires Node.js (https://nodejs.org/).',
       'index.html':
-        'Composed view — every picked section visible together, in original DOM order, with full layout context.',
+        'Composed view for the launcher — every picked section visible together, in original DOM order, with full layout context.',
       'components/<NN-slug>/index.html':
         'One picked section in isolation. Open via the launcher (e.g. http://127.0.0.1:8080/components/01-…/).',
       'replay/':
@@ -608,6 +610,23 @@ app.post('/api/jobs/:id/extract-zip', async (req, res) => {
 
   // Top-level: composed-view index + launcher + replay pool.
   zip.append(composedDoc, { name: 'index.html' });
+
+  // Self-contained snapshot — preview.html is the computed-style capture
+  // with every asset baked in (data: URIs + replay/bodies refs), so it
+  // renders identically to the live site without a launcher. Apply the
+  // same picker isolation so users who just double-click see the picked
+  // subtree only. This is the file we tell users to open from file://.
+  const previewPath = path.join(outDir, 'preview.html');
+  if (fs.existsSync(previewPath)) {
+    try {
+      const previewHtml = fs.readFileSync(previewPath, 'utf8');
+      const isolatedPreview = buildIsolatedFullPage(previewHtml, selectors, { settledOverrides });
+      zip.append(isolatedPreview, { name: 'OPEN_ME.html' });
+    } catch (err) {
+      console.warn(`[extract-zip ${job.id}] preview isolation failed:`, err.message);
+    }
+  }
+
   for (const f of required) {
     zip.file(path.join(TEMPLATES_DIR, f), { name: f });
   }
@@ -644,17 +663,21 @@ Picked components (in DOM order)
 --------------------------------
 ${componentList}
 
-How to run
-----------
-Requires Node.js 18+ (https://nodejs.org/).
+How to view
+-----------
+EASIEST: just double-click OPEN_ME.html. Renders standalone, no setup.
+                Every asset and font is baked in.
 
+For live JS / animations, run the launcher (requires Node.js 18+):
   Windows : double-click start.bat
   Mac/Linux: ./start.sh   (or:  node serve.cjs)
-
 The launcher boots http://127.0.0.1:8080 and opens your default browser.
 
 Layout
 ------
+OPEN_ME.html
+    Self-contained snapshot of the picked subtree. All styling, fonts,
+    images, and theme variables baked into one file. Open via file://.
 index.html
     Composed view — every picked section rendered together in the
     original DOM order, with full layout context (parent wrappers,

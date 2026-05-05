@@ -9,6 +9,8 @@ import { buildReplayBundle, copyLauncher, readBootstrap } from './replay.js';
 import { buildSnapshotHtml } from './snapshot.js';
 import { buildSourceTree, rewriteCssFiles, writeIndexHtml } from './source-tree.js';
 import { packageZip } from './packager.js';
+import { verifyBundle } from './verify.js';
+import { backfillMissingAssets } from './backfill.js';
 
 const TEMPLATES_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -170,6 +172,25 @@ export async function runCloneJob(job, { onProgress }) {
     if (blockerHints.length) diagnostics.blockerHints = blockerHints;
   } catch {}
 
+  // Backfill — scan the captured DOM + adopted CSS for asset URLs the
+  // browser never fetched (autoplay-blocked video, lazy below-the-fold
+  // images, range-request media). Pull each via Playwright's request
+  // context so authenticated cookies still apply, and inject them into
+  // the recorder so downstream consumers see them as ordinary captures.
+  try {
+    onProgress({ phase: 'extracting', message: 'backfilling missing assets' });
+    const bf = await backfillMissingAssets({
+      page,
+      recorder,
+      capturedHtml: extraction.html,
+      adoptedCss: extraction.adoptedStylesheets || [],
+      baseUrl: job.url,
+    });
+    diagnostics.backfill = bf;
+  } catch (e) {
+    console.warn(`[job ${job.id}] backfill pass failed:`, e.message);
+  }
+
   await recorder.flush();
   await browser.close();
   browser = null;
@@ -311,6 +332,45 @@ export async function runCloneJob(job, { onProgress }) {
     'utf8'
   );
 
+  // Record any URLs whose body we couldn't capture even after the retry
+  // pass. The verify gate reads this to decide whether to flag the bundle
+  // as completed_with_warnings.
+  const failedAssets = [];
+  for (const r of recorder.responses.values()) {
+    if (r.bodyFetchFailed || (r.error && !r.body)) {
+      failedAssets.push({
+        url: r.url,
+        status: r.status || 0,
+        mimeType: r.mimeType || '',
+        error: r.error || 'unknown',
+      });
+    }
+  }
+  diagnostics.failedAssetCount = failedAssets.length;
+  if (failedAssets.length) {
+    await fs.writeFile(
+      path.join(outputDir, 'failed_assets.json'),
+      JSON.stringify(failedAssets, null, 2),
+      'utf8'
+    );
+  }
+
+  // Self-verification gate — open the produced preview.html in a real
+  // browser and confirm it actually renders. The result is attached to
+  // job.progress so the UI can show a warnings badge.
+  onProgress({ phase: 'packaging', message: 'verifying bundle' });
+  let verifyResult = null;
+  try {
+    verifyResult = await verifyBundle({
+      outputDir,
+      jobUrl: job.url,
+      failedAssetCount: failedAssets.length,
+    });
+    diagnostics.verify = verifyResult;
+  } catch (e) {
+    console.warn(`[job ${job.id}] verify failed:`, e.message);
+  }
+
   onProgress({ phase: 'packaging', message: 'building ZIP' });
   await packageZip(outputDir, path.join(job.jobDir, 'output.zip'));
 
@@ -319,6 +379,7 @@ export async function runCloneJob(job, { onProgress }) {
     message: 'complete',
     captured: replay.recorded,
     total: recorder.responses.size,
+    verify: verifyResult,
   });
   } catch (err) {
     runFailed = true;

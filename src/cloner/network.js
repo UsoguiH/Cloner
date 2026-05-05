@@ -88,14 +88,68 @@ export class CDPNetworkRecorder {
         body,
         bodyBase64: base64Encoded,
       });
+      return;
     } catch (err) {
+      // CDP body fetch loses to a few races: response stream already
+      // consumed by another listener, the request was a 204/redirect with
+      // no body, or the resource was loaded from disk cache. For methods
+      // that have an idempotent retry (GET/HEAD), refetch via Playwright's
+      // request context — which re-issues server-side using the same
+      // session cookies / headers. This catches the Next.js chunk race
+      // that drops 5–20% of bodies on first capture.
+      const cdpErr = err.message || String(err);
+      const method = (req.method || 'GET').toUpperCase();
+      if (method === 'GET' || method === 'HEAD') {
+        const retried = await this._retryViaRequest(req).catch(() => null);
+        if (retried) {
+          this.responses.set(req.url, retried);
+          return;
+        }
+      }
       this.responses.set(req.url, {
         url: req.url,
         status: req.response?.status,
         mimeType: req.response?.mimeType,
         headers: req.response?.headers || {},
-        error: err.message || String(err),
+        error: cdpErr,
+        bodyFetchFailed: true,
       });
+    }
+  }
+
+  /**
+   * Re-issue a recorded request via Playwright's request context. The page
+   * context inherits cookies + extraHTTPHeaders, so this approximates what
+   * the browser sent originally. Returns a response-shaped object on
+   * success, or null on any failure.
+   */
+  async _retryViaRequest(req) {
+    try {
+      const ctx = this.page?.context?.();
+      if (!ctx || !ctx.request) return null;
+      const r = await ctx.request.fetch(req.url, {
+        method: (req.method || 'GET').toUpperCase(),
+        headers: stripHopByHop(req.headers),
+        timeout: 8000,
+        failOnStatusCode: false,
+      });
+      const buf = await r.body();
+      const status = r.status();
+      // Match shape of CDP response: body is base64-encoded if non-text.
+      const mimeType = r.headers()['content-type'] || req.response?.mimeType || '';
+      const isTextLike = /^(text\/|application\/(?:javascript|json|xml|wasm)|image\/svg\+xml)/i.test(mimeType);
+      const bodyBase64 = !isTextLike;
+      return {
+        url: req.url,
+        status,
+        mimeType,
+        headers: r.headers(),
+        body: bodyBase64 ? buf.toString('base64') : buf.toString('utf8'),
+        bodyBase64,
+        retried: true,
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -158,4 +212,24 @@ export class CDPNetworkRecorder {
 
 function headerObjToArr(h = {}) {
   return Object.entries(h).map(([name, value]) => ({ name, value: String(value) }));
+}
+
+// Hop-by-hop and otherwise-forbidden request headers that Playwright's
+// request.fetch refuses to set. The browser sets these itself; passing them
+// through verbatim from the captured request causes the retry to error out
+// before it ever issues the request.
+const FORBIDDEN_HEADERS = new Set([
+  'accept-encoding', 'connection', 'content-length', 'cookie', 'host',
+  'keep-alive', 'origin', 'proxy-authorization', 'te', 'trailer',
+  'transfer-encoding', 'upgrade', 'via',
+]);
+function stripHopByHop(h = {}) {
+  const out = {};
+  for (const [name, value] of Object.entries(h)) {
+    const lower = name.toLowerCase();
+    if (FORBIDDEN_HEADERS.has(lower)) continue;
+    if (lower.startsWith(':')) continue; // HTTP/2 pseudo-headers
+    out[name] = String(value);
+  }
+  return out;
 }

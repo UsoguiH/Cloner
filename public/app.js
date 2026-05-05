@@ -21,8 +21,15 @@ const projectsSearchBtn = $('projects-search-btn');
 const projectsSearchField = $('projects-search-field');
 const projectsSearchInput = $('projects-search-input');
 const projectsSearchClose = $('projects-search-close');
+const switcher = $('switcher');
+const switcherInput = $('switcher-input');
+const switcherList = $('switcher-list');
+const switcherEmpty = $('switcher-empty');
+const switcherNew = $('switcher-new');
 
 let projectsFilter = '';
+let switcherFilter = '';
+let switcherFocusIdx = -1;
 
 // Topbar
 const crumbActive = $('crumb-active');
@@ -281,9 +288,14 @@ function renderProjects() {
     btn.setAttribute('aria-selected', id === activeId ? 'true' : 'false');
     const status = job.status || 'queued';
     const time = relativeTime(job.startedAt || job.createdAt);
-    const dot = (status === 'running' || status === 'failed')
-      ? `<span class="project-item__dot project-item__dot--${status}" aria-label="${status}"></span>`
-      : '';
+    const hasWarnings = status === 'completed' && job.progress?.verify?.status === 'warnings';
+    let dot = '';
+    if (status === 'running' || status === 'failed') {
+      dot = `<span class="project-item__dot project-item__dot--${status}" aria-label="${status}"></span>`;
+    } else if (hasWarnings) {
+      const tip = (job.progress.verify.failures || []).join('; ') || 'bundle has warnings';
+      dot = `<span class="project-item__dot project-item__dot--warnings" aria-label="warnings" title="${escapeHtml(tip)}"></span>`;
+    }
     btn.innerHTML = `
       ${avatarHTML(job, 'sm')}
       <span class="project-item__name rail-hide" title="${escapeHtml(job.hostname || job.url)}">${escapeHtml(job.hostname || job.url)}</span>
@@ -672,7 +684,109 @@ form.addEventListener('submit', async (e) => {
 
 newProjectBtn.addEventListener('click', showCloneView);
 activeProjectBtn.addEventListener('click', () => {
-  if (!activeId) showCloneView();
+  if (switcher.hidden) openSwitcher();
+  else closeSwitcher();
+});
+
+// =============================================================================
+// Project switcher (popover anchored to .active-project)
+// =============================================================================
+
+function openSwitcher() {
+  switcher.hidden = false;
+  activeProjectBtn.setAttribute('aria-expanded', 'true');
+  switcherInput.value = switcherFilter;
+  renderSwitcher();
+  setTimeout(() => switcherInput.focus(), 0);
+}
+function closeSwitcher() {
+  switcher.hidden = true;
+  activeProjectBtn.setAttribute('aria-expanded', 'false');
+  switcherFocusIdx = -1;
+}
+function switcherMatches() {
+  const q = switcherFilter.trim().toLowerCase();
+  // projectOrder is maintained newest-first (unshift on upsert), so iterate
+  // it directly — same source the sidebar list uses.
+  const all = projectOrder.map((id) => projects.get(id)).filter(Boolean);
+  if (!q) return all;
+  return all.filter((j) => {
+    const hay = `${j.hostname || ''} ${j.url || ''}`.toLowerCase();
+    return hay.includes(q);
+  });
+}
+function renderSwitcher() {
+  const items = switcherMatches();
+  switcherList.innerHTML = '';
+  if (!items.length) {
+    switcherEmpty.hidden = false;
+    switcherList.hidden = true;
+    return;
+  }
+  switcherEmpty.hidden = true;
+  switcherList.hidden = false;
+  items.forEach((job, i) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'switcher__row' + (i === switcherFocusIdx ? ' is-focused' : '');
+    btn.dataset.id = job.id;
+    btn.setAttribute('role', 'option');
+    const status = job.status || 'queued';
+    const dotCls = (status === 'running' || status === 'failed' || status === 'completed')
+      ? `switcher__row-dot switcher__row-dot--${status}`
+      : '';
+    const dot = dotCls ? `<span class="${dotCls}" aria-label="${status}"></span>` : '';
+    btn.innerHTML = `
+      ${avatarHTML(job, 'sm')}
+      <span class="switcher__row-name" title="${escapeHtml(job.hostname || job.url)}">${escapeHtml(job.hostname || job.url)}</span>
+      ${dot}
+    `;
+    btn.addEventListener('click', () => {
+      selectProject(job.id);
+      closeSwitcher();
+    });
+    li.appendChild(btn);
+    switcherList.appendChild(li);
+  });
+  bootAvatarImages(switcherList);
+}
+switcherInput.addEventListener('input', () => {
+  switcherFilter = switcherInput.value;
+  switcherFocusIdx = -1;
+  renderSwitcher();
+});
+switcherInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); closeSwitcher(); return; }
+  const items = switcherMatches();
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    switcherFocusIdx = Math.min(items.length - 1, switcherFocusIdx + 1);
+    renderSwitcher();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    switcherFocusIdx = Math.max(0, switcherFocusIdx - 1);
+    renderSwitcher();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const target = items[switcherFocusIdx] || items[0];
+    if (target) { selectProject(target.id); closeSwitcher(); }
+  }
+});
+switcherNew.addEventListener('click', () => {
+  closeSwitcher();
+  showCloneView();
+});
+document.addEventListener('mousedown', (e) => {
+  if (switcher.hidden) return;
+  if (switcher.contains(e.target) || activeProjectBtn.contains(e.target)) return;
+  closeSwitcher();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !switcher.hidden) {
+    closeSwitcher();
+    activeProjectBtn.focus();
+  }
 });
 projectsExpand.addEventListener('click', () => {
   projectsExpanded = !projectsExpanded;

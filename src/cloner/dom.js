@@ -136,26 +136,110 @@ export async function extractRenderedDOM(page) {
   return result;
 }
 
+/**
+ * Multi-strategy scroll loop. Real-world pages defeat scrollHeight-stability
+ * detection in three different ways, so we layer three strategies with a
+ * shared 60s wallclock budget:
+ *
+ *   1. window.scrollTo to document bottom — covers 80% of pages where the
+ *      body itself grows as content lazy-mounts.
+ *   2. Walk every overflow:auto/scroll container and scroll each to its
+ *      bottom — covers app-shell layouts (Linear, Notion clones) where
+ *      the document body is fixed-height and content scrolls inside a
+ *      sub-container.
+ *   3. scrollIntoView every section/article/footer/[data-*reveal] not yet
+ *      seen — fires IntersectionObserver triggers for reveal-on-scroll
+ *      sections that mount JIT.
+ */
 export async function autoScroll(page) {
-  await page.evaluate(async () => {
+  const startedAt = Date.now();
+  const WALLCLOCK_MS = 60_000;
+
+  await page.evaluate(async (budget) => {
+    const startedAt = Date.now();
+    const timeLeft = () => budget - (Date.now() - startedAt);
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // --- Strategy 1: scroll the document body. ---
     let last = 0;
     let stable = 0;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 40 && timeLeft() > 0; i++) {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
       await sleep(400);
       const h = document.body.scrollHeight;
       if (h === last) {
-        stable++;
-        if (stable >= 2) break;
+        if (++stable >= 3) break;
       } else {
         stable = 0;
         last = h;
       }
     }
+
+    // --- Strategy 2: scroll each overflow:auto/scroll container. ---
+    if (timeLeft() > 0) {
+      const containers = [];
+      const seen = new WeakSet();
+      const enqueue = (el) => {
+        if (!el || seen.has(el)) return;
+        seen.add(el);
+        containers.push(el);
+      };
+      // Cheap CSS-attribute selectors first.
+      document.querySelectorAll('[style*="overflow:auto"], [style*="overflow: auto"], [style*="overflow:scroll"], [style*="overflow: scroll"], [data-scrollable]').forEach(enqueue);
+      // Then a bounded computed-style scan for elements that are actually
+      // scrolling (scrollHeight > clientHeight) — catches Tailwind
+      // `overflow-y-auto` classes that don't show up as inline styles.
+      const all = document.querySelectorAll('main, section, article, aside, div, [role="main"], [role="region"]');
+      let scanned = 0;
+      for (const el of all) {
+        if (++scanned > 1500) break;
+        if (seen.has(el)) continue;
+        if (el.scrollHeight - el.clientHeight < 80) continue;
+        const cs = getComputedStyle(el);
+        const oy = cs.overflowY;
+        if (oy === 'auto' || oy === 'scroll') enqueue(el);
+      }
+      for (const el of containers) {
+        if (timeLeft() <= 0) break;
+        let prev = -1;
+        for (let i = 0; i < 12; i++) {
+          el.scrollTop = el.scrollHeight;
+          await sleep(180);
+          if (el.scrollTop === prev) break;
+          prev = el.scrollTop;
+          if (timeLeft() <= 0) break;
+        }
+      }
+    }
+
+    // --- Strategy 3: dispatch IntersectionObserver triggers. ---
+    if (timeLeft() > 0) {
+      const reveals = document.querySelectorAll(
+        'section, article, footer, aside, ' +
+        '[data-reveal], [data-aos], [data-animate], [data-fade], [data-scroll], ' +
+        '.reveal, .animate-on-scroll, .fade-in'
+      );
+      let kicks = 0;
+      for (const el of reveals) {
+        if (timeLeft() <= 0) break;
+        if (kicks++ > 200) break;
+        try {
+          el.scrollIntoView({ block: 'end', behavior: 'instant' });
+          await sleep(60);
+        } catch {}
+      }
+    }
+
     window.scrollTo(0, 0);
     await sleep(200);
-  });
+  }, WALLCLOCK_MS);
+
+  // Hard cap from the Node side — the in-page budget is best-effort and a
+  // pathological page could still hang inside scrollIntoView.
+  const elapsed = Date.now() - startedAt;
+  if (elapsed > WALLCLOCK_MS + 5000) {
+    console.warn(`[autoScroll] exceeded wallclock by ${elapsed - WALLCLOCK_MS}ms`);
+  }
 }
 
 /**

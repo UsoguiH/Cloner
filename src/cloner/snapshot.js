@@ -1,18 +1,44 @@
 /**
- * Post-hydration snapshot builder.
+ * Computed-style snapshot — refactored.
  *
- * The standalone-with-modules approach is fundamentally fragile: TrustedTypes,
- * RSC payloads, dynamic chunks, font-preload CORS — every framework adds new
- * ways for `file://` to fail. So instead of trying to *run* the SPA from a
- * single HTML, we let it run *once* under a real local server, capture the
- * fully-rendered DOM + computed stylesheet text, then bake that into a
- * scripts-stripped HTML with every asset inlined as data URIs.
+ * The cascade-replay strategy (capture every stylesheet, strip JS, hope the
+ * cascade resolves the same way under file://) keeps breaking on real
+ * sites. A single missing :root variable, a lost @import, a misordered
+ * @layer, an adopted shadow stylesheet, a CSS-in-JS injection that races
+ * the snapshot — any one of them silently breaks the rendered output.
+ * Each fix has been a new layer of regex; the abstraction is wrong.
  *
- * Result: a static HTML showing the component already mounted. CSS-driven
- * animation (gradients, keyframes, hover transitions) keeps working because
- * it lives in CSS. Click-driven JS interactions do NOT — that's the cost of
- * skipping the JS runtime entirely. But the component is *viewable* via
- * double-click, which is what the user asked for.
+ * This pass throws away the cascade entirely. For every visible element
+ * we ask the browser via getComputedStyle "what is the FINAL resolved
+ * value of every property — after var() resolution, after specificity,
+ * after !important, after Tailwind/CSS-in-JS/adopted-sheet contributions?"
+ * That value is materialized into a single rule keyed by a generated
+ * [data-cs="N"] attribute. Identical-style elements share a class via
+ * fingerprint dedup, so the bundle stays compact.
+ *
+ * What's preserved cascade-side:
+ *   - @keyframes  (cascade-independent — the browser only needs the rule
+ *                  text plus a matching `animation-name` in computed style)
+ *   - @font-face  (with `src: url()` rewritten to data: URIs)
+ *   - state-pseudo rules (rules whose selector contains :hover/:focus/etc.)
+ *     — the original `class` attribute is kept on every element so these
+ *     rules still match their targets
+ *
+ * Wins:
+ *   - Pixel-identical static rendering for any captured state
+ *   - Robust to file:// — every asset and font inlined as data:
+ *   - Robust to Tailwind v4 / CSS-in-JS / adopted shadow sheets — we
+ *     read the browser's resolved values, not the source rules
+ *   - CSS keyframe animations alive (browser plays them from computed
+ *     `animation: ...` + the preserved @keyframes)
+ *   - :hover / :focus interactions still trigger via kept pseudo rules
+ *
+ * Known limits (V1):
+ *   - Responsive @media: baked at the capture viewport (resize doesn't
+ *     reflow to mobile rules). Future: capture per breakpoint.
+ *   - JS-driven runtime animations (Framer Motion springs, rAF loops):
+ *     dead. Same as the previous strip-scripts snapshot.
+ *   - Closed shadow DOM: contents inaccessible (browser API limit).
  */
 
 import http from 'node:http';
@@ -34,7 +60,10 @@ const MIME = {
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.wasm': 'application/wasm',
 };
 
-function startServer(rootDir, manifest) {
+function startServer(rootDirArg, manifest) {
+  // path.resolve early so the target.startsWith(rootDir) safety check below
+  // works no matter what the caller passed (absolute, relative, mixed slashes).
+  const rootDir = path.resolve(rootDirArg);
   const lookupReplay = (urlPath) => {
     if (!manifest?.entries) return null;
     if (manifest.byPath?.[urlPath]) {
@@ -136,26 +165,110 @@ export async function buildSnapshotHtml({ outputDir, settleMs = 4500, viewport =
     const page = await ctx.newPage();
 
     await page.goto(url, { waitUntil: 'load', timeout: 30000 });
-    // Service worker takes over and triggers a reload — wait for it.
+    // Service-worker bootstrap reloads the page once the SW is installed —
+    // wait for that reload's load event before we measure anything else.
     await page.waitForLoadState('load', { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(1500);
     try { await page.waitForLoadState('networkidle', { timeout: 8000 }); } catch {}
-    await page.waitForTimeout(settleMs);
 
-    // Demo component pages typically gate their animation behind a click. The
-    // animation itself is a CSS @keyframes — once JS adds the active class, the
-    // animation runs forever via CSS. So clicking the page's main button BEFORE
-    // capture freezes the active class into the DOM, and the snapshot keeps
-    // animating with no JS at runtime.
+    // Hydration-stability wait. SPA frameworks finish hydrating the DOM
+    // a few hundred ms after networkidle (route resolution, IO callbacks,
+    // delayed-mount components). Poll until the element count is stable
+    // for two consecutive ticks OR the budget elapses.
+    const STABILITY_BUDGET = Math.max(settleMs, 8000);
+    {
+      const t0 = Date.now();
+      let last = 0;
+      let stable = 0;
+      while (Date.now() - t0 < STABILITY_BUDGET) {
+        const count = await page.evaluate(() => document.querySelectorAll('*').length).catch(() => 0);
+        if (count > 50 && count === last) {
+          stable++;
+          if (stable >= 2) break;
+        } else {
+          stable = 0;
+        }
+        last = count;
+        await page.waitForTimeout(700);
+      }
+    }
+
+    // Drive scroll-triggered animations to completion. Most modern landing
+    // pages use ScrollTrigger / IntersectionObserver to play "fade-in" or
+    // "slide-up" animations as sections enter the viewport. Until that
+    // happens, the elements sit at opacity:0 + offscreen-transform initial
+    // state. If we snapshot at scrollTop=0, every below-fold section is
+    // captured invisible — verify gate sees text content (innerText reports
+    // the raw chars) but the rendered output is blank.
     //
-    // We only do this when the page LOOKS like a single-component demo
-    // (no nav, few buttons, button text like "click to..." / "turn on...").
-    // For landing pages, clicking the central CTA usually does something
-    // destructive (open menu, play a giant video, navigate) that would bloat
-    // or break the snapshot.
+    // Strategy: step-scroll from top to bottom in viewport-sized increments,
+    // pausing briefly at each step so ScrollTrigger fires, then return to
+    // top. Most sites use `toggleActions: 'play none none none'` (don't
+    // reverse on leave) so once played the elements stay visible.
+    try {
+      await page.evaluate(async () => {
+        const total = document.documentElement.scrollHeight;
+        const step = window.innerHeight * 0.7;
+        for (let y = 0; y < total + window.innerHeight; y += step) {
+          window.scrollTo(0, y);
+          await new Promise((r) => setTimeout(r, 220));
+        }
+        window.scrollTo(0, 0);
+        await new Promise((r) => setTimeout(r, 400));
+      });
+    } catch {}
+
+    // Animations that are actively in transit when we serialize will bake
+    // their *current* in-between transform / opacity into computed style —
+    // the snapshot then renders them frozen mid-fade. Force any running
+    // browser-managed animation (Web Animations API) to its final state.
+    // GSAP timelines using rAF aren't enumerated here, but they typically
+    // settle to their final state after their last tween, which the scroll
+    // loop above lets play out.
     try {
       await page.evaluate(() => {
-        // Disqualify landing-page-shaped pages.
+        for (const a of document.getAnimations()) {
+          try { a.finish(); } catch {}
+        }
+      });
+      await page.waitForTimeout(400);
+    } catch {}
+
+    // Heuristic salvage for elements that the animation system left in an
+    // initial "invisible" state (opacity:0 + offscreen transform) despite
+    // having visible text content. Common when the site uses pure-rAF
+    // (GSAP) animations that we can't fast-forward. Force their inline
+    // style — getComputedStyle reads these next, baking the final state
+    // into the captured rule.
+    try {
+      await page.evaluate(() => {
+        const els = document.querySelectorAll('*');
+        for (const el of els) {
+          if (!(el instanceof HTMLElement)) continue;
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none') continue;
+          const op = parseFloat(cs.opacity);
+          const t = cs.transform;
+          const txt = (el.textContent || '').trim();
+          // Only recover invisibly-animated text containers — leave purely
+          // decorative invisible elements (overlays, off-screen UI) alone.
+          if (op === 0 && txt && t && t !== 'none') {
+            el.style.opacity = '1';
+            el.style.transform = 'none';
+            el.style.visibility = 'visible';
+          }
+        }
+      });
+      await page.waitForTimeout(200);
+    } catch {}
+
+    // Demo-component pages typically gate their animation behind a click.
+    // The animation itself is a CSS @keyframes, so once JS adds the active
+    // class the animation runs forever via CSS. Pre-clicking the most
+    // central button on a page that LOOKS like a single-component demo
+    // freezes that active class into the captured DOM.
+    try {
+      await page.evaluate(() => {
         const navLinks = document.querySelectorAll('nav a, header a').length;
         const totalButtons = document.querySelectorAll('button, [role="button"]').length;
         if (navLinks > 3) return;
@@ -172,7 +285,6 @@ export async function buildSnapshotHtml({ outputDir, settleMs = 4500, viewport =
             if (r.right < 0 || r.bottom < 0 || r.left > vw || r.top > vh) return false;
             const cs = getComputedStyle(el);
             if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.1) return false;
-            // Skip play / pause / volume / fullscreen on media elements.
             const t = (el.innerText || '').trim().toLowerCase();
             if (/^(play|pause|mute|unmute|volume|fullscreen|cart|menu|close|×|x)$/.test(t)) return false;
             return true;
@@ -189,53 +301,11 @@ export async function buildSnapshotHtml({ outputDir, settleMs = 4500, viewport =
       await page.waitForTimeout(800);
     } catch {}
 
-    // Capture: live DOM + every stylesheet's cssText + every adoptedStyleSheet.
-    const captured = await page.evaluate(() => {
-      const sheets = [];
-      // Regular stylesheets — read cssText (works because they're same-origin via local server).
-      for (const s of Array.from(document.styleSheets)) {
-        try {
-          const rules = s.cssRules || s.rules;
-          if (!rules) continue;
-          const parts = [];
-          for (const r of Array.from(rules)) parts.push(r.cssText);
-          sheets.push({ media: s.media?.mediaText || '', text: parts.join('\n') });
-        } catch (e) { /* CORS or other access error */ }
-      }
-      // adoptedStyleSheets on document and shadow roots — used by Lit, Tailwind v4.
-      const adoptedFrom = [document];
-      try {
-        document.querySelectorAll('*').forEach((el) => { if (el.shadowRoot) adoptedFrom.push(el.shadowRoot); });
-      } catch {}
-      const adopted = [];
-      for (const root of adoptedFrom) {
-        const list = root.adoptedStyleSheets || [];
-        for (const s of list) {
-          try {
-            const parts = [];
-            for (const r of Array.from(s.cssRules)) parts.push(r.cssText);
-            if (parts.length) adopted.push(parts.join('\n'));
-          } catch {}
-        }
-      }
-      // Capture ALL <style> contents too (in case stylesheet API misses some).
-      const inlineStyles = [];
-      document.querySelectorAll('style').forEach((s) => inlineStyles.push(s.textContent || ''));
-
-      return {
-        html: document.documentElement.outerHTML,
-        doctype: document.doctype ? `<!DOCTYPE ${document.doctype.name}>` : '<!DOCTYPE html>',
-        title: document.title,
-        sheets,
-        adopted,
-        inlineStyles,
-        baseHref: document.baseURI,
-      };
-    });
+    const captured = await page.evaluate(serializeComputedTreeInPage);
 
     await browser.close();
     server.close();
-    return await rewriteSnapshot({ captured, manifest, replayDir, baseHref: captured.baseHref });
+    return await rewriteSnapshot({ captured, manifest, replayDir, baseHref: url });
   } catch (e) {
     if (browser) await browser.close().catch(() => {});
     server.close();
@@ -243,24 +313,232 @@ export async function buildSnapshotHtml({ outputDir, settleMs = 4500, viewport =
   }
 }
 
+/**
+ * In-page serializer. Defined as a real function so we get editor support;
+ * Playwright stringifies and evals it inside the target page. NO closure
+ * access — every helper must live inside this function body.
+ */
+function serializeComputedTreeInPage() {
+  const VOID = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+  const SKIP_TAGS = new Set(['script','noscript','template','meta','link','style','title','base']);
+  const STATE_RE = /(?:^|[\s,>~+]):(?:hover|focus|focus-within|focus-visible|active|checked|disabled|enabled|placeholder-shown|target|required|invalid|valid|in-range|out-of-range|read-only|read-write|defined|empty|first-child|last-child|nth-child|first-of-type|last-of-type)\b/i;
+
+  const fpToCid = new Map();
+  let cidCounter = 0;
+  const baseRules = [];
+  const beforeRules = [];
+  const afterRules = [];
+
+  const escapeAttr = (s) => String(s)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const escapeText = (s) => String(s)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+  function dumpStyle(cs) {
+    const parts = [];
+    for (let i = 0; i < cs.length; i++) {
+      const name = cs[i];
+      // CSS variables already resolved into consumer values — no need to ship.
+      if (name.startsWith('--')) continue;
+      const v = cs.getPropertyValue(name);
+      if (!v) continue;
+      parts.push(name + ':' + v);
+    }
+    return parts.join(';');
+  }
+
+  function classify(el) {
+    let cs;
+    try { cs = getComputedStyle(el); } catch { return null; }
+    const baseFp = dumpStyle(cs);
+    let beforeFp = '';
+    let afterFp = '';
+    try {
+      const bcs = getComputedStyle(el, '::before');
+      const c = bcs.getPropertyValue('content');
+      if (c && c !== 'none' && c !== 'normal') beforeFp = dumpStyle(bcs);
+    } catch {}
+    try {
+      const acs = getComputedStyle(el, '::after');
+      const c = acs.getPropertyValue('content');
+      if (c && c !== 'none' && c !== 'normal') afterFp = dumpStyle(acs);
+    } catch {}
+    const fp = baseFp + '' + beforeFp + '' + afterFp;
+    let cid = fpToCid.get(fp);
+    if (cid !== undefined) return cid;
+    cid = String(cidCounter++);
+    fpToCid.set(fp, cid);
+    baseRules.push('[data-cs="' + cid + '"]{' + baseFp + '}');
+    if (beforeFp) beforeRules.push('[data-cs="' + cid + '"]::before{' + beforeFp + '}');
+    if (afterFp) afterRules.push('[data-cs="' + cid + '"]::after{' + afterFp + '}');
+    return cid;
+  }
+
+  function isHidden(el) {
+    try {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none') return true;
+    } catch {}
+    return false;
+  }
+
+  function serializeChildren(parent) {
+    let out = '';
+    for (const c of parent.childNodes) {
+      if (c.nodeType === 3) out += escapeText(c.nodeValue);
+      else if (c.nodeType === 1) out += serializeElement(c);
+    }
+    return out;
+  }
+
+  function serializeElement(el) {
+    const tag = el.tagName ? el.tagName.toLowerCase() : '';
+    if (!tag || SKIP_TAGS.has(tag)) return '';
+    if (isHidden(el)) return '';
+
+    const cid = classify(el);
+    const attrs = [];
+    const seen = new Set();
+    for (const a of el.attributes) {
+      // Inline style="" is collapsed into computed style — drop it.
+      if (a.name === 'style') continue;
+      seen.add(a.name);
+      attrs.push(' ' + a.name + '="' + escapeAttr(a.value) + '"');
+    }
+    // Vue/React property bindings set `el.src` / `el.href` without writing
+    // the matching attribute. By the time serialize runs, the DOM property
+    // may carry the resolved URL while the attribute is still empty. Copy
+    // runtime values back into attributes so the static snapshot can load
+    // the same resource the live page would have.
+    const reflectIfMissing = (attrName, propVal) => {
+      if (!propVal) return;
+      if (seen.has(attrName)) return;
+      const v = String(propVal);
+      if (!v || v === 'about:blank') return;
+      attrs.push(' ' + attrName + '="' + escapeAttr(v) + '"');
+    };
+    if (tag === 'img' || tag === 'source' || tag === 'video' || tag === 'audio' || tag === 'iframe') {
+      // currentSrc reflects what the browser actually resolved (after
+      // <source> election for video/picture); fall back to .src for plain
+      // <img>/<iframe> where currentSrc may be empty if not yet loading.
+      reflectIfMissing('src', el.currentSrc || el.src);
+    }
+    if (tag === 'a' || tag === 'link') reflectIfMissing('href', el.href);
+    if (tag === 'video' || tag === 'audio') reflectIfMissing('poster', el.poster);
+    if (cid !== null) attrs.push(' data-cs="' + cid + '"');
+    const open = '<' + tag + attrs.join('') + '>';
+    if (VOID.has(tag)) return open;
+
+    // Open shadow roots — re-emit as declarative shadow DOM. Modern browsers
+    // parse <template shadowrootmode="open"> back into a real shadow root.
+    let shadowMarkup = '';
+    if (el.shadowRoot) {
+      const inner = serializeChildren(el.shadowRoot);
+      shadowMarkup = '<template shadowrootmode="open">' + inner + '</template>';
+    }
+    return open + shadowMarkup + serializeChildren(el) + '</' + tag + '>';
+  }
+
+  // Walk every accessible CSSOM source for @font-face / @keyframes / state-
+  // pseudo rules. These three categories survive cascade collapse: keyframes
+  // are name-referenced, font-faces are global, and pseudo rules need real
+  // selector matching that materialized [data-cs] alone can't reproduce.
+  const fontFaces = [];
+  const keyframes = [];
+  const pseudoRules = [];
+  function walkRules(rules) {
+    if (!rules) return;
+    for (const r of rules) {
+      const cn = r.constructor && r.constructor.name;
+      if (cn === 'CSSFontFaceRule' || r.type === 5) {
+        fontFaces.push(r.cssText);
+      } else if (cn === 'CSSKeyframesRule' || r.type === 7) {
+        keyframes.push(r.cssText);
+      } else if (cn === 'CSSStyleRule' || r.type === 1) {
+        if (r.selectorText && STATE_RE.test(r.selectorText)) {
+          pseudoRules.push(r.cssText);
+        }
+      } else if (r.cssRules) {
+        // @media, @supports, @layer, @container, @scope — recurse so nested
+        // @font-face / @keyframes / pseudo rules surface.
+        walkRules(r.cssRules);
+      }
+    }
+  }
+  for (const s of document.styleSheets) {
+    try { walkRules(s.cssRules); } catch {}
+  }
+  try {
+    for (const s of document.adoptedStyleSheets || []) {
+      try { walkRules(s.cssRules); } catch {}
+    }
+  } catch {}
+  document.querySelectorAll('*').forEach((el) => {
+    if (!el.shadowRoot) return;
+    try { for (const s of el.shadowRoot.adoptedStyleSheets || []) walkRules(s.cssRules); } catch {}
+    try {
+      for (const styleEl of el.shadowRoot.querySelectorAll('style')) {
+        if (styleEl.sheet) walkRules(styleEl.sheet.cssRules);
+      }
+    } catch {}
+  });
+
+  // Classify <html> + <body> too so their bg / color / font apply.
+  const htmlCid = document.documentElement ? classify(document.documentElement) : null;
+  const bodyCid = document.body ? classify(document.body) : null;
+
+  function dumpAttrs(el) {
+    const out = {};
+    if (!el || !el.attributes) return out;
+    for (const a of el.attributes) {
+      if (a.name === 'style') continue;
+      out[a.name] = a.value;
+    }
+    return out;
+  }
+
+  return {
+    title: document.title || '',
+    htmlAttrs: dumpAttrs(document.documentElement),
+    bodyAttrs: dumpAttrs(document.body),
+    htmlCid,
+    bodyCid,
+    bodyInner: document.body ? serializeChildren(document.body) : '',
+    baseRules,
+    beforeRules,
+    afterRules,
+    fontFaces,
+    keyframes,
+    pseudoRules,
+    elementCount: document.querySelectorAll('*').length,
+    uniqueClassCount: cidCounter,
+  };
+}
+
 async function rewriteSnapshot({ captured, manifest, replayDir, baseHref }) {
-  const $ = cheerio.load(`${captured.doctype}\n${captured.html}`, { decodeEntities: false });
   const bodiesDir = path.join(replayDir, 'bodies');
+  // Inline assets <= 200 KB as data: URIs. Larger ones get rewritten to
+  // `replay/bodies/<sha>` — those files already exist next to the bundle,
+  // and `file://` happily loads them even without extensions for image src
+  // and CSS url() refs. Keeps the HTML small enough to load fast while
+  // still working as a self-contained directory.
+  const INLINE_THRESHOLD = 200 * 1024;
   const cache = new Map();
 
   const lookup = async (rawUrl) => {
     if (!rawUrl) return null;
-    if (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:') || rawUrl.startsWith('#')
-        || rawUrl.startsWith('javascript:') || rawUrl.startsWith('mailto:') || rawUrl.startsWith('tel:')) return null;
+    const r0 = String(rawUrl).trim();
+    if (!r0) return null;
+    if (r0.startsWith('data:') || r0.startsWith('blob:') || r0.startsWith('#')) return null;
+    if (r0.startsWith('javascript:') || r0.startsWith('mailto:') || r0.startsWith('tel:')) return null;
     let abs;
-    try { abs = new URL(rawUrl, baseHref).toString(); } catch { return null; }
-    const cleanAbs = abs.replace(/#.*$/, '');
-    if (cache.has(cleanAbs)) return cache.get(cleanAbs);
-
-    let entry = manifest.entries?.[cleanAbs] || manifest.entries?.[abs];
+    try { abs = new URL(r0, baseHref).toString().replace(/#.*$/, ''); } catch { return null; }
+    if (cache.has(abs)) return cache.get(abs);
+    let entry = manifest.entries?.[abs];
     if (!entry) {
       try {
-        const u = new URL(cleanAbs);
+        const u = new URL(abs);
         if (manifest.byPath?.[u.pathname]) entry = manifest.entries[manifest.byPath[u.pathname]];
         if (!entry && manifest.byBasename) {
           const base = u.pathname.split('/').pop();
@@ -268,95 +546,100 @@ async function rewriteSnapshot({ captured, manifest, replayDir, baseHref }) {
         }
       } catch {}
     }
-    if (!entry) { cache.set(cleanAbs, null); return null; }
-
+    if (!entry) { cache.set(abs, null); return null; }
     let buf;
     try { buf = await fsp.readFile(path.join(bodiesDir, entry.body)); }
-    catch { cache.set(cleanAbs, null); return null; }
-    const r = { buf, mimeType: entry.mimeType || '', absUrl: cleanAbs };
-    cache.set(cleanAbs, r);
+    catch { cache.set(abs, null); return null; }
+    const r = { buf, mimeType: entry.mimeType || '', body: entry.body };
+    cache.set(abs, r);
     return r;
   };
 
-  const toDataUri = (buf, mt) => `data:${(mt || 'application/octet-stream').split(';')[0].trim()};base64,${buf.toString('base64')}`;
+  const toDataUri = (buf, mt) =>
+    `data:${(mt || 'application/octet-stream').split(';')[0].trim()};base64,${buf.toString('base64')}`;
 
-  const rewriteCss = async (css, depth = 0) => {
-    if (depth > 4) return css;
-    let s = css;
-    const IMPORT_RE = /@import\s+(?:url\(\s*)?(['"]?)([^'")]+)\1\s*\)?\s*([^;]*);/gi;
-    const importMatches = [...s.matchAll(IMPORT_RE)];
-    for (const m of importMatches.reverse()) {
-      const r = await lookup(m[2]);
-      if (!r) continue;
-      const inner = await rewriteCss(r.buf.toString('utf8'), depth + 1);
-      s = s.slice(0, m.index) + inner + '\n' + s.slice(m.index + m[0].length);
-    }
-    const URL_RE = /url\(\s*(['"]?)([^'")]+)\1\s*\)/gi;
+  // For small bodies, inline as data:; for large bodies, point at the
+  // already-on-disk replay file via relative path. Both work under file://.
+  const refFor = (r) =>
+    r.buf.length > INLINE_THRESHOLD
+      ? `replay/bodies/${r.body}`
+      : toDataUri(r.buf, r.mimeType);
+
+  // Anything that resolves to the snapshot capture origin (our local server)
+  // would land at file:///<drive>/... when the user double-clicks the file.
+  // External http(s) URLs may still be served by the live web — leave them.
+  const baseOrigin = (() => { try { return new URL(baseHref).origin; } catch { return null; } })();
+  const isUnresolvableLocal = (raw) => {
+    if (!raw) return false;
+    const s = String(raw).trim();
+    if (!s) return false;
+    if (s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('#')) return false;
+    if (s.startsWith('//')) return false;
+    if (s.startsWith('/')) return true;
+    try { return new URL(s, baseHref).origin === baseOrigin; } catch { return false; }
+  };
+
+  const inlineUrlsInCss = async (css) => {
+    if (!css || css.indexOf('url(') < 0) return css;
+    const matches = [...css.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)];
+    if (!matches.length) return css;
     const out = [];
     let last = 0;
-    URL_RE.lastIndex = 0;
-    let m2;
-    while ((m2 = URL_RE.exec(s)) !== null) {
-      const raw = m2[2].trim();
-      out.push(s.slice(last, m2.index));
-      last = m2.index + m2[0].length;
-      if (raw.startsWith('data:') || raw.startsWith('blob:') || raw.startsWith('#')) { out.push(m2[0]); continue; }
+    for (const m of matches) {
+      out.push(css.slice(last, m.index));
+      const raw = m[2].trim();
       const r = await lookup(raw);
-      if (!r) { out.push(m2[0]); continue; }
-      out.push(`url("${toDataUri(r.buf, r.mimeType)}")`);
+      if (r) out.push(`url("${refFor(r)}")`);
+      else if (isUnresolvableLocal(raw)) out.push('url("about:blank")');
+      else out.push(m[0]);
+      last = m.index + m[0].length;
     }
-    out.push(s.slice(last));
+    out.push(css.slice(last));
     return out.join('');
   };
 
-  // STRIP every script — the snapshot is post-hydration, JS already did its job.
-  $('script').remove();
-  // Strip preload/prefetch/modulepreload — they'd 404.
-  $('link[rel="preload"], link[rel="prefetch"], link[rel="modulepreload"], link[rel="dns-prefetch"], link[rel="preconnect"]').remove();
-  // Strip <link rel="stylesheet"> — we'll inject our captured cssText instead.
-  $('link[rel="stylesheet"]').remove();
-  // Strip <style> — we'll re-inject all captured styles in a stable order.
-  $('style').remove();
+  const [fontFacesCss, baseRulesCss, beforeRulesCss, afterRulesCss, pseudoRulesCss] = await Promise.all([
+    Promise.all(captured.fontFaces.map(inlineUrlsInCss)).then((arr) => arr.join('\n')),
+    Promise.all(captured.baseRules.map(inlineUrlsInCss)).then((arr) => arr.join('\n')),
+    Promise.all(captured.beforeRules.map(inlineUrlsInCss)).then((arr) => arr.join('\n')),
+    Promise.all(captured.afterRules.map(inlineUrlsInCss)).then((arr) => arr.join('\n')),
+    Promise.all(captured.pseudoRules.map(inlineUrlsInCss)).then((arr) => arr.join('\n')),
+  ]);
+  const keyframesCss = captured.keyframes.join('\n');
 
-  // Inject all captured styles. Order matters for cascade — inlineStyles
-  // already in document order (matches what was in <style>), regular sheets
-  // (linked + inline) in stylesheet order, adopted last (constructable
-  // sheets win over <style>).
-  const styleParts = [];
-  for (const s of captured.sheets) {
-    const css = await rewriteCss(s.text);
-    styleParts.push(s.media ? `@media ${s.media} { ${css} }` : css);
-  }
-  for (const css of captured.adopted) {
-    styleParts.push(await rewriteCss(css));
-  }
-  if (styleParts.length) {
-    $('head').append(`<style data-clone-saas-snapshot>${styleParts.join('\n')}</style>`);
-  }
+  // Body asset rewrites — load into cheerio (decodeEntities off so existing
+  // serialized markup round-trips byte-for-byte) and walk the DOM.
+  const $ = cheerio.load(
+    `<!DOCTYPE html><html><head></head><body>${captured.bodyInner}</body></html>`,
+    { decodeEntities: false }
+  );
 
-  // <link rel="icon"> → data: URI.
-  for (const link of $('link[rel="icon"], link[rel="shortcut icon"], link[rel*="apple-touch-icon"], link[rel="mask-icon"]').toArray()) {
-    const href = $(link).attr('href');
-    if (!href) continue;
-    const r = await lookup(href);
-    if (!r) continue;
-    $(link).attr('href', toDataUri(r.buf, r.mimeType));
-  }
-
-  // Images, video, srcset.
   const IMG_ATTRS = ['src', 'data-src', 'data-original', 'data-lazy', 'data-bg', 'data-image'];
-  for (const el of $('img, source, video, audio, embed').toArray()) {
+  const BLANK_PNG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
+  for (const el of $('img, source, video, audio, embed, iframe').toArray()) {
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'iframe') {
+      // Iframes pointing at the live origin would 404 on file://. Drop.
+      const src = $(el).attr('src');
+      if (src && !src.startsWith('data:')) $(el).removeAttr('src');
+      continue;
+    }
     for (const a of IMG_ATTRS) {
       const v = $(el).attr(a);
       if (!v) continue;
       const r = await lookup(v);
-      if (!r) continue;
-      $(el).attr(a, toDataUri(r.buf, r.mimeType));
+      if (r) { $(el).attr(a, refFor(r)); continue; }
+      if (isUnresolvableLocal(v)) {
+        if (tag === 'img' && a === 'src') $(el).attr(a, BLANK_PNG);
+        else $(el).removeAttr(a);
+      }
     }
     const poster = $(el).attr('poster');
     if (poster) {
       const r = await lookup(poster);
-      if (r) $(el).attr('poster', toDataUri(r.buf, r.mimeType));
+      if (r) $(el).attr('poster', refFor(r));
+      else if (isUnresolvableLocal(poster)) $(el).removeAttr('poster');
     }
   }
   for (const el of $('[srcset], [data-srcset]').toArray()) {
@@ -371,26 +654,52 @@ async function rewriteSnapshot({ captured, manifest, replayDir, baseHref }) {
         const desc = sp === -1 ? '' : p.slice(sp);
         if (u.startsWith('data:')) { out.push(p); continue; }
         const r = await lookup(u);
-        if (!r) { out.push(p); continue; }
-        out.push(toDataUri(r.buf, r.mimeType) + desc);
+        if (r) { out.push(refFor(r) + desc); continue; }
+        if (!isUnresolvableLocal(u)) out.push(p);
       }
-      $(el).attr(a, out.join(', '));
+      if (out.length) $(el).attr(a, out.join(', '));
+      else $(el).removeAttr(a);
     }
   }
 
-  // inline style="" url() refs.
-  for (const el of $('[style]').toArray()) {
-    const v = $(el).attr('style') || '';
-    if (!v.includes('url(')) continue;
-    const rewritten = await rewriteCss(v);
-    if (rewritten !== v) $(el).attr('style', rewritten);
-  }
+  const bodyHtml = $('body').html() || '';
 
-  // Drop iframes — they were pointing at the live origin.
-  $('iframe').each((_, el) => {
-    const src = $(el).attr('src');
-    if (src && !src.startsWith('data:')) $(el).removeAttr('src');
-  });
+  const serializeAttrs = (m) => Object.entries(m || {})
+    .map(([k, v]) => v === '' ? ` ${k}` : ` ${k}="${String(v).replaceAll('"', '&quot;')}"`)
+    .join('');
+  const htmlAttrs = serializeAttrs(captured.htmlAttrs)
+    + (captured.htmlCid != null ? ` data-cs="${captured.htmlCid}"` : '');
+  const bodyAttrs = serializeAttrs(captured.bodyAttrs)
+    + (captured.bodyCid != null ? ` data-cs="${captured.bodyCid}"` : '');
 
-  return $.html();
+  const titleEsc = String(captured.title || '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+  const stats = `/* clone-saas computed-style snapshot — ${captured.elementCount} elements, ${captured.uniqueClassCount} unique fingerprints */`;
+
+  return [
+    '<!DOCTYPE html>',
+    `<html${htmlAttrs}>`,
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    `<title>${titleEsc}</title>`,
+    '<style data-clone-saas-snapshot>',
+    stats,
+    fontFacesCss,
+    keyframesCss,
+    // Materialized base rules first; ::before/::after layered after; pseudo
+    // (state) rules last so they win cascade order at equal specificity and
+    // can override the base on hover/focus.
+    baseRulesCss,
+    beforeRulesCss,
+    afterRulesCss,
+    pseudoRulesCss,
+    '</style>',
+    '</head>',
+    `<body${bodyAttrs}>`,
+    bodyHtml,
+    '</body>',
+    '</html>',
+  ].join('\n');
 }
