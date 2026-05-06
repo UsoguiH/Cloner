@@ -118,6 +118,35 @@ function isNeutral(hex) {
   return saturation(hex) < 0.1;
 }
 
+// Relative luminance, copied from contrast.js to keep this module self-contained.
+// Used for tier ordering — surface-1 sits closer to canvas in lightness; ink
+// tiers sort by perceptual distance from canvas (most-readable = ink, least = ink-tertiary).
+function luminance(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  const [R, G, B] = rgb.map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+
+// Greedy tier picker: sort candidates by `sortFn`, then walk and accept each
+// only if its luminance differs from the last accepted by ≥ minLumDelta. This
+// prevents collapsing near-identical hexes into adjacent tiers (avoids
+// `surface-2: "#0f1011"`, `surface-3: "#0f1012"` artifacts).
+function pickTiered(candidates, sortFn, minLumDelta, maxTiers) {
+  const sorted = [...candidates].sort(sortFn);
+  const picks = [];
+  for (const e of sorted) {
+    if (picks.length === 0) { picks.push(e); continue; }
+    const lastLum = luminance(picks[picks.length - 1].hex);
+    if (Math.abs(luminance(e.hex) - lastLum) >= minLumDelta) picks.push(e);
+    if (picks.length >= maxTiers) break;
+  }
+  return picks;
+}
+
 // CSS custom-property names that signal "this is the brand identity color"
 // — scored by how unambiguous the name is. Higher = stronger evidence.
 //
@@ -349,18 +378,39 @@ export function assignColorRoles(usage, options = {}) {
     used.add(ink.hex);
   }
 
-  // ink-muted: a NEUTRAL secondary text color — exclude saturated brand accents.
-  // Only assign if there's a clean signal (≥3 usages, near-neutral, distinct from ink).
-  const inkMuted = pickByMax(usage, (e) => {
-    if (e.byProperty['color'] === 0) return -1;
-    if (e.byProperty['color'] < 3) return -1;
-    if (saturation(e.hex) > 0.25) return -1;
-    if (canvas && contrastRatio(e.hex, canvas.hex) < 3) return -1;
-    return e.byProperty['color'] * e.weightedArea;
-  }, used);
-  if (inkMuted) {
-    roles['ink-muted'] = inkMuted;
-    used.add(inkMuted.hex);
+  // ink tiers — secondary/tertiary/quaternary text colors. On dark themes the
+  // tier order is ink (most-readable) → ink-muted → ink-subtle → ink-tertiary
+  // (darkest gray still legible). We mirror theirs (linear: ink #f7f8f8 →
+  // ink-muted #d0d6e0 → ink-subtle #8a8f98 → ink-tertiary #62666d).
+  //
+  // Sort by luminance-distance from ink ASCENDING — closest-to-ink first —
+  // not by raw usage. Usage-based ranking misranked #62666d (heavy border
+  // double-duty inflates weightedArea) above #d0d6e0; perceptual distance
+  // matches the tier semantics designers actually use. Pure black / pure
+  // white are excluded — they're canvas/on-primary placeholders, not ink.
+  const inkLum = ink ? luminance(ink.hex) : null;
+  const inkCandidates = [];
+  for (const e of usage.values()) {
+    if (used.has(e.hex)) continue;
+    if (!isOpaque(e.hex)) continue;
+    if (e.hex === '#000000' || e.hex === '#ffffff') continue;
+    if (e.byProperty['color'] < 2) continue;
+    if (saturation(e.hex) > 0.25) continue;
+    if (canvas && contrastRatio(e.hex, canvas.hex) < 3) continue;
+    inkCandidates.push(e);
+  }
+  const inkTiers = inkLum != null
+    ? pickTiered(
+        inkCandidates,
+        (a, b) => Math.abs(luminance(a.hex) - inkLum) - Math.abs(luminance(b.hex) - inkLum),
+        0.04,
+        3,
+      )
+    : [];
+  const inkRoleNames = ['ink-muted', 'ink-subtle', 'ink-tertiary'];
+  for (let i = 0; i < inkTiers.length; i++) {
+    roles[inkRoleNames[i]] = inkTiers[i];
+    used.add(inkTiers[i].hex);
   }
 
   // on-primary: text color on probes whose bg is primary (computed elsewhere via classify)
@@ -379,26 +429,72 @@ export function assignColorRoles(usage, options = {}) {
     };
   }
 
-  // surface-1: card-like backgrounds distinct from canvas
-  const surface = pickByMax(usage, (e) => {
-    if (e.byProperty['background-color'] === 0) return -1;
-    if (canvas && e.hex === canvas.hex) return -1;
-    return e.likelySurfaceBg + e.byProperty['background-color'];
-  }, used);
-  if (surface) {
-    roles['surface-1'] = surface;
-    used.add(surface.hex);
+  // surface tiers — card/panel backgrounds distinct from canvas. Sorted by
+  // luminance-distance from canvas ascending: surface-1 sits closest to
+  // canvas (least-elevated), surface-N is the most-elevated. Matches theirs
+  // (linear: canvas #010102 → surface-1 #0f1011 → surface-2 #141516 → ...).
+  //
+  // Wrong-side filter: a surface must stay within 0.5 luminance of canvas.
+  // On dark canvas (lum ~0) surfaces are dark grays; on light canvas (lum ~1)
+  // surfaces are off-whites. Light hexes on a dark page (e.g. inverse-card
+  // backs) are excluded — those belong to a future inverse-* role family,
+  // not surface-*. Independent of ink (which may not be assigned on
+  // illustration-heavy sites like figma).
+  const canvasLum = canvas ? luminance(canvas.hex) : 0;
+  const onCanvasSide = (lum) => Math.abs(lum - canvasLum) < 0.5;
+  const surfaceCandidates = [];
+  for (const e of usage.values()) {
+    if (used.has(e.hex)) continue;
+    if (!isOpaque(e.hex)) continue;
+    if (e.byProperty['background-color'] === 0) continue;
+    if (saturation(e.hex) > 0.4) continue;
+    if (canvas && e.hex === canvas.hex) continue;
+    if (!onCanvasSide(luminance(e.hex))) continue;
+    surfaceCandidates.push(e);
+  }
+  // Tier separation 0.008 — empirical sweet spot. 0.003 over-emits near-
+  // identical tints (#e5edf5 / #e3ecf7 collapse perceptually); 0.02 misses
+  // legit tiers on dark themes where #0f1011 → #141516 is only 0.0015 apart.
+  // Errs toward fewer-but-meaningful tiers; refinement is Phase 6.3 territory.
+  const surfaceTiers = pickTiered(
+    surfaceCandidates,
+    (a, b) => Math.abs(luminance(a.hex) - canvasLum) - Math.abs(luminance(b.hex) - canvasLum),
+    0.008,
+    4,
+  );
+  for (let i = 0; i < surfaceTiers.length; i++) {
+    const name = `surface-${i + 1}`;
+    roles[name] = surfaceTiers[i];
+    used.add(surfaceTiers[i].hex);
   }
 
-  // hairline: ONLY emit if the color is actually used as a border somewhere.
-  // No bleed from text/bg fallbacks.
-  const hairline = pickByMax(usage, (e) => {
-    if (e.byProperty['border'] === 0) return -1;
-    return e.byProperty['border'] * 10;
-  }, used);
-  if (hairline) {
-    roles.hairline = hairline;
-    used.add(hairline.hex);
+  // hairline tiers — ONLY emit if the color actually lands on a border, sits
+  // on the canvas side of the page (dark hairlines on dark canvas, light on
+  // light), and is near-neutral. Pure black / pure white are excluded —
+  // those are browser-default border-color values (`border: 1px solid` with
+  // no color resolves to currentColor), not deliberate hairline tokens.
+  // Saturated colors are excluded too — those are accent strokes, not
+  // hairlines (kills stripe's `#20033c` heading-text leak).
+  const hairlineCandidates = [];
+  for (const e of usage.values()) {
+    if (used.has(e.hex)) continue;
+    if (!isOpaque(e.hex)) continue;
+    if (e.hex === '#000000' || e.hex === '#ffffff') continue;
+    if (e.byProperty['border'] < 1) continue;
+    if (saturation(e.hex) > 0.3) continue;
+    if (!onCanvasSide(luminance(e.hex))) continue;
+    hairlineCandidates.push(e);
+  }
+  const hairlineTiers = pickTiered(
+    hairlineCandidates,
+    (a, b) => b.byProperty['border'] - a.byProperty['border'],
+    0.008,
+    3,
+  );
+  const hairlineRoleNames = ['hairline', 'hairline-strong', 'hairline-tertiary'];
+  for (let i = 0; i < hairlineTiers.length; i++) {
+    roles[hairlineRoleNames[i]] = hairlineTiers[i];
+    used.add(hairlineTiers[i].hex);
   }
 
   return roles;

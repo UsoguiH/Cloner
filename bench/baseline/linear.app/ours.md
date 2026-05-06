@@ -1,11 +1,17 @@
 ---
 name: Linear
-description: Linear is a highly structured product development system that presents a precision-driven, high-contrast dark interface designed for focus and speed.
+description: Linear is an issue tracking and product development system that presents a meticulously engineered, dark-themed interface optimized for deep focus and high-velocity work.
 colors:
-  on-primary: "#ffffff"
-  ink: "#f7f8f8"
   canvas: "#08090a"
   primary: "#5e6ad2"
+  ink: "#f7f8f8"
+  ink-muted: "#d0d6e0"
+  ink-subtle: "#8a8f98"
+  ink-tertiary: "#62666d"
+  on-primary: "#ffffff"
+  surface-1: "#0f1011"
+  surface-2: "#3b3b3b"
+  hairline: "#23252a"
 typography:
   button:
     fontFamily: Inter Variable
@@ -75,6 +81,7 @@ components:
     textColor: "{colors.ink}"
     typography: "{typography.body-2}"
   status-badge:
+    textColor: "{colors.ink-subtle}"
     typography: "{typography.body-sm}"
     rounded: "{rounded.sm}"
     padding: 0px 6px
@@ -91,27 +98,33 @@ components:
 
 ## Overview
 
-Linear sets a standard for modern product tools by marrying developer-centric precision with uncompromising design. The interface strips away distraction, relying on a strict dark canvas and highly legible typography to keep teams focused.
+Linear’s design system is a study in purposeful constraint, built entirely around high-contrast legibility and developer-focused utility. By relying on a stark dark canvas and rigid typographic hierarchy, Linear establishes an environment that feels less like a traditional web app and more like a native, professional IDE.
 
 ## Voice
 
-- **Precision-engineered** — The interface relies heavily on rigid Stark Hairline borders and Berkeley Mono typography to evoke the feeling of a code editor.
-- **High-contrast** — Sharp punches of Electric Yellow and Crisp Ink cut through the deep Linear Obsidian canvas to ensure immediate visual hierarchy.
-- **Purposeful** — Decorative elements are stripped away in favor of strict grid alignments and muted, structural wireframe illustrations.
-- **Unapologetic** — Bold, high-impact Inter Variable typography dominates the layout, letting the core functionality and data speak for themselves.
+- **Highly Engineered** — The interface relies on precise geometric layouts, rigid alignment, and razor-thin Crisp Hairline borders to create a workspace that feels like a professional-grade instrument.
+- **Focused** — A pervasive Linear Deep Canvas background forces the High Contrast Ink typography to the forefront, removing extraneous visual noise to center attention on the work.
+- **Technical** — The integration of Berkeley Mono for code snippets alongside system-level data points reinforces a surface built specifically for developers and technical operators.
+- **Confident** — Large, unadorned Inter Variable headlines command attention through stark contrast without relying on decorative illustration or vibrant marketing colors.
 
 ## Colors
 
-The Linear palette is anchored by a deep Linear Obsidian canvas, creating a focused, dark-mode-first environment. Sparse but intentional accents of Linear Indigo and Electric Yellow are deployed to guide attention to active states and primary actions.
+The palette is decisively dark, anchored by a Linear Deep Canvas that stretches across the entire viewport. Hierarchy is established through subtle elevation using Base Interface Surface and Elevated Popover Surface layers, while a singular Linear Indigo accent is reserved strictly for interactive highlights and crucial states.
 
-- **Absolute White** `#ffffff` (`on-primary`) — Pure white guarantees ultimate clarity and contrast when rendered atop high-impact components or distinct brand elements.
-- **Crisp Ink** `#f7f8f8` (`ink`) — Serving as our primary text color, this crisp off-white ensures maximum legibility for hero typography and core interface data.
-- **Linear Obsidian** `#08090a` (`canvas`) — This deep, almost-black hue forms the foundational backdrop of the Linear interface, creating a focused and immersive environment.
-- **Linear Indigo** `#5e6ad2` (`primary`) — A vibrant, signature indigo used to sparingly draw focus to interactive accents, select links, and specialized brand moments.
+- **Linear Deep Canvas** `#08090a` (`canvas`) — Provides the infinite dark foundation for the Linear experience, establishing our signature high-contrast aesthetic.
+- **Linear Indigo** `#5e6ad2` (`primary`) — Acts as our primary accent color, drawing attention to critical interactive elements and branded moments across the interface.
+- **High Contrast Ink** `#f7f8f8` (`ink`) — Drives maximum legibility for primary headlines and active interface elements against our dark canvas.
+- **Muted Interface Ink** `#d0d6e0` (`ink-muted`) — Softens secondary typographic elements like navigation links and list items to establish clear visual hierarchy.
+- **Subtle Metadata Ink** `#8a8f98` (`ink-subtle`) — Recedes into the background for tertiary information, supporting body copy and inactive states without demanding focus.
+- **Deep Recessed Ink** `#62666d` (`ink-tertiary`) — Provides the lowest level of typographic contrast for subtle timestamps and deeply nested metadata within the Linear workspace.
+- **Absolute White** `#ffffff` (`on-primary`) — Ensures perfect crispness and absolute clarity for text or icons placed directly on top of our primary indigo accents.
+- **Base Interface Surface** `#0f1011` (`surface-1`) — Defines the primary elevated layers of the application, such as sidebars and main content panels, subtly lifting them from the canvas.
+- **Elevated Popover Surface** `#3b3b3b` (`surface-2`) — Highlights floating interface elements like context menus, modals, and tooltips by bringing them physically closer to the user.
+- **Crisp Hairline** `#23252a` (`hairline`) — Creates razor-thin structural boundaries between distinct application panes, ensuring crisp organization without visual noise.
 
 ## Typography
 
-Linear relies on the mechanical clarity of Inter Variable for interface copy, establishing a clean, pragmatic hierarchy. This is paired closely with Berkeley Mono for technical data and code snippets, reinforcing the brand's builder-first identity.
+Inter Variable drives the entire narrative of the application, scaling effortlessly from commanding headlines to dense 12px interface labels. To support its technical audience, Linear thoughtfully integrates Berkeley Mono, creating distinct visual boundaries between conversational prose and raw code elements.
 
 - **button** — Inter Variable 13px/400
 - **body** — Inter Variable 16px/500
@@ -134,6 +147,8 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **md** `5px`
 
 ## Components
+
+Linear constructs its interface components with severe precision, using Crisp Hairline borders to delineate dense tables, floating menus, and layered panes. These surfaces rely on stark contrast and rigorous padding rather than heavy shadows to maintain a feeling of high-performance utility.
 
 - **button-tertiary**
 - **button-secondary**

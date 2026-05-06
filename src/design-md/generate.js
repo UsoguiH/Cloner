@@ -429,7 +429,14 @@ export function generateDesignMd(jobDir, options = {}) {
     name: options.name || guessName(computed, jobDir),
     description: (aiCopyAccepted && aiCopy.brandThesis) ? aiCopy.brandThesis : fallbackDescription,
   };
-  const colorsTable = rolesToColorTable(roles, usedColorRoles);
+  // Emit the full assigned palette, not just roles that components happened to
+  // reference. The harvest surfaces these colors in real DOM probes, so they
+  // ARE part of the documented design system — even if our component
+  // classifier didn't bind a specific role yet. Filtering by usage produces
+  // an artificially thin palette; downstream AI stages (role-naming, copy-
+  // generation) want the full breadth to reason about.
+  const allColorRoles = new Set([...Object.keys(roles), ...usedColorRoles]);
+  const colorsTable = rolesToColorTable(roles, allColorRoles);
   if (Object.keys(colorsTable).length) ds.colors = colorsTable;
 
   const typoTable = typoToTable(typeScale, usedTypo);
@@ -467,10 +474,12 @@ export function generateDesignMd(jobDir, options = {}) {
     synthesizedComponents.add('button-primary');
   }
 
-  // colors
+  // colors — stamp every emitted role, not just component-referenced ones
+  // (otherwise the palette tokens we just expanded land in YAML but go
+  // unsigned in the provenance receipts UI).
   const aiRoleNames = loadAiRoleNames(jobDir);
   const colorMeta = {};
-  for (const name of usedColorRoles) {
+  for (const name of allColorRoles) {
     const info = roles[name];
     if (!info) continue;
     prov.setHarvest(`colors.${name}.value`, { confidence: 1.0 });

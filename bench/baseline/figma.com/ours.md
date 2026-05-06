@@ -1,9 +1,10 @@
 ---
 name: Figma
-description: Figma is a collaborative design platform that frames its users' vibrant creations within a stark, high-contrast, and deeply structural interface.
+description: Figma frames the vibrant, chaotic energy of creative work within a pristine, highly structured interface that prioritizes clarity and stark contrast.
 colors:
   canvas: "#000000"
   primary: "#ffffff"
+  on-primary: "#000000"
 typography:
   button:
     fontFamily: figmaSans
@@ -62,31 +63,34 @@ components:
 
 ## Overview
 
-Figma is a collaborative design platform that frames its users' vibrant creations within a stark, high-contrast, and deeply structural interface.
+Figma balances a stark, monochromatic architectural frame with the expressive chaos of user-generated content. The system uses aggressive contrast and sharp structural boundaries to maintain order amidst highly vibrant imagery.
 
 ## Voice
 
-- **Structural** — Figma relies on Canvas White and Core Black to build a neutral, high-contrast scaffolding that allows colorful user-generated imagery to take center stage.
-- **Confident** — The stark, oversized figmaSans typography makes declarative statements across wide margins without the need for excessive visual embellishment.
-- **Unobtrusive** — By utilizing subtle background shifts like the application of Mint Surface for secondary sections, Figma organizes complex feature explanations without overwhelming the page.
-- **Tool-centric** — The interface frequently embeds literal UI elements, collaborative cursors, and property panels into the layout to reinforce Figma's identity as an active workspace.
+- **Utilitarian** — The interface relies on stark Figma Base White and Figma Core Black to create a highly legible, no-nonsense container for complex creative workflows.
+- **Confident** — Massive figmaSans headlines and oversized structural elements demonstrate a self-assured posture that avoids unnecessary ornamentation.
+- **Unobtrusive** — By relying heavily on monochromatic framing, the system steps back to let colorful, varied user-generated artwork act as the primary visual focus.
+- **Tool-oriented** — Crisp boundaries, dense technical mockups, and compact pill-shaped navigational controls reinforce its identity as a precision instrument for builders.
 
 ## Colors
 
-Figma uses an intentionally restrained color palette to prioritize community content. The layout leans heavily on Canvas White and Core Black to establish its foundational structure, deploying soft tints like Mint Surface only to group thematic content without disrupting the overall neutral harmony.
+Figma's palette is aggressively restrained, leaning almost entirely on Figma Base White and Figma Ink to define its spatial relationships. True color is deliberately withheld from the interface, delegated instead to the product screenshots and vibrant hero collages.
 
-- **Core Black** `#000000` (`canvas`) — This deep foundational black anchors Figma's interface, driving stark contrast for primary typography and high-emphasis interactive elements.
-- **Canvas White** `#ffffff` (`primary`) — Acting as our definitive structural backdrop, this pristine white gives Figma's vibrant community assets the necessary breathing room.
+- **Figma Ink** `#000000` (`canvas`) — This deep foundational black drives Figma's highest-contrast moments, defining solid primary buttons and stark interface outlines.
+- **Figma Base White** `#ffffff` (`primary`) — Serving as the main architectural backdrop, this pure white provides a pristine environment that allows Figma's vibrant creative assets to take center stage.
+- **Figma Core Black** `#000000` (`on-primary`) — Applied to bold headlines and core navigation links, this stark black ensures maximum legibility against Figma's bright white backgrounds.
 
 ## Typography
 
-Set exclusively in figmaSans, Figma scales its typography dramatically to dictate page hierarchy. The system relies on Primary Ink to ensure crisp legibility, creating severe contrast between massive hero statements and the highly functional 16px and 18px weights used for interactive components.
+Set exclusively in figmaSans, the typographic system scales dramatically from tight, utilitarian navigation links to massive, self-assured section headers. The deployment of Figma Core Black across varying weights establishes an unmistakable reading hierarchy without needing color cues.
 
 - **button** — figmaSans 18px/300
 - **button-2** — figmaSans 18px/500
 - **button-3** — figmaSans 16px/400
 
 ## Layout
+
+Layouts rely on generous margins and vast expanses of Figma Base White to pace the user's descent down the page. Tight internal padding within structural grids keeps complex technical mockups organized and legible.
 
 Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.
 
@@ -99,8 +103,6 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **xs** `50px`
 
 ## Components
-
-Interactive elements in Figma are strictly standardized and highly legible. Core actions are driven by pill-shaped and rounded-rectangle buttons using precise figmaSans text settings, offering bold, unmistakable targets against the clean backgrounds.
 
 - **button-tertiary**
 - **button-secondary**

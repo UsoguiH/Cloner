@@ -1,10 +1,14 @@
 ---
 name: Notion
-description: Notion presents as a highly structured, utilitarian workspace, anchoring its complex document and project capabilities in a stark canvas that is intentionally softened by playful, hand-drawn brand illustrations.
+description: Notion pairs a stark, unopinionated document canvas with playful, humanistic illustrations to create a workspace that feels both rigorously structured and distinctly personal.
 colors:
   canvas: "#ffffff"
+  primary: "#191918"
+  ink: "#000000"
+  ink-muted: "#615d59"
+  on-primary: "#ffffff"
   hairline: "#f6f5f4"
-  surface-1: "#02093a"
+  hairline-strong: "#dddddd"
 typography:
   button-3:
     fontFamily: NotionInter
@@ -66,7 +70,6 @@ components:
     backgroundColor: "{colors.canvas}"
     typography: "{typography.button-3}"
   hero-section:
-    backgroundColor: "{colors.surface-1}"
     textColor: "{colors.hairline}"
     typography: "{typography.button-3}"
     padding: 0px 0px 32px 0px
@@ -79,26 +82,30 @@ components:
 
 ## Overview
 
-Notion balances strict utility with approachable warmth. The design system contrasts heavily structured, monochromatic application surfaces against bold, illustrative marketing moments set in Midnight Navy.
+Notion balances a highly utilitarian document editor with approachable warmth. The visual system leans heavily on stark monochrome foundations, injecting personality exclusively through user content and sparse, whimsical illustrations.
 
 ## Voice
 
-- **Utilitarian** — The interface relies heavily on Canvas White backgrounds and Notion Core Black typography to prioritize content organization and structural clarity over decorative flair.
-- **Approachable** — Sketchy, hand-drawn vector loops and floating icons in the Midnight Navy hero sections inject warmth and humanity into an otherwise rigid, tool-centric system.
-- **Modular** — The layout leans on tight bento-box grids and distinct card components set against Structure Mist to compartmentalize dense feature lists and use cases.
-- **Confident** — Heavy 700-weight NotionInter headlines are used to make stark, declarative statements that command attention without relying on loud accent colors.
+- **Structured** — Crisp lines rendered in Structural Border create distinct functional boundaries across a quiet, grid-based layout.
+- **Playful** — Hand-drawn illustrations and vibrant emoji accents break the rigid interface, bringing a human touch to the utilitarian software.
+- **Crisp** — Typography using Pure Ink and Notion Charcoal starkly contrasts against the Workspace White canvas to guarantee maximum legibility.
+- **Restrained** — The interface heavily relies on subtle foundational shades like Sidebar Wash, allowing the content itself to command primary attention.
 
 ## Colors
 
-The palette is intentionally restrained to prioritize the user's content. Canvas White and Structure Mist build the foundational workspace, while Secondary Ink and Absolute Black handle typographic hierarchy. Midnight Navy is reserved strictly for high-impact hero sections, acting as a clear boundary between the marketing narrative and the product experience.
+The Notion color palette is intentionally quiet. It anchors on Workspace White and Notion Charcoal to establish a neutral canvas, utilizing Sidebar Wash and Structural Border to map functional regions without distracting from the core document.
 
-- **Canvas White** `#ffffff` (`canvas`) — Serves as the primary structural background for the Notion editor and document pages, creating a clean environment for focused work.
-- **Structure Mist** `#f6f5f4` (`hairline`) — Defines subtle boundaries and secondary structural surfaces like the app sidebar and promotional banners without overpowering the main canvas.
-- **Midnight Navy** `#02093a` (`surface-1`) — Drives the bold aesthetic of Notion's marketing hero sections and anchors the visual narrative for overarching brand moments.
+- **Workspace White** `#ffffff` (`canvas`) — Serves as the fundamental blank canvas for all primary document surfaces and writing spaces across Notion.
+- **Notion Charcoal** `#191918` (`primary`) — Anchors the Notion interface as our primary text and deep structural color to ensure crisp legibility.
+- **Pure Ink** `#000000` (`ink`) — Delivers maximum typographic contrast for critical headings and stark structural elements within the Notion app.
+- **Muted Slate** `#615d59` (`ink-muted`) — Softens secondary navigation items and metadata to keep users focused on their core Notion document content.
+- **Primary Knockout** `#ffffff` (`on-primary`) — Guarantees high-contrast readability for text and icons layered over deeply saturated elements in the Notion interface.
+- **Sidebar Wash** `#f6f5f4` (`hairline`) — Establishes a subtle visual foundation for secondary regions like the Notion sidebar without distracting from the main canvas.
+- **Structural Border** `#dddddd` (`hairline-strong`) — Creates distinct boundaries and structural dividers across the Notion interface for clear separation of functional zones.
 
 ## Typography
 
-Driven entirely by the NotionInter family, the typographic system is pragmatic and highly legible. It relies on stark weight contrasts—from 400-weight interactive buttons to 700-weight headlines—to organize dense information and establish clear reading patterns without introducing structural clutter.
+Notion relies on the custom NotionInter family to establish its clean, functional aesthetic. Ranging from 16px utility text up to 42px headlines, the type system prioritizes raw legibility and a crisp hierarchy above all else.
 
 - **button-3** — NotionInter 16px/400
 - **button-4** — NotionInter 16px/500
@@ -120,7 +127,7 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Components
 
-The brand relies on prominent card structures and dense bento grids to organize features, integrations, and calculators. Often set against Structure Mist backgrounds, these modules use sharp internal boundaries to maintain a rigid, predictable rhythm as users scroll.
+Interface components in Notion operate as modular, high-contrast blocks. Cards and feature containers frequently sit on a Sidebar Wash background and utilize Structural Border outlines to define interactive boundaries clearly.
 
 - **button-tertiary**
 - **button-secondary**

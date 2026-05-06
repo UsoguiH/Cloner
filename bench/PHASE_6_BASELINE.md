@@ -110,6 +110,49 @@ Color section blurbs name colors by their role-naming labels, threading both AI 
 
 **Beating getdesign.md head-to-head: cleared on linear, stripe, notion.** Figma is at parity. The provenance-receipts moat means every claim in our prose is auditable to a measurement; theirs is not. Phase 6 mission accomplished — three of four sites now exceed the side-by-side test on the rubric, with full audit trail and graceful degrade preserved.
 
+### Session D revision (2026-05-07): multi-tier palette expansion
+
+After Session C the prose was at parity-or-above with theirs but the YAML was visibly thinner — 4 colors next to their 22. Diagnosis: the harvest already surfaced every hex theirs had (linear: `#d0d6e0` 59 hits, `#8a8f98` 58, `#62666d` 68, `#23252a` 9 borders, `#0f1011` 1 bg) — they were getting filtered by single-tier role assignment. `assignColorRoles` only ever picked one `surface-1`, one `ink-muted`, one `hairline`; everything beyond that was discarded.
+
+Fix: extend `assignColorRoles` to multi-tier emission with proper sort semantics —
+- **ink tiers** (`ink-muted` / `ink-subtle` / `ink-tertiary`): sort by luminance-distance from `ink` ascending so closest-to-ink lands first; exclude `#000000` / `#ffffff` (those are canvas/on-primary placeholders, not editorial gray); near-neutral filter (sat < 0.25) keeps saturated grays from competing.
+- **surface tiers** (`surface-1` … `surface-4`): sort by luminance-distance from canvas ascending so least-elevated lands first; wrong-side filter (`|lum − canvasLum| < 0.5`) excludes inverse-card backs from polluting dark-canvas surface tiers; tier-separation gap of 0.008 lum prevents `#e5edf5` / `#e3ecf7` from collapsing into adjacent rows.
+- **hairline tiers** (`hairline` / `hairline-strong` / `hairline-tertiary`): sort by border usage descending; exclude `#000000`/`#ffffff` (browser-default border resolutions, not deliberate hairlines); saturation cap (< 0.3) plus same canvas-side filter as surfaces.
+- **`generate.js` palette emit**: now ships *every assigned role*, not just component-referenced ones. The harvest IS the source of truth for the palette; orphan-token warnings are factually correct ("you have these tokens but no component binds them yet") but informational, not errors. Future component coverage closes the loop.
+
+Live re-runs (gemini-3-pro-preview, lint clean across all four):
+
+| Site | Colors before → after | Match against theirs | Lint |
+|---|---:|---|---|
+| linear.app | 4 → **10** | exact match on 7 hexes (primary, ink, ink-muted, ink-subtle, ink-tertiary, surface-1, hairline) | E0/W5/I1 |
+| stripe.com | 3 → **10** | full surface-1..4 tier + hairline + hairline-strong | E0/W7/I2 |
+| notion.so  | 3 → **7**  | ink, ink-muted, hairline + hairline-strong | E0/W4/I2 |
+| figma.com  | 4 → 3 | thin harvest (no public ref) | E0/W1/I2 |
+
+Sample new prose from linear (every label is AI-generated against the harvested hex):
+- **Linear Deep Canvas** `#08090a` (canvas) — "the infinite dark foundation for the Linear experience"
+- **Muted Interface Ink** `#d0d6e0` (ink-muted) — "softens secondary typographic elements like navigation links"
+- **Subtle Metadata Ink** `#8a8f98` (ink-subtle) — "recedes into the background for tertiary information"
+- **Deep Recessed Ink** `#62666d` (ink-tertiary) — "lowest level of typographic contrast for subtle timestamps"
+- **Base Interface Surface** `#0f1011` (surface-1) — "primary elevated layers of the application"
+- **Elevated Popover Surface** `#3b3b3b` (surface-2) — "floating interface elements like context menus, modals"
+- **Crisp Hairline** `#23252a` (hairline) — "razor-thin structural boundaries between distinct application panes"
+
+Stripe likewise picked up `surface-1..4` (a four-tier elevation system the AI named Pristine Card Surface / Soft Lavender Surface / Frosted Lavender / Tinted Lavender Mist) and a `hairline` + `hairline-strong` lavender pair.
+
+| Axis | linear | notion | stripe | figma* | Σ /9 h2h |
+|---|---|---|---|---|---|
+| **Color names** | 3 | 3 | 3 | 3 | 9/9 |
+| **Role descriptions** | 3 ↑ | 3 ↑ | 3 ↑ | 2 | **9/9** ↑ |
+| **Color-block fidelity** | **3** ↑ | **2** ↑ | **2** ↑ | 1 | **7/9** ↑↑ |
+| **Variant labels** | 1 | 0 | 1 | 1 | 2/9 |
+| **Hero copy** | 3 | 3 | 3 | 3 | 9/9 |
+| **Coherence** | 3 | 3 | 3 | 3 | 9/9 |
+
+**Head-to-head total: 45/54 ≈ 83%.** Up from 72% post-Session C. Color-block fidelity 4 → 7/9 — the palette no longer reads as the impoverished sibling of theirs side-by-side. Role descriptions tip to full marks because the AI now has more colors to describe, and each new tier gets its own grounded sentence. Remaining 17% gap is variant labels (Phase 6.5 — vision-driven button-state recognition), figma's thin harvest (Phase 7-class coverage problem), and a handful of missed surface tiers on stripe/notion.
+
+The qualitative side-by-side is now a different conversation: theirs wins on raw breadth (22 colors vs 10 on linear), ours wins on auditability (every claim stamped to a probe) and brand-voice prose. We're competing on quality, not on minimum viability.
+
 ## Top 3 perceptual gaps (the things that lose us the side-by-side test)
 
 ### 1. Color palette breadth — we capture 10–18% of what they document
