@@ -339,10 +339,16 @@
               </div>
             </header>
 
-            <!-- Live progress timeline -->
-            <div class="card card--timeline" id="project-progress">
-              <div class="timeline" id="phase-timeline"></div>
-              <div class="timeline__msg muted" id="progress-msg"></div>
+            <!-- Live progress -->
+            <div class="card card--progress" id="project-progress">
+              <div class="progress-block">
+                <div class="progress-block__header">
+                  <span class="caption-uppercase" id="progress-phase">Queued</span>
+                  <span class="muted" id="progress-counts"></span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                <div class="progress-block__msg muted" id="progress-msg"></div>
+              </div>
             </div>
 
             <!-- Error block -->

@@ -50,7 +50,9 @@ const projectUrlEl = $('project-url');
 const projectIdEl = $('project-id');
 const projectBadge = $('project-badge');
 const projectProgressCard = $('project-progress');
-const phaseTimeline = $('phase-timeline');
+const progressPhase = $('progress-phase');
+const progressCounts = $('progress-counts');
+const progressFill = $('progress-fill');
 const progressMsg = $('progress-msg');
 const projectErrorCard = $('project-error');
 const projectErrorText = $('project-error-text');
@@ -450,8 +452,17 @@ function renderProjectDetail() {
   projectBadge.className = `badge ${job.status}`;
   projectBadge.textContent = job.status;
 
-  // Progress timeline
-  renderPhaseTimeline(job);
+  // Progress
+  const phase = job.progress?.phase || 'queued';
+  progressPhase.textContent = phaseLabels[phase] || phase;
+  const captured = job.progress?.captured ?? 0;
+  const total = job.progress?.total ?? 0;
+  progressCounts.textContent = total > 0 ? `${captured}/${total} assets` : '';
+  let pct;
+  if (job.status === 'completed') pct = 100;
+  else if (total > 0) pct = Math.min(98, Math.round((captured / total) * 90) + 5);
+  else pct = phaseToPct(phase);
+  progressFill.style.width = `${pct}%`;
   progressMsg.textContent = job.progress?.message || '';
 
   // Hide progress card if completed (replaced by stats + actions)
@@ -496,63 +507,6 @@ function phaseToPct(phase) {
   const idx = PHASE_ORDER.indexOf(phase);
   if (idx < 0) return 5;
   return Math.round((idx / (PHASE_ORDER.length - 1)) * 100);
-}
-
-// Vercel-deployment-style timeline: one row per phase with a status icon and
-// elapsed-or-pending duration on the right. The "current" row spins; earlier
-// rows are checked; later rows are dim-circled. On failure the active phase
-// row turns into a red x.
-function renderPhaseTimeline(job) {
-  if (!phaseTimeline) return;
-  const currentPhase = job.progress?.phase || 'queued';
-  const failed = job.status === 'failed';
-  const completed = job.status === 'completed';
-  const currentIdx = completed
-    ? PHASE_ORDER.length - 1
-    : Math.max(0, PHASE_ORDER.indexOf(currentPhase));
-  const captured = job.progress?.captured ?? 0;
-  const total = job.progress?.total ?? 0;
-  const startedAt = job.startedAt ? Date.parse(job.startedAt) : null;
-  const finishedAt = job.finishedAt ? Date.parse(job.finishedAt) : null;
-
-  phaseTimeline.innerHTML = PHASE_ORDER.map((phase, idx) => {
-    let state;
-    if (idx < currentIdx) state = 'done';
-    else if (idx === currentIdx) state = failed ? 'failed' : (completed ? 'done' : 'active');
-    else state = 'pending';
-
-    let right = '';
-    if (state === 'active' && phase === currentPhase && total > 0) {
-      right = `<span class="phase-row__count">${captured}/${total}</span>`;
-    } else if (state === 'done' && idx === PHASE_ORDER.length - 1 && finishedAt && startedAt) {
-      const sec = Math.max(1, Math.round((finishedAt - startedAt) / 1000));
-      right = `<span class="phase-row__time">${sec}s</span>`;
-    } else if (state === 'pending') {
-      right = `<span class="phase-row__pending">queued</span>`;
-    } else if (state === 'failed') {
-      right = `<span class="phase-row__failed">failed</span>`;
-    }
-    return `
-      <div class="phase-row phase-row--${state}">
-        <span class="phase-row__ic">${phaseIcon(state)}</span>
-        <span class="phase-row__label">${escapeHtml(phaseLabels[phase] || phase)}</span>
-        ${right}
-      </div>
-    `;
-  }).join('');
-}
-
-function phaseIcon(state) {
-  if (state === 'done') {
-    return '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="m5 8.2 2.2 2 4-4.4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  }
-  if (state === 'active') {
-    return '<svg viewBox="0 0 16 16" width="14" height="14" class="tk-spin"><circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-dasharray="22 18" stroke-linecap="round"/></svg>';
-  }
-  if (state === 'failed') {
-    return '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  }
-  return '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>';
 }
 
 // =============================================================================

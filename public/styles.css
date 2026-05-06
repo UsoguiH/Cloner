@@ -1220,73 +1220,29 @@ a:hover { color: var(--primary); }
 .badge.failed { background: #fbe6ec; color: var(--error); }
 .badge.queued, .badge.pending { background: var(--surface-strong); color: var(--muted); }
 
-/* Live progress timeline (Vercel deployment-style: stepper rows) */
-.card--timeline { padding: 14px 18px; }
-.timeline { display: flex; flex-direction: column; }
-.timeline__msg {
-  font-size: 12px;
-  margin-top: 8px;
-  padding-left: 32px;
-  min-height: 18px;
-  color: rgba(0, 0, 0, 0.45);
+/* Live progress card */
+.card--progress { padding: 18px 20px; }
+.progress-block { display: flex; flex-direction: column; gap: 8px; }
+.progress-block__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
 }
-
-.phase-row {
-  display: grid;
-  grid-template-columns: 22px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  height: 30px;
-  font-size: 13px;
-  position: relative;
-}
-/* Connector line between rows */
-.phase-row + .phase-row::before {
-  content: '';
-  position: absolute;
-  left: 10px;
-  top: -8px;
-  width: 2px;
-  height: 8px;
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 1px;
-}
-.phase-row--done + .phase-row::before { background: rgba(0, 0, 0, 0.18); }
-
-.phase-row__ic {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-}
-.phase-row--done .phase-row__ic { color: #1f8a4d; }
-.phase-row--active .phase-row__ic { color: var(--primary); }
-.phase-row--failed .phase-row__ic { color: var(--error); }
-.phase-row--pending .phase-row__ic { color: rgba(0, 0, 0, 0.22); }
-
-.phase-row__label {
-  color: rgba(0, 0, 0, 0.85);
-  font-weight: 400;
-  white-space: nowrap;
+.progress-bar {
+  height: 6px;
+  background: var(--surface-strong);
+  border-radius: var(--r-pill);
   overflow: hidden;
-  text-overflow: ellipsis;
 }
-.phase-row--pending .phase-row__label { color: rgba(0, 0, 0, 0.4); }
-.phase-row--active .phase-row__label { color: #000; font-weight: 500; }
-
-.phase-row__count,
-.phase-row__time,
-.phase-row__pending,
-.phase-row__failed {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: rgba(0, 0, 0, 0.5);
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ink);
+  border-radius: inherit;
+  transition: width 240ms ease;
 }
-.phase-row__pending { color: rgba(0, 0, 0, 0.32); }
-.phase-row__failed { color: var(--error); }
+.progress-block__msg { font-size: 13px; }
 
 /* Project-row status dot + relative time (Linear projects pattern) */
 .project-item__time {
