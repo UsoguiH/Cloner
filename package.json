@@ -13,6 +13,7 @@
     "ai:provenance:check": "node scripts/ai-provenance-check.js",
     "ai:provenance:integration": "node scripts/ai-provenance-integration-check.js",
     "ai:role-naming:check": "node scripts/ai-role-naming-check.js",
+    "ai:copy-generation:check": "node scripts/ai-copy-generation-check.js",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {

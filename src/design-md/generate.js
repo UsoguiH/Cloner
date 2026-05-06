@@ -12,6 +12,7 @@ import { buildSpacingScale } from './emit/spacing-scale.js';
 import { groupComponents, classifyProbe } from './emit/component-classify.js';
 import { createProvenance } from '../ai/provenance.js';
 import { loadRoleNamingEnvelope } from '../ai/stages/role-naming.js';
+import { loadCopyGenerationEnvelope } from '../ai/stages/copy-generation.js';
 
 // Read the role-naming envelope (Phase 6.4) if it exists. Returns
 // { name → { displayName, roleDescription, confidence } } keyed by the colors
@@ -33,6 +34,32 @@ function loadAiRoleNames(jobDir) {
     };
   }
   return Object.keys(out).length ? out : null;
+}
+
+// Read the copy-generation envelope (Phase 6.7) if it exists. Returns the
+// payload shape ready for emit, plus modelId for receipts. Per-section
+// blurbs are keyed by the canonical enum so the markdown emitter can lookup
+// in O(1) when prepending. globalConfidence is exposed at the top so callers
+// can short-circuit the whole AI emit when the model self-rates low.
+function loadAiCopy(jobDir) {
+  const env = loadCopyGenerationEnvelope(jobDir);
+  const data = env?.data;
+  if (!data || typeof data !== 'object') return null;
+  const blurbsByEnum = {};
+  for (const item of Array.isArray(data.sectionBlurbs) ? data.sectionBlurbs : []) {
+    if (!item || typeof item.section !== 'string') continue;
+    blurbsByEnum[item.section] = {
+      blurb: item.blurb,
+      confidence: typeof item.confidence === 'number' ? item.confidence : (data.globalConfidence ?? 0),
+    };
+  }
+  return {
+    brandThesis: typeof data.brandThesis === 'string' ? data.brandThesis : null,
+    voiceProfile: Array.isArray(data.voiceProfile) ? data.voiceProfile : [],
+    blurbsByEnum,
+    globalConfidence: typeof data.globalConfidence === 'number' ? data.globalConfidence : 0,
+    modelId: env?.modelId || null,
+  };
 }
 
 const AI_CONFIDENCE_THRESHOLD = 0.7;
@@ -389,9 +416,18 @@ export function generateDesignMd(jobDir, options = {}) {
   // design system" signal, which is correct behavior.
 
   // --- Compose YAML ---
+  // The copy-generation envelope (Phase 6.7) supplies brand-voice prose:
+  // brandThesis replaces ds.description; voiceProfile + sectionBlurbs feed
+  // the markdown body. Loaded before YAML compose so high-confidence AI
+  // brandThesis lands in the YAML frontmatter instead of the templated
+  // guessDescription stub.
+  const aiCopy = loadAiCopy(jobDir);
+  const aiCopyAccepted = aiCopy && aiCopy.globalConfidence >= AI_CONFIDENCE_THRESHOLD;
+
+  const fallbackDescription = options.description || guessDescription(computed, roles, typeScale);
   const ds = {
     name: options.name || guessName(computed, jobDir),
-    description: options.description || guessDescription(computed, roles, typeScale),
+    description: (aiCopyAccepted && aiCopy.brandThesis) ? aiCopy.brandThesis : fallbackDescription,
   };
   const colorsTable = rolesToColorTable(roles, usedColorRoles);
   if (Object.keys(colorsTable).length) ds.colors = colorsTable;
@@ -518,37 +554,98 @@ export function generateDesignMd(jobDir, options = {}) {
   prov.setFallback('name', {
     rationale: 'Derived from sourceUrl host (deterministic guess). Will be overwritten by llm-copy-generation when AI stage ships.',
   });
-  prov.setFallback('description', {
-    rationale: 'Templated deterministic description. Will be overwritten by llm-copy-generation brandThesis when AI stage ships.',
-  });
+  if (aiCopyAccepted && aiCopy.brandThesis) {
+    prov.setLLM('description', { stage: 'copy-generation', confidence: aiCopy.globalConfidence });
+  } else if (aiCopy && aiCopy.brandThesis) {
+    prov.setFallback('description', {
+      rationale: `llm-copy-generation returned brandThesis with globalConfidence ${aiCopy.globalConfidence} (< ${AI_CONFIDENCE_THRESHOLD}); downgraded to fallback.`,
+    });
+  } else {
+    prov.setFallback('description', {
+      rationale: 'No AI copy available (key absent or stage skipped); templated deterministic description stands in.',
+    });
+  }
+
+  // Voice profile + section blurbs — only emitted on AI accept; otherwise
+  // those design.md sections fall back to the existing deterministic copy
+  // and pick up no provenance entry (the rows simply don't exist).
+  if (aiCopyAccepted) {
+    aiCopy.voiceProfile.forEach((item, i) => {
+      if (item?.trait) prov.setLLM(`voice.profile.${i}.trait`, { stage: 'copy-generation', confidence: aiCopy.globalConfidence });
+      if (item?.explanation) prov.setLLM(`voice.profile.${i}.explanation`, { stage: 'copy-generation', confidence: aiCopy.globalConfidence });
+    });
+    for (const [section, b] of Object.entries(aiCopy.blurbsByEnum)) {
+      if (b.confidence >= AI_CONFIDENCE_THRESHOLD) {
+        prov.setLLM(`sections.${section}.blurb`, { stage: 'copy-generation', confidence: b.confidence });
+      } else {
+        prov.setFallback(`sections.${section}.blurb`, {
+          rationale: `llm-copy-generation returned a blurb for '${section}' with confidence ${b.confidence} (< ${AI_CONFIDENCE_THRESHOLD}); downgraded — section emits without an intro paragraph.`,
+        });
+      }
+    }
+  }
 
   const provenanceJson = prov.toJSON();
 
   const yamlText = YAML.stringify(ds, { lineWidth: 0 });
 
   // --- Compose Markdown ---
+  // Helper: prepend a high-confidence section blurb in front of the
+  // deterministic body. Low-confidence blurbs are dropped (a fallback
+  // provenance row was already stamped above).
+  const blurb = (sectionEnum) => {
+    if (!aiCopyAccepted) return '';
+    const b = aiCopy.blurbsByEnum[sectionEnum];
+    if (!b || !b.blurb || b.confidence < AI_CONFIDENCE_THRESHOLD) return '';
+    return b.blurb.trim() + '\n\n';
+  };
+
   let md = '---\n' + yamlText + '---\n\n';
   md += `# ${ds.name}\n\n`;
-  md += sectionMd('Overview', ds.description);
+
+  // Overview body: AI overview blurb if present (richer paragraph), else
+  // brandThesis (in YAML description), else deterministic guessDescription.
+  const overviewBody = aiCopyAccepted && aiCopy.blurbsByEnum.overview?.blurb
+    && aiCopy.blurbsByEnum.overview.confidence >= AI_CONFIDENCE_THRESHOLD
+    ? aiCopy.blurbsByEnum.overview.blurb
+    : ds.description;
+  md += sectionMd('Overview', overviewBody);
+
+  // Voice section: emitted only when AI copy is accepted. Three to five
+  // trait/explanation pairs from voiceProfile.
+  if (aiCopyAccepted && aiCopy.voiceProfile.length) {
+    const voiceLines = aiCopy.voiceProfile
+      .filter((v) => v?.trait && v?.explanation)
+      .map((v) => `- **${v.trait}** — ${v.explanation}`);
+    if (voiceLines.length) {
+      const lead = blurb('voice');
+      md += sectionMd('Voice', lead + voiceLines.join('\n'));
+    }
+  }
+
   md += sectionMd(
     'Colors',
-    Object.keys(colorsTable).length
-      ? Object.entries(colorsTable).map(([n, v]) => {
-          const meta = colorMeta[n];
-          if (meta?.displayName && meta?.roleDescription) {
-            return `- **${meta.displayName}** \`${v}\` (\`${n}\`) — ${meta.roleDescription}`;
-          }
-          return `- **${n}** \`${v}\``;
-        }).join('\n')
-      : '_No colors extracted._'
+    blurb('color-system') + (
+      Object.keys(colorsTable).length
+        ? Object.entries(colorsTable).map(([n, v]) => {
+            const meta = colorMeta[n];
+            if (meta?.displayName && meta?.roleDescription) {
+              return `- **${meta.displayName}** \`${v}\` (\`${n}\`) — ${meta.roleDescription}`;
+            }
+            return `- **${n}** \`${v}\``;
+          }).join('\n')
+        : '_No colors extracted._'
+    )
   );
   md += sectionMd(
     'Typography',
-    Object.keys(typoTable).length
-      ? Object.entries(typoTable).map(([n, t]) => `- **${n}** — ${t.fontFamily} ${t.fontSize}/${t.fontWeight}`).join('\n')
-      : '_No typography extracted._'
+    blurb('typography') + (
+      Object.keys(typoTable).length
+        ? Object.entries(typoTable).map(([n, t]) => `- **${n}** — ${t.fontFamily} ${t.fontSize}/${t.fontWeight}`).join('\n')
+        : '_No typography extracted._'
+    )
   );
-  md += sectionMd('Layout', 'Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.');
+  md += sectionMd('Layout', blurb('spacing') + 'Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.');
   md += sectionMd('Elevation & Depth', 'Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).');
   md += sectionMd(
     'Shapes',
@@ -558,9 +655,11 @@ export function generateDesignMd(jobDir, options = {}) {
   );
   md += sectionMd(
     'Components',
-    Object.keys(componentBlocks).length
-      ? Object.keys(componentBlocks).map((n) => `- **${n}**`).join('\n')
-      : '_No components classified._'
+    blurb('components') + (
+      Object.keys(componentBlocks).length
+        ? Object.keys(componentBlocks).map((n) => `- **${n}**`).join('\n')
+        : '_No components classified._'
+    )
   );
   md += sectionMd("Do's and Don'ts",
     "- **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.\n" +

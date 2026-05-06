@@ -8,6 +8,7 @@ import { buildTokenIndex } from './extract/var-trace.js';
 import { generateDesignMd } from './generate.js';
 import { isAvailable as isAiAvailable } from '../ai/client.js';
 import { runRoleNamingStage } from '../ai/stages/role-naming.js';
+import { runCopyGenerationStage } from '../ai/stages/copy-generation.js';
 
 // ============================================================================
 // runDesignMdJob — top-level worker for the DESIGN.md job type.
@@ -175,10 +176,63 @@ export async function runDesignMdJob(job, { onProgress }) {
       }
     }
 
-    // Phase 4c: final generate (writes design.md + sidecars). If the AI
-    // envelope was written, the three-way provenance branch in generate.js
-    // emits `**Linear Lavender** #5e6ad2 (`primary`) — …` instead of the
-    // raw role-slug fallback.
+    // Phase 4c: brand-voice copy generation. Mints brandThesis (replaces
+    // YAML description), voiceProfile (a new ## Voice section), and per-
+    // section blurbs (intro paragraphs prepended to ## Colors / Typography
+    // / Components / Layout). Uses both screenshots for atmospheric
+    // grounding and reuses the role-naming labels — so blurbs can reference
+    // "Linear Indigo" or "Stripe Blurple" instead of raw hex. Same graceful
+    // degrade as role-naming: any failure path leaves the deterministic
+    // emit untouched.
+    let aiCopy = null;
+    if (isAiAvailable() && (Object.keys(prelim.roles || {}).length || Object.keys(prelim.ds?.typography || {}).length)) {
+      const colorsForCopy = [];
+      const aiNames = aiNaming?.ok ? indexRoleNamesFromEnvelope(aiNaming.envelope) : {};
+      for (const [name, info] of Object.entries(prelim.roles || {})) {
+        if (!info?.hex) continue;
+        const labels = aiNames[name];
+        colorsForCopy.push({
+          name,
+          hex: info.hex,
+          displayName: labels?.displayName || null,
+          roleDescription: labels?.roleDescription || null,
+        });
+      }
+      const typoForCopy = [];
+      for (const [name, t] of Object.entries(prelim.ds?.typography || {})) {
+        typoForCopy.push({
+          name,
+          fontFamily: t.fontFamily || 'unknown',
+          fontSize: t.fontSize || '',
+          fontWeight: t.fontWeight ?? '',
+        });
+      }
+      tick({ phase: 'enriching', message: `writing brand-voice copy with Gemini` });
+      try {
+        aiCopy = await runCopyGenerationStage({
+          jobDir: job.jobDir,
+          siteName: prelim.name,
+          sourceUrl: job.url,
+          colors: colorsForCopy,
+          typography: typoForCopy,
+          screenshotPaths: [
+            path.join(visualDir, 'desktop-viewport.png'),
+            path.join(visualDir, 'desktop-fullpage.png'),
+          ],
+        });
+        if (!aiCopy.ok) {
+          console.warn(`[design-md ${job.id}] copy-generation AI: ${aiCopy.code} ${aiCopy.error || ''}`);
+        }
+      } catch (err) {
+        console.warn(`[design-md ${job.id}] copy-generation AI threw: ${err.message}`);
+        aiCopy = { ok: false, code: 'threw', error: err.message };
+      }
+    }
+
+    // Phase 4d: final generate (writes design.md + sidecars). The three-way
+    // provenance branch in generate.js consumes both envelopes:
+    //   role-naming    → **Linear Indigo** #5e6ad2 (primary) — …
+    //   copy-generation → YAML description, ## Voice, section intros
     tick({ phase: 'generating', message: 'emitting design.md' });
     const result = generateDesignMd(job.jobDir, { write: true });
     const summary = result.lint?.summary || {};
@@ -194,11 +248,25 @@ export async function runDesignMdJob(job, { onProgress }) {
         lint: summary,
         probesHarvested: harvest.stats.probesHarvested,
         pseudoStateDiffs: harvest.stats.pseudoStateDiffs,
-        ai: aiNaming
+        ai: (aiNaming || aiCopy)
           ? {
-              roleNaming: aiNaming.ok
-                ? { ok: true, fromCache: !!aiNaming.fromCache, model: aiNaming.envelope?.modelId, count: aiNaming.envelope?.data?.roles?.length || 0 }
-                : { ok: false, code: aiNaming.code },
+              roleNaming: aiNaming
+                ? (aiNaming.ok
+                    ? { ok: true, fromCache: !!aiNaming.fromCache, model: aiNaming.envelope?.modelId, count: aiNaming.envelope?.data?.roles?.length || 0 }
+                    : { ok: false, code: aiNaming.code })
+                : null,
+              copyGeneration: aiCopy
+                ? (aiCopy.ok
+                    ? {
+                        ok: true,
+                        fromCache: !!aiCopy.fromCache,
+                        model: aiCopy.envelope?.modelId,
+                        traits: aiCopy.envelope?.data?.voiceProfile?.length || 0,
+                        blurbs: aiCopy.envelope?.data?.sectionBlurbs?.length || 0,
+                        globalConfidence: aiCopy.envelope?.data?.globalConfidence ?? null,
+                      }
+                    : { ok: false, code: aiCopy.code })
+                : null,
             }
           : null,
       },
@@ -208,6 +276,26 @@ export async function runDesignMdJob(job, { onProgress }) {
       try { await browser.close(); } catch {}
     }
   }
+}
+
+// Flatten role-naming envelope items into a name → labels lookup so the
+// copy-generation prompt can quote brand-voice names ("Linear Indigo") next
+// to the harvest hex without re-reading the disk sidecar.
+function indexRoleNamesFromEnvelope(env) {
+  const out = {};
+  const items = env?.data?.roles;
+  if (!Array.isArray(items)) return out;
+  for (const item of items) {
+    if (!item || typeof item.tokenPath !== 'string') continue;
+    const m = /^colors\.(.+)$/.exec(item.tokenPath);
+    if (!m) continue;
+    out[m[1]] = {
+      displayName: item.displayName,
+      roleDescription: item.roleDescription,
+      confidence: item.confidence,
+    };
+  }
+  return out;
 }
 
 // Save index.html + every loaded stylesheet body in a replay-compatible

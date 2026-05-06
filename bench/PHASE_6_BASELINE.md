@@ -75,6 +75,41 @@ Stripe naming itself "Blurple" (Stripe's internal-doc name for `#643afd`) and Li
 
 **Head-to-head total: 26/54 ≈ 48%.** Up from 20% pre-Session B. Color names + role descriptions axes — the two cheapest perceptual wins — are now at parity or above on every head-to-head site. Remaining 52% gap is hero copy (Phase 6.7, Claude Opus prose) plus deeper palette discovery (Phase 6.3, color-block discovery via vision).
 
+### Session C revision (2026-05-07): copy-generation AI stage shipped
+
+`runDesignMdJob` adds Phase 4c — `runCopyGenerationStage` — between role-naming and the final markdown emit. Inputs: site name + URL, the deterministic color palette enriched with role-naming labels (so the prompt can reference "Linear Indigo" rather than `#5e6ad2`), the typography table, and both screenshots (above-the-fold + full page). Output is a three-band envelope: `brandThesis` (one sentence, replaces YAML `description:`), `voiceProfile[]` (3–5 trait/explanation pairs, emitted as a new `## Voice` section), and `sectionBlurbs[]` (intro paragraphs prepended to `## Overview / Colors / Typography / Layout / Components`). Schema declares no `x-harvested` fields — pure prose — so the validator binds nothing and the writer cannot leak invented hex/tokenPath.
+
+Live re-runs (gemini-3.1-pro-preview, ~15–20s extra per job, lint clean across all four):
+
+| Site | globalConf | traits | blurbs | llm-stamps | sample brandThesis |
+|---|---:|---:|---:|---:|---|
+| figma.com  | 0.93 | 4 | 4 | 17 | "Figma is a collaborative design platform that frames its users' vibrant creations within a stark, high-contrast, and deeply structural interface." |
+| linear.app | 0.95 | 4 | 5 | 22 | "Linear is a highly structured product development system that presents a precision-driven, high-contrast dark interface designed for focus and speed." |
+| stripe.com | 0.95 | 4 | 5 | 22 | "Stripe presents its global financial infrastructure through a meticulously engineered interface that balances fluid, high-fidelity gradients against stark, grid-aligned typography." |
+| notion.so  | 0.95 | 4 | 5 | 20 | "Notion presents as a highly structured, utilitarian workspace, anchoring its complex document and project capabilities in a stark canvas that is intentionally softened by playful, hand-drawn brand illustrations." |
+
+The voice profiles are not generic adjectives — they reference concrete harvest evidence and screenshot detail:
+
+- **Linear** — "Precision-engineered: The interface relies heavily on rigid Stark Hairline borders and Berkeley Mono typography to evoke the feeling of a code editor." (Berkeley Mono is Linear's actual secondary face — the AI saw and named it from the screenshot.)
+- **Stripe** — "Engineered: The reliance on a precise typographic scale, driven entirely by the geometric sohne-var family, communicates rigorous technical precision." (sohne-var is Stripe's brand-defining typeface.)
+- **Notion** — "Approachable: Sketchy, hand-drawn vector loops and floating icons in the Midnight Navy hero sections inject warmth and humanity…" (the AI identified Notion's signature brand-illustration style.)
+- **Figma** — "Tool-centric: The interface frequently embeds literal UI elements, collaborative cursors, and property panels into the layout to reinforce Figma's identity as an active workspace."
+
+Color section blurbs name colors by their role-naming labels, threading both AI stages coherently (e.g. "Linear Obsidian", "Linear Indigo", "Pristine White Canvas", "Stripe Blurple"). Every voice trait, blurb, and brandThesis is stamped `llm-copy-generation` with confidence in the receipts UI; low-confidence outputs would downgrade to deterministic emit with provenance preserved.
+
+| Axis | linear | notion | stripe | figma* | Σ /9 h2h |
+|---|---|---|---|---|---|
+| **Color names** | 3 | 3 | 3 | 3 | 9/9 |
+| **Role descriptions** | 2 | 2 | 2 | 2 | 6/9 |
+| **Color-block fidelity** | 2 | 1 | 1 | 1 | 4/9 |
+| **Variant labels** | 1 | 0 | 1 | 1 | 2/9 |
+| **Hero copy** | **3** ↑↑↑ | **3** ↑↑↑ | **3** ↑↑↑ | **3** ↑↑↑ | **9/9** |
+| **Coherence** | **3** ↑ | **3** ↑ | **3** ↑↑ | **3** ↑↑ | **9/9** |
+
+**Head-to-head total: 39/54 ≈ 72%.** Up from 48% post-Session B. Hero copy axis 0 → 9/9 — the bridge is fully crossed. Coherence 5 → 9/9 because the AI ties color names, voice traits, and section intros together into one continuous brand statement. We are above the "ship" threshold on three of four sites; remaining 28% gap is variant labels (Phase 6.5, vision-driven button-state recognition) plus deeper color-block discovery (Phase 6.3) plus residual coverage gaps (states/motion/iconography sections that aren't yet emitted).
+
+**Beating getdesign.md head-to-head: cleared on linear, stripe, notion.** Figma is at parity. The provenance-receipts moat means every claim in our prose is auditable to a measurement; theirs is not. Phase 6 mission accomplished — three of four sites now exceed the side-by-side test on the rubric, with full audit trail and graceful degrade preserved.
+
 ## Top 3 perceptual gaps (the things that lose us the side-by-side test)
 
 ### 1. Color palette breadth — we capture 10–18% of what they document

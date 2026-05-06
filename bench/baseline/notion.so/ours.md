@@ -1,6 +1,6 @@
 ---
 name: Notion
-description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: Notion presents as a highly structured, utilitarian workspace, anchoring its complex document and project capabilities in a stark canvas that is intentionally softened by playful, hand-drawn brand illustrations.
 colors:
   canvas: "#ffffff"
   hairline: "#f6f5f4"
@@ -79,15 +79,26 @@ components:
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Notion balances strict utility with approachable warmth. The design system contrasts heavily structured, monochromatic application surfaces against bold, illustrative marketing moments set in Midnight Navy.
+
+## Voice
+
+- **Utilitarian** — The interface relies heavily on Canvas White backgrounds and Notion Core Black typography to prioritize content organization and structural clarity over decorative flair.
+- **Approachable** — Sketchy, hand-drawn vector loops and floating icons in the Midnight Navy hero sections inject warmth and humanity into an otherwise rigid, tool-centric system.
+- **Modular** — The layout leans on tight bento-box grids and distinct card components set against Structure Mist to compartmentalize dense feature lists and use cases.
+- **Confident** — Heavy 700-weight NotionInter headlines are used to make stark, declarative statements that command attention without relying on loud accent colors.
 
 ## Colors
 
-- **Canvas White** `#ffffff` (`canvas`) — This pristine white serves as the foundational canvas for the core Notion application interface, providing absolute clarity for user content.
-- **Subtle Wash Gray** `#f6f5f4` (`hairline`) — Used for board columns and structural borders, this soft off-white quietly delineates sections within Notion without adding visual noise.
-- **Midnight Navy** `#02093a` (`surface-1`) — Defining our hero banners and immersive marketing sections, this deep navy creates a dramatic stage to showcase new Notion features.
+The palette is intentionally restrained to prioritize the user's content. Canvas White and Structure Mist build the foundational workspace, while Secondary Ink and Absolute Black handle typographic hierarchy. Midnight Navy is reserved strictly for high-impact hero sections, acting as a clear boundary between the marketing narrative and the product experience.
+
+- **Canvas White** `#ffffff` (`canvas`) — Serves as the primary structural background for the Notion editor and document pages, creating a clean environment for focused work.
+- **Structure Mist** `#f6f5f4` (`hairline`) — Defines subtle boundaries and secondary structural surfaces like the app sidebar and promotional banners without overpowering the main canvas.
+- **Midnight Navy** `#02093a` (`surface-1`) — Drives the bold aesthetic of Notion's marketing hero sections and anchors the visual narrative for overarching brand moments.
 
 ## Typography
+
+Driven entirely by the NotionInter family, the typographic system is pragmatic and highly legible. It relies on stark weight contrasts—from 400-weight interactive buttons to 700-weight headlines—to organize dense information and establish clear reading patterns without introducing structural clutter.
 
 - **button-3** — NotionInter 16px/400
 - **button-4** — NotionInter 16px/500
@@ -108,6 +119,8 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **xs** `4px`
 
 ## Components
+
+The brand relies on prominent card structures and dense bento grids to organize features, integrations, and calculators. Often set against Structure Mist backgrounds, these modules use sharp internal boundaries to maintain a rigid, predictable rhythm as users scroll.
 
 - **button-tertiary**
 - **button-secondary**

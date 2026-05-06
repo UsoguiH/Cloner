@@ -1,12 +1,11 @@
 ---
 name: Stripe
-description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #643afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: Stripe presents its global financial infrastructure through a meticulously engineered interface that balances fluid, high-fidelity gradients against stark, grid-aligned typography.
 colors:
   ink-muted: "#000000"
+  primary: "#533afd"
   canvas: "#ffffff"
   hairline: "#50617a"
-  primary: "#643afd"
-  on-primary: "#ffffff"
 typography:
   button:
     fontFamily: sohne-var
@@ -27,13 +26,18 @@ typography:
 rounded:
   xs: 4px
   md: 6px
-spacing:
-  space-5: 16px
 components:
   button-tertiary:
     textColor: "{colors.ink-muted}"
     typography: "{typography.button}"
   button-secondary:
+    textColor: "{colors.primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.xs}"
+    padding: 15px 24px 16px 24px
+    height: 48px
+  button-primary:
+    backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
     typography: "{typography.button}"
     rounded: "{rounded.xs}"
@@ -61,30 +65,33 @@ components:
     textColor: "{colors.ink-muted}"
     typography: "{typography.button}"
     padding: 0px 16px
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: "{spacing.space-5}"
-    height: 40px
 ---
 
 # Stripe
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #ffffff, primary accent #643afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Stripe’s design system defines a visual language where technical rigor meets sophisticated energy. The interface relies on a strict underlying grid to organize complex financial tooling, while expansive, atmospheric color meshes provide unmistakable brand distinctiveness.
+
+## Voice
+
+- **Engineered** — The reliance on a precise typographic scale, driven entirely by the geometric sohne-var family, communicates rigorous technical precision.
+- **Vibrant** — Sweeping multi-color gradients contrast dramatically against the Pristine White Canvas to inject energy into a historically rigid financial domain.
+- **Authoritative** — Primary messaging is set in Deep Midnight Ink, anchoring the fluid visual elements with confident, highly legible typographic weight.
+- **Action-oriented** — Interactive elements are sharply signaled by Stripe Blurple, pulling focus immediately to crucial conversion points like onboarding buttons.
 
 ## Colors
 
-- **Absolute Black** `#000000` (`ink-muted`) — Anchors the deepest contrast text elements and partner logos within the Stripe interface to ensure crisp legibility.
-- **Stripe Canvas White** `#ffffff` (`canvas`) — Serves as the foundational base for the Stripe interface, creating ample breathing room for vibrant brand assets.
-- **Secondary Slate** `#50617a` (`hairline`) — Supports continuous reading in subheadings and secondary typographic details across Stripe properties.
-- **Stripe Blurple** `#643afd` (`primary`) — Drives primary user actions and vital interaction highlights across the Stripe digital ecosystem.
-- **Knockout White** `#ffffff` (`on-primary`) — Maintains optimal reading clarity for interface typography layered directly over vibrant Stripe action buttons.
+Stripe juxtaposes a clinical Pristine White Canvas with the vivid energy of Stripe Blurple to guide user attention. Deep Midnight Ink and Steel Slate handle the complex hierarchy of financial data, ensuring that text remains the grounding element against the brand's signature gradient washes.
+
+- **Absolute Black** `#000000` (`ink-muted`) — Used sparingly for maximum contrast, this unyielding black anchors specific typographic details and high-fidelity interface elements across the Stripe ecosystem.
+- **Stripe Blurple** `#533afd` (`primary`) — Serving as Stripe's signature interactive hue, this vibrant indigo drives user action across primary buttons like our sales and onboarding calls to action.
+- **Pristine White Canvas** `#ffffff` (`canvas`) — This pure white provides the foundational background across Stripe's interfaces, ensuring our vibrant gradients and interactive components command attention.
+- **Steel Slate** `#50617a` (`hairline`) — This balanced slate supports Stripe's typographic hierarchy by carrying secondary prose, technical metadata, and supporting subheadline typography.
 
 ## Typography
+
+The typographic system for Stripe is built entirely on sohne-var, utilizing slight weight shifts to establish hierarchy without clutter. Generous sizing, like the 48px display typography, allows feature statements to command the page before stepping down to a legible 20px body size for supporting prose.
 
 - **button** — sohne-var 16px/400
 - **display-2** — sohne-var 48px/300
@@ -105,15 +112,17 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Components
 
+Interactive components in Stripe are highly contained and intentional, often utilizing Crisp Action White text against Stripe Blurple to maximize contrast. Feature cards and bento-box grids use a subtle Cool Interface Wash to separate distinct product offerings cleanly without competing with the main canvas.
+
 - **button-tertiary**
 - **button-secondary**
+- **button-primary**
 - **hero-section**
 - **feature-card**
 - **cta-banner**
 - **nav**
 - **top-nav**
 - **footer**
-- **button-primary**
 
 ## Do's and Don'ts
 

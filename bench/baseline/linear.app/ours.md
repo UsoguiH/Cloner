@@ -1,6 +1,6 @@
 ---
 name: Linear
-description: "Design system extracted from a structural clone. Canvas #08090a, primary accent #5e6ad2, dominant typeface Inter Variable. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: Linear is a highly structured product development system that presents a precision-driven, high-contrast dark interface designed for focus and speed.
 colors:
   on-primary: "#ffffff"
   ink: "#f7f8f8"
@@ -91,16 +91,27 @@ components:
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #08090a, primary accent #5e6ad2, dominant typeface Inter Variable. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Linear sets a standard for modern product tools by marrying developer-centric precision with uncompromising design. The interface strips away distraction, relying on a strict dark canvas and highly legible typography to keep teams focused.
+
+## Voice
+
+- **Precision-engineered** — The interface relies heavily on rigid Stark Hairline borders and Berkeley Mono typography to evoke the feeling of a code editor.
+- **High-contrast** — Sharp punches of Electric Yellow and Crisp Ink cut through the deep Linear Obsidian canvas to ensure immediate visual hierarchy.
+- **Purposeful** — Decorative elements are stripped away in favor of strict grid alignments and muted, structural wireframe illustrations.
+- **Unapologetic** — Bold, high-impact Inter Variable typography dominates the layout, letting the core functionality and data speak for themselves.
 
 ## Colors
 
-- **Absolute White** `#ffffff` (`on-primary`) — A pure white intended for maximum contrast applications, guaranteeing legibility when typography is placed over Linear's active UI elements.
-- **Primary Ink** `#f7f8f8` (`ink`) — The luminous primary text color reserved for high-contrast headings and essential typography throughout the Linear experience.
-- **Deep Canvas** `#08090a` (`canvas`) — The foundational deep dark background that establishes Linear's signature aesthetic across both marketing pages and the core application.
-- **Linear Indigo** `#5e6ad2` (`primary`) — A vibrant indigo used for key accents and status badges, providing focused moments of brand expression against the dark interface.
+The Linear palette is anchored by a deep Linear Obsidian canvas, creating a focused, dark-mode-first environment. Sparse but intentional accents of Linear Indigo and Electric Yellow are deployed to guide attention to active states and primary actions.
+
+- **Absolute White** `#ffffff` (`on-primary`) — Pure white guarantees ultimate clarity and contrast when rendered atop high-impact components or distinct brand elements.
+- **Crisp Ink** `#f7f8f8` (`ink`) — Serving as our primary text color, this crisp off-white ensures maximum legibility for hero typography and core interface data.
+- **Linear Obsidian** `#08090a` (`canvas`) — This deep, almost-black hue forms the foundational backdrop of the Linear interface, creating a focused and immersive environment.
+- **Linear Indigo** `#5e6ad2` (`primary`) — A vibrant, signature indigo used to sparingly draw focus to interactive accents, select links, and specialized brand moments.
 
 ## Typography
+
+Linear relies on the mechanical clarity of Inter Variable for interface copy, establishing a clean, pragmatic hierarchy. This is paired closely with Berkeley Mono for technical data and code snippets, reinforcing the brand's builder-first identity.
 
 - **button** — Inter Variable 13px/400
 - **body** — Inter Variable 16px/500
