@@ -42,8 +42,6 @@ components:
     rounded: "{rounded.xs}"
     padding: 8px 18px 10px 18px
     height: 43px
-  button-primary-focus:
-    rounded: "{rounded.xs}"
   nav:
     textColor: "{colors.canvas}"
     typography: "{typography.button-3}"
@@ -68,8 +66,8 @@ Design system extracted from a structural clone. Canvas #000000, primary accent 
 
 ## Colors
 
-- **canvas** `#000000`
-- **primary** `#ffffff`
+- **Core Black Canvas** `#000000` (`canvas`) — This dense black acts as an anchoring background for high-contrast elements and primary navigation buttons across the Figma platform.
+- **Clean White** `#ffffff` (`primary`) — Acting as the foundational backdrop for Figma, this crisp white ensures our vibrant community creations and interface elements take center stage.
 
 ## Typography
 
@@ -94,7 +92,6 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **button-tertiary**
 - **button-secondary**
 - **button-primary**
-- **button-primary-focus**
 - **nav**
 - **top-nav**
 - **footer**

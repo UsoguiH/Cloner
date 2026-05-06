@@ -1,10 +1,12 @@
 ---
 name: Stripe
-description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #533afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #643afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   ink-muted: "#000000"
-  primary: "#533afd"
   canvas: "#ffffff"
+  hairline: "#50617a"
+  primary: "#643afd"
+  on-primary: "#ffffff"
 typography:
   button:
     fontFamily: sohne-var
@@ -25,18 +27,13 @@ typography:
 rounded:
   xs: 4px
   md: 6px
+spacing:
+  space-5: 16px
 components:
   button-tertiary:
     textColor: "{colors.ink-muted}"
     typography: "{typography.button}"
   button-secondary:
-    textColor: "{colors.primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.xs}"
-    padding: 15px 24px 16px 24px
-    height: 48px
-  button-primary:
-    backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
     typography: "{typography.button}"
     rounded: "{rounded.xs}"
@@ -48,6 +45,7 @@ components:
     textColor: "{colors.ink-muted}"
     typography: "{typography.button}"
   cta-banner:
+    textColor: "{colors.hairline}"
     typography: "{typography.body-lg}"
     height: 56px
   nav:
@@ -63,19 +61,28 @@ components:
     textColor: "{colors.ink-muted}"
     typography: "{typography.button}"
     padding: 0px 16px
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.space-5}"
+    height: 40px
 ---
 
 # Stripe
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #ffffff, primary accent #533afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Design system extracted from a structural clone. Canvas #ffffff, primary accent #643afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-- **ink-muted** `#000000`
-- **primary** `#533afd`
-- **canvas** `#ffffff`
+- **Absolute Black** `#000000` (`ink-muted`) — Anchors the deepest contrast text elements and partner logos within the Stripe interface to ensure crisp legibility.
+- **Stripe Canvas White** `#ffffff` (`canvas`) — Serves as the foundational base for the Stripe interface, creating ample breathing room for vibrant brand assets.
+- **Secondary Slate** `#50617a` (`hairline`) — Supports continuous reading in subheadings and secondary typographic details across Stripe properties.
+- **Stripe Blurple** `#643afd` (`primary`) — Drives primary user actions and vital interaction highlights across the Stripe digital ecosystem.
+- **Knockout White** `#ffffff` (`on-primary`) — Maintains optimal reading clarity for interface typography layered directly over vibrant Stripe action buttons.
 
 ## Typography
 
@@ -100,13 +107,13 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 - **button-tertiary**
 - **button-secondary**
-- **button-primary**
 - **hero-section**
 - **feature-card**
 - **cta-banner**
 - **nav**
 - **top-nav**
 - **footer**
+- **button-primary**
 
 ## Do's and Don'ts
 

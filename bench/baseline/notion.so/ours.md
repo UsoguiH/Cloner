@@ -30,10 +30,6 @@ components:
   button-tertiary:
     typography: "{typography.button-3}"
     rounded: "{rounded.md}"
-  button-tertiary-hover:
-    opacity: 0.959151
-  button-tertiary-focus:
-    opacity: 0.956116
   button-secondary:
     textColor: "{colors.canvas}"
     typography: "{typography.button-4}"
@@ -87,9 +83,9 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Colors
 
-- **canvas** `#ffffff`
-- **hairline** `#f6f5f4`
-- **surface-1** `#02093a`
+- **Canvas White** `#ffffff` (`canvas`) — This pristine white serves as the foundational canvas for the core Notion application interface, providing absolute clarity for user content.
+- **Subtle Wash Gray** `#f6f5f4` (`hairline`) — Used for board columns and structural borders, this soft off-white quietly delineates sections within Notion without adding visual noise.
+- **Midnight Navy** `#02093a` (`surface-1`) — Defining our hero banners and immersive marketing sections, this deep navy creates a dramatic stage to showcase new Notion features.
 
 ## Typography
 
@@ -114,8 +110,6 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 ## Components
 
 - **button-tertiary**
-- **button-tertiary-hover**
-- **button-tertiary-focus**
 - **button-secondary**
 - **button-primary**
 - **text-input**

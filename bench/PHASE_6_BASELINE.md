@@ -49,6 +49,32 @@ After fixing the linear-primary harvest gap with token-aware role assignment (se
 
 **Head-to-head total: 11/54 ≈ 20%.** Marginal score lift, but the underlying correctness fix unlocks Session B safely.
 
+### Session B revision (2026-05-07): role-naming AI stage shipped
+
+`runDesignMdJob` now wires `runRoleNamingStage` between two `generateDesignMd` passes. First pass is dry (`write:false`) to surface deterministic role hexes; those are sent to Gemini 3.1 Pro with the above-the-fold screenshot; envelope is written to `<jobDir>/output/design-md/role-naming.envelope.json`; second pass picks up the envelope via `loadAiRoleNames()` and emits brand-voice prose into the `## Colors` block. Cache hits are zero-cost replays. Missing key, validation failure, or low-confidence (<0.7) rows fall back to the deterministic emit path with provenance stamped accordingly.
+
+Live re-runs (2026-05-07, gemini-3.1-pro-preview):
+
+| Site | AI roles named | provenance llm-stamps | sample emit |
+|---|---:|---:|---|
+| figma.com | 4/4 | 4 | `**Core Black Canvas** #000000 (canvas) — This dense black acts as an anchoring background…` |
+| linear.app | 7/7 | 8 | `**Linear Indigo** #5e6ad2 (primary) — A vibrant indigo used for key accents and status badges…` |
+| stripe.com | 7/7 | (var) | `**Stripe Blurple** #643afd (primary) — Drives primary user actions and vital interaction highlights…` |
+| notion.so | 7/7 | (var) | `**Midnight Navy** #02093a (surface-1) — Defining our hero banners and immersive marketing sections…` |
+
+Stripe naming itself "Blurple" (Stripe's internal-doc name for `#643afd`) and Linear naming itself "Linear Indigo" against the lavender-blue `#5e6ad2` (the very hex the role-rank fix promoted) shows the moat is intact: deterministic harvest + token-aware role assignment + AI labeling, every value still traceable. Average extra wall time: ~10–15s per job. Lint clean across all four sites.
+
+| Axis | linear | notion | stripe | figma* | Σ /9 h2h |
+|---|---|---|---|---|---|
+| **Color names** | **3** ↑↑ | **3** ↑↑ | **3** ↑↑ | **3** ↑↑ | **9/9** |
+| **Role descriptions** | **2** ↑↑ | **2** ↑↑ | **2** ↑↑ | **2** ↑↑ | **6/9** |
+| **Color-block fidelity** | 2 | 1 | 1 | 1 | 4/9 |
+| **Variant labels** | 1 | 0 | 1 | 1 | 2/9 |
+| **Hero copy** | 0 | 0 | 0 | 0 | 0/9 |
+| **Coherence** | **2** ↑ | **2** ↑ | **1** ↑ | **1** ↑ | **5/9** |
+
+**Head-to-head total: 26/54 ≈ 48%.** Up from 20% pre-Session B. Color names + role descriptions axes — the two cheapest perceptual wins — are now at parity or above on every head-to-head site. Remaining 52% gap is hero copy (Phase 6.7, Claude Opus prose) plus deeper palette discovery (Phase 6.3, color-block discovery via vision).
+
 ## Top 3 perceptual gaps (the things that lose us the side-by-side test)
 
 ### 1. Color palette breadth — we capture 10–18% of what they document

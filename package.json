@@ -5,18 +5,29 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --env-file=.env --watch src/server.js",
+    "ai:smoke": "node --env-file=.env scripts/ai-smoke.js",
+    "ai:schemas:check": "node scripts/ai-schemas-check.js",
+    "ai:validators:check": "node scripts/ai-validators-check.js",
+    "ai:provenance:check": "node scripts/ai-provenance-check.js",
+    "ai:provenance:integration": "node scripts/ai-provenance-integration-check.js",
+    "ai:role-naming:check": "node scripts/ai-role-naming-check.js",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {
+    "@google/design.md": "^0.1.1",
+    "@google/genai": "^1.52.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "archiver": "^7.0.1",
     "cheerio": "^1.2.0",
     "express": "^4.21.1",
     "mime-types": "^2.1.35",
     "nanoid": "^5.0.7",
     "playwright": "^1.48.0",
-    "postcss": "^8.4.47"
+    "postcss": "^8.4.47",
+    "yaml": "^2.8.4"
   },
   "engines": {
     "node": ">=20"

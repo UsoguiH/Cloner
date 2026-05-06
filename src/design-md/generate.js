@@ -639,6 +639,7 @@ export function generateDesignMd(jobDir, options = {}) {
     sourceUrl: computed.sourceUrl || tokens.sourceUrl || null,
     ds,
     componentBlocks,
+    colorMeta,
     provenance: prov,
     provenanceJson,
   };

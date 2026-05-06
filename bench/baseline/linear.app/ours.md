@@ -95,10 +95,10 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 
 ## Colors
 
-- **on-primary** `#ffffff`
-- **ink** `#f7f8f8`
-- **canvas** `#08090a`
-- **primary** `#5e6ad2`
+- **Absolute White** `#ffffff` (`on-primary`) — A pure white intended for maximum contrast applications, guaranteeing legibility when typography is placed over Linear's active UI elements.
+- **Primary Ink** `#f7f8f8` (`ink`) — The luminous primary text color reserved for high-contrast headings and essential typography throughout the Linear experience.
+- **Deep Canvas** `#08090a` (`canvas`) — The foundational deep dark background that establishes Linear's signature aesthetic across both marketing pages and the core application.
+- **Linear Indigo** `#5e6ad2` (`primary`) — A vibrant indigo used for key accents and status badges, providing focused moments of brand expression against the dark interface.
 
 ## Typography
 
