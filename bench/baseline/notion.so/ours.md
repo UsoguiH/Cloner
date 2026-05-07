@@ -1,6 +1,6 @@
 ---
 name: Notion
-description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: Notion is a connected workspace platform that pairs stark, high-contrast utility with playful, hand-drawn accents to humanize complex information architecture.
 colors:
   canvas: "#ffffff"
   primary: "#191918"
@@ -108,26 +108,37 @@ components:
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Notion balances the stark utility of a text editor with the structured logic of a database. The brand's visual identity relies on high-contrast, black-and-white foundations punctuated by moments of hand-drawn whimsy, ensuring dense workspaces feel both powerful and approachable.
+
+## Voice
+
+- **Utilitarian** — The interface relies on stark Canvas White backgrounds and Notion Core Black typography to prioritize functional legibility over ornamental design.
+- **Whimsical** — Hand-drawn, sketch-like spot illustrations float across the interface, injecting a distinct sense of humanity and playfulness into dense technical workspaces.
+- **Modular** — Information is tightly contained within distinct cards and grid structures separated by clear Structured Border and Soft Hairline strokes.
+- **Restrained** — The application maintains a disciplined hierarchy of Pure Ink and Muted Ink to ensure complex nested databases and sidebars remain visually digestible without color fatigue.
 
 ## Colors
 
-- **canvas** `#ffffff`
-- **primary** `#191918`
-- **ink** `#000000`
-- **ink-muted** `#31302e`
-- **ink-subtle** `#615d59`
-- **on-primary** `#ffffff`
-- **surface-1** `#f9f9f8`
-- **surface-2** `#f2f9ff`
-- **surface-3** `#fef3f1`
-- **surface-4** `#e6f3fe`
-- **hairline** `#f6f5f4`
-- **hairline-strong** `#dddddd`
-- **surface-hover** `#005bab`
-- **ink-focus** `#494744`
+The palette is intentionally subdued, treating Canvas White and Notion Core Black as the primary stage for user content. Subtle spatial shifts are achieved through Sidebar Alabaster and Soft Hairline boundaries, while interactive moments are selectively signaled by Action Blue.
+
+- **Canvas White** `#ffffff` (`canvas`) — Serves as the foundational white canvas for Notion documents and primary application interfaces.
+- **Notion Core Black** `#191918` (`primary`) — Drives our primary typography and essential UI elements, anchoring the Notion brand with sharp readability.
+- **Pure Ink** `#000000` (`ink`) — Provides maximum contrast for critical elements and bold structural boundaries across the interface.
+- **Muted Ink** `#31302e` (`ink-muted`) — Softens secondary text and sidebar typography, creating a balanced visual hierarchy within complex workspaces.
+- **Subtle Ink** `#615d59` (`ink-subtle`) — Supports metadata, timestamps, and tertiary labels to ensure background information remains quiet but legible.
+- **Primary Knockout** `#ffffff` (`on-primary`) — Ensures crisp, accessible text and iconography when overlaid on deep background colors or active states.
+- **Sidebar Alabaster** `#f9f9f8` (`surface-1`) — Defines the distinct but gentle background of our navigational sidebars and elevated workspace surfaces.
+- **Soft Blue Surface** `#f2f9ff` (`surface-2`) — Washes specific board columns and subtle interactive states with a cool, focused tint.
+- **Warm Wash** `#fef3f1` (`surface-3`) — Highlights specific organizational elements or tags within databases with a delicate, inviting warmth.
+- **Highlight Blue** `#e6f3fe` (`surface-4`) — Elevates active components, selected tags, and interactive surfaces with a clear, engaging blue.
+- **Soft Hairline** `#f6f5f4` (`hairline`) — Draws the most delicate boundaries between structural sections without adding visual noise to the page.
+- **Structured Border** `#dddddd` (`hairline-strong`) — Establishes clear, definitive separations around cards, modals, and distinct workspace modules.
+- **Action Blue** `#005bab` (`surface-hover`) — Signals interactivity and dynamic hover states for primary navigational links and core application actions.
+- **Focus Graphite** `#494744` (`ink-focus`) — Guides the user's attention during keyboard navigation and active input states across the platform.
 
 ## Typography
+
+NotionInter anchors the typographic system, delivering crisp, geometric legibility across dense data views. Bold 42px headlines establish definitive page hierarchies, while 16px structural text maintains comfortable reading within nested sidebars and table cells.
 
 - **button-3** — NotionInter 16px/400
 - **button-4** — NotionInter 16px/500
@@ -139,7 +150,7 @@ Layout principles derived from observed component spacing and grid behavior. See
 
 ## Elevation & Depth
 
-Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
+No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn't reaching the elements we sample — re-harvest with extended probe selectors to surface it.
 
 ## Shapes
 
@@ -148,6 +159,8 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **xs** `4px`
 
 ## Components
+
+Surfaces and modules are treated as distinct, stackable blocks. Containers leverage Structured Border outlines and Sidebar Alabaster fills to establish clear boundaries for tasks, calendar events, and database entries, rendering every element as a movable, discrete unit of work.
 
 - **button-tertiary**
 - **button-tertiary-hover**
@@ -176,15 +189,14 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Responsive Behavior
 
-Single-viewport (1280×800) harvest. Per-breakpoint behavior is deferred to Phase 5.
+Harvest taken at 1440×900 (5 pages crawled). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.
 
 ## Iteration Guide
 
-Regenerate from a fresh clone via `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.
+Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.
 
 ## Known Gaps
 
-- Pseudo-states (`:hover`, `:focus`) not yet captured.
-- Elevation/box-shadow tokens not emitted.
+- Elevation / box-shadow tokens not emitted (no shadow evidence on probed elements).
 - Single-viewport snapshot — responsive scales pending.
 

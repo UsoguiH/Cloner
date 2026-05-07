@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clone.saas/schemas/color-block-discovery.json",
+  "title": "Color block discovery output (Phase 6.3)",
+  "description": "Vision stage: looks at multi-viewport screenshots + section bbox map, identifies pastel/distinct section backgrounds and proposes them as block-* tokens. The AI labels harvested colors with section context — it does NOT invent hex values.",
+  "type": "object",
+  "required": ["blocks"],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "required": ["tokenName", "hex", "sectionSelector", "viewports", "rationale", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "tokenName": { "$ref": "_shared.json#/$defs/TokenName" },
+          "hex": { "$ref": "_shared.json#/$defs/HexColor" },
+          "role": {
+            "type": "string",
+            "enum": ["section-background", "card-background", "highlight-band", "callout-background"],
+            "default": "section-background"
+          },
+          "sectionSelector": { "$ref": "_shared.json#/$defs/Selector" },
+          "viewports": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": { "$ref": "_shared.json#/$defs/Viewport" }
+          },
+          "rationale": { "$ref": "_shared.json#/$defs/Rationale" },
+          "confidence": { "$ref": "_shared.json#/$defs/Confidence" }
+        }
+      }
+    }
+  }
+}

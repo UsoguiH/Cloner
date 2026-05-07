@@ -1,6 +1,6 @@
 ---
 name: Figma
-description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #697485, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: Figma frames the vibrant reality of the design process within a stark, high-contrast canvas that prioritizes the user's work over the platform's chrome.
 colors:
   canvas: "#ffffff"
   primary: "#697485"
@@ -94,21 +94,31 @@ components:
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #ffffff, primary accent #697485, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Figma operates as a gallery wall for the creative process. By employing a brutally simple structural aesthetic, the brand allows the vibrant, messy reality of product design to command focus.
+
+## Voice
+
+- **Utilitarian** — The interface relies heavily on Stark Brand Black and Core Canvas White, stripping away unnecessary chrome to elevate the actual work being done.
+- **Playful** — Scattered, overlapping project cards and brightly colored floating UI elements juxtapose against the platform's otherwise severe structural grid.
+- **Confident** — Massive structural statements set in unadorned figmaSans command attention without relying on heavy decorative marketing embellishments.
 
 ## Colors
 
-- **canvas** `#ffffff`
-- **primary** `#697485`
-- **ink** `#000000`
-- **ink-muted** `#131313`
-- **on-primary** `#ffffff`
+The Figma palette is intentionally quiet. Core Canvas White and Stark Brand Black provide an uncompromising frame, while delicate background tints like Pale Mint Wash are used sparingly to anchor complex feature sections.
+
+- **Core Canvas White** `#ffffff` (`canvas`) — The foundational pure white that serves as the infinite canvas for Figma's vibrant marketing content.
+- **Muted Interface Slate** `#697485` (`primary`) — A supportive slate gray applied to secondary navigation labels and subtle interface iconography across Figma properties.
+- **Stark Brand Black** `#000000` (`ink`) — Figma's uncompromising core black, anchoring our primary typographic hierarchy and boldest call-to-action buttons.
+- **Softened Carbon** `#131313` (`ink-muted`) — A deeply saturated charcoal providing a slightly softer read for extended text or heavy structural elements within the Figma experience.
+- **High-Contrast White** `#ffffff` (`on-primary`) — A stark white employed strictly for text and icons resting atop Figma's darkest or most vibrant interactive components.
 - **surface-1** `#f3ffe3`
 - **surface-2** `#c7f8fb`
-- **surface-3** `#e2e2e2`
+- **Structural Light Gray** `#e2e2e2` (`surface-3`) — A functional, neutral light gray grounding secondary interactive elements like Figma's carousel controls and subtle borders.
 - **surface-hover** `#222222`
 
 ## Typography
+
+Set entirely in figmaSans, the typographic system relies on scale over weight to establish clear hierarchy. Headlines up to 46px cut through the layout in clean formats, mirroring the straightforward utility of a text editor.
 
 - **button** — figmaSans 32px/400
 - **button-6** — figmaSans 16px/400

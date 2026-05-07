@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clone.saas/schemas/copy-generation.json",
+  "title": "Brand-voice copy generation output (Phase 6.7)",
+  "description": "Generates the human-facing prose blocks that frame design.md: a one-sentence brand thesis, a three-bullet voice profile, and section blurbs keyed by the canonical design.md section anchors. No design tokens are emitted here — pure writing.",
+  "type": "object",
+  "required": ["brandThesis", "voiceProfile", "sectionBlurbs"],
+  "additionalProperties": false,
+  "properties": {
+    "brandThesis": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 280,
+      "description": "Single sentence that captures what this product/brand is and how it presents itself. Surfaces at the top of design.md."
+    },
+    "voiceProfile": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["trait", "explanation"],
+        "additionalProperties": false,
+        "properties": {
+          "trait": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 40,
+            "pattern": "^[A-Za-z][A-Za-z0-9 &'\\-/]*$",
+            "description": "Short adjective or noun phrase, e.g. 'Confident', 'Plainspoken', 'Builder-first'."
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 280
+          }
+        }
+      },
+      "description": "Three to five voice traits with one-sentence justifications, evidenced from the harvested copy + screenshots."
+    },
+    "sectionBlurbs": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["section", "blurb"],
+        "additionalProperties": false,
+        "properties": {
+          "section": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "color-system",
+              "typography",
+              "spacing",
+              "components",
+              "states",
+              "motion",
+              "iconography",
+              "imagery",
+              "voice"
+            ],
+            "description": "Canonical design.md section anchor the blurb belongs to."
+          },
+          "blurb": {
+            "type": "string",
+            "minLength": 30,
+            "maxLength": 600
+          },
+          "rationale": { "$ref": "_shared.json#/$defs/Rationale" },
+          "confidence": { "$ref": "_shared.json#/$defs/Confidence" }
+        }
+      },
+      "description": "Section-level intros that explain the harvested system in brand voice. Tone must match voiceProfile."
+    },
+    "globalConfidence": { "$ref": "_shared.json#/$defs/Confidence" }
+  }
+}

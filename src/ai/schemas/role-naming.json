@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clone.saas/schemas/role-naming.json",
+  "title": "Semantic role naming output (Phase 6.4)",
+  "description": "Per-token semantic naming. Input is a list of harvested token paths + values + occurrence counts; output is the same paths annotated with human-readable display names, role descriptions, and the components/areas they appear in. Token paths are referenced, never minted.",
+  "type": "object",
+  "required": ["roles"],
+  "additionalProperties": false,
+  "properties": {
+    "roles": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["tokenPath", "displayName", "roleDescription", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "tokenPath": { "$ref": "_shared.json#/$defs/TokenPath" },
+          "displayName": { "$ref": "_shared.json#/$defs/DisplayName" },
+          "roleDescription": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 240,
+            "description": "One-sentence role description shown in the live preview palette. Plain prose, no markdown."
+          },
+          "whereUsed": {
+            "type": "array",
+            "maxItems": 12,
+            "items": { "$ref": "_shared.json#/$defs/Selector" },
+            "description": "Selectors of components that visibly use this token. Drawn from the harvested probe set."
+          },
+          "confidence": { "$ref": "_shared.json#/$defs/Confidence" }
+        }
+      }
+    }
+  }
+}

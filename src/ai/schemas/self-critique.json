@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clone.saas/schemas/self-critique.json",
+  "title": "Self-critique output (Phase 6.8)",
+  "description": "Reviews a draft design.md (or a single stage payload) against the 6-axis rubric and the lint oracle. Returns specific issues with proposed patches; the loop runner re-invokes the offending stage with the patch instructions until lint passes and rubric scores stabilize.",
+  "type": "object",
+  "required": ["passed", "axisScores", "issues"],
+  "additionalProperties": false,
+  "properties": {
+    "passed": {
+      "type": "boolean",
+      "description": "Overall pass/fail. False if any axis score is below 0.7 or any blocking issue is open."
+    },
+    "axisScores": {
+      "type": "object",
+      "required": [
+        "colorNames",
+        "roleDescriptions",
+        "colorBlockFidelity",
+        "variantLabels",
+        "heroCopy",
+        "coherence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "colorNames": { "$ref": "_shared.json#/$defs/Confidence" },
+        "roleDescriptions": { "$ref": "_shared.json#/$defs/Confidence" },
+        "colorBlockFidelity": { "$ref": "_shared.json#/$defs/Confidence" },
+        "variantLabels": { "$ref": "_shared.json#/$defs/Confidence" },
+        "heroCopy": { "$ref": "_shared.json#/$defs/Confidence" },
+        "coherence": { "$ref": "_shared.json#/$defs/Confidence" }
+      },
+      "description": "0..1 score on each of the six rubric axes used to head-to-head against getdesign.md."
+    },
+    "issues": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["severity", "axis", "message", "suggestedFix"],
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["block", "warn", "nit"],
+            "description": "block: must fix before ship. warn: should fix. nit: optional polish."
+          },
+          "axis": {
+            "type": "string",
+            "enum": [
+              "colorNames",
+              "roleDescriptions",
+              "colorBlockFidelity",
+              "variantLabels",
+              "heroCopy",
+              "coherence",
+              "lint"
+            ]
+          },
+          "stage": { "$ref": "_shared.json#/$defs/Stage" },
+          "targetTokenPath": { "$ref": "_shared.json#/$defs/TokenPath" },
+          "targetProbeId": { "$ref": "_shared.json#/$defs/ProbeId" },
+          "message": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 600
+          },
+          "suggestedFix": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 600,
+            "description": "Concrete patch instruction the loop runner feeds back into the offending stage's prompt."
+          }
+        }
+      }
+    },
+    "lintErrorsRemaining": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of @google/design.md/linter errors still present after this critique pass."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 800,
+      "description": "Human-readable verdict shown at the top of the bench report."
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clone.saas/schemas/_shared.json",
+  "title": "Shared types for AI stage I/O contracts",
+  "description": "Common building blocks referenced by every stage schema. Custom annotations: x-harvested marks fields whose value MUST appear in the per-job harvest allowlist (enforced by the runtime validator, not the schema itself, so schemas stay static while allowlists vary per job).",
+  "$defs": {
+    "HexColor": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+      "description": "Lowercase or uppercase hex color, 6 digits opaque or 8 digits with alpha. AI MUST NOT invent values — only reference harvested ones.",
+      "x-harvested": "hex"
+    },
+    "TokenPath": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$",
+      "minLength": 3,
+      "maxLength": 120,
+      "description": "Dotted token path from the harvest, e.g. 'colors.brand.primary' or 'typography.display'. AI MUST reference an existing path; never invent a new one.",
+      "x-harvested": "tokenPath"
+    },
+    "ProbeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,80}$",
+      "description": "Opaque identifier of a harvested probe (a single (selector, pseudo-state) capture). Issued by the deterministic harvest; AI may only reference, never mint.",
+      "x-harvested": "probeId"
+    },
+    "Selector": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "description": "CSS selector string, free-form but bounded. Should match a node observed by the harvest.",
+      "x-harvested": "selector"
+    },
+    "Confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Self-rated confidence 0..1. <0.7 fields are downgraded to 'fallback' provenance during emission."
+    },
+    "Viewport": {
+      "type": "string",
+      "enum": ["mobile", "tablet", "desktop", "wide"],
+      "description": "One of the four canonical viewports captured by Phase 6.2 multi-viewport harvest."
+    },
+    "Rationale": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 600,
+      "description": "Short justification for an AI judgment — why this name, why this confidence. Surfaced in the live preview's hover panel."
+    },
+    "DisplayName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 60,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 &'\\-/\\.]*$",
+      "description": "Human-readable name (e.g. 'Magenta Promo'). No emoji, no leading punctuation, length-bounded to keep the preview tidy."
+    },
+    "TokenName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 2,
+      "maxLength": 60,
+      "description": "Lowercase kebab-case token slug, e.g. 'block-promo-magenta'. Used as the leaf of a token path."
+    },
+    "Stage": {
+      "type": "string",
+      "enum": [
+        "color-block-discovery",
+        "role-naming",
+        "variant-recognition",
+        "pseudo-state-interpretation",
+        "copy-generation",
+        "typography-sample-copy",
+        "self-critique"
+      ],
+      "description": "Canonical name of an AI stage. Used in the provenance sidecar's source field as 'llm-<stage>'."
+    },
+    "Envelope": {
+      "type": "object",
+      "description": "Wrapper added by the stage runner around every stage's `data` payload. Validators check the envelope; schema files describe only the inner payload.",
+      "required": ["stage", "modelId", "generatedAt", "inputDigest", "data"],
+      "additionalProperties": false,
+      "properties": {
+        "stage": { "$ref": "#/$defs/Stage" },
+        "modelId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "inputDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "data": { "type": "object" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 500 },
+          "default": []
+        },
+        "thoughtsTokens": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clone.saas/schemas/pseudo-state-interpretation.json",
+  "title": "Pseudo-state interpretation output (Phase 6.6)",
+  "description": "Classifies each harvested pseudo-state diff (probe + :hover/:focus/:active capture) as either a 'role-transition' (the component swaps to a different harvested role token) or a 'transient-overlay' (filter/opacity/transform adjustment without a token swap). Filtering signal for which diffs to surface in the public design.md.",
+  "type": "object",
+  "required": ["interpretations"],
+  "additionalProperties": false,
+  "properties": {
+    "interpretations": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 300,
+      "items": {
+        "type": "object",
+        "required": ["probeId", "pseudoState", "interpretation", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "probeId": { "$ref": "_shared.json#/$defs/ProbeId" },
+          "pseudoState": {
+            "type": "string",
+            "enum": ["hover", "focus", "focus-visible", "active", "visited", "disabled", "checked"]
+          },
+          "interpretation": {
+            "type": "string",
+            "enum": ["role-transition", "transient-overlay", "no-op"],
+            "description": "role-transition: the variant swaps to a different harvested token (surface in design.md). transient-overlay: cosmetic shift only (skip from design.md surface, keep in raw harvest). no-op: the diff is harvest noise, drop entirely."
+          },
+          "transitionsTo": {
+            "$ref": "_shared.json#/$defs/TokenPath",
+            "description": "Required iff interpretation == 'role-transition'. The token path the variant resolves to in the pseudo state."
+          },
+          "rationale": { "$ref": "_shared.json#/$defs/Rationale" },
+          "confidence": { "$ref": "_shared.json#/$defs/Confidence" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "interpretation": { "const": "role-transition" } } },
+            "then": { "required": ["transitionsTo"] }
+          }
+        ]
+      }
+    }
+  }
+}
