@@ -8,22 +8,31 @@
 // in case the SDK echoes the request URL.
 // =============================================================================
 
+import crypto from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 
 let _client = null;
 let _disabled = false;
 let _disabledReason = '';
 
-// Known-leaked value guard. If the env key ever matches this, the wrapper
+// Known-leaked value guard. If the env key ever matches this hash, the wrapper
 // refuses to initialize — operating with a leaked key would let anyone with
-// the chat transcript run up usage on the user's account.
-const KNOWN_LEAKED_KEY = 'AIzaSyAwG0tpm9_ZgFPiaq8gEC5hPutFIek7GOk';
+// the chat transcript run up usage on the user's account. Stored as SHA-256
+// so the literal key value never appears in source (which would trip secret
+// scanners on every git push, even though we're using it defensively).
+const KNOWN_LEAKED_KEY_SHA256 = '9b171cb7bbec536bcae738ba0c8271f8679bc3a0d8d14d130d23c1ab43148756';
+
+function isLeakedKey(k) {
+  if (!k) return false;
+  const h = crypto.createHash('sha256').update(k).digest('hex');
+  return h === KNOWN_LEAKED_KEY_SHA256;
+}
 
 export function isAvailable() {
   if (_disabled) return false;
   const k = process.env.GEMINI_API_KEY;
   if (!k) return false;
-  if (k === KNOWN_LEAKED_KEY) return false;
+  if (isLeakedKey(k)) return false;
   return true;
 }
 
@@ -35,7 +44,7 @@ export function getClient() {
   if (!k) {
     throw new Error('GEMINI_API_KEY not set — running deterministic-only.');
   }
-  if (k === KNOWN_LEAKED_KEY) {
+  if (isLeakedKey(k)) {
     throw new Error('GEMINI_API_KEY equals a previously-leaked value — rotate at https://aistudio.google.com/apikey before continuing.');
   }
   if (!_client) {
