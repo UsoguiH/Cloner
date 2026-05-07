@@ -1,6 +1,6 @@
 ---
 name: Figma
-description: Figma frames the vibrant, chaotic energy of creative work within a pristine, highly structured interface that prioritizes clarity and stark contrast.
+description: Figma is a collaborative design platform that frames its interface with a stark, high-contrast visual system, allowing vibrant user creations to take center stage.
 colors:
   canvas: "#000000"
   primary: "#ffffff"
@@ -70,34 +70,31 @@ components:
 
 ## Overview
 
-Figma balances a stark, monochromatic architectural frame with the expressive chaos of user-generated content. The system uses aggressive contrast and sharp structural boundaries to maintain order amidst highly vibrant imagery.
+Figma anchors its brand identity in restraint. By pairing an unyielding monochrome foundation with crisp figmaSans typography, the platform creates an environment that feels simultaneously authoritative and entirely out of the way.
 
 ## Voice
 
-- **Utilitarian** — The interface relies on stark Figma Base White and Figma Core Black to create a highly legible, no-nonsense container for complex creative workflows.
-- **Confident** — Massive figmaSans headlines and oversized structural elements demonstrate a self-assured posture that avoids unnecessary ornamentation.
-- **Unobtrusive** — By relying heavily on monochromatic framing, the system steps back to let colorful, varied user-generated artwork act as the primary visual focus.
-- **Tool-oriented** — Crisp boundaries, dense technical mockups, and compact pill-shaped navigational controls reinforce its identity as a precision instrument for builders.
+- **Utilitarian** — The interface relies on a rigorous application of figmaSans and stark Midnight Ink text to prioritize clarity over decoration.
+- **Unobtrusive** — By grounding the layout in expansive Figma White backgrounds, the brand ensures that complex, colorful interface mockups naturally draw the eye.
+- **Confident** — Figma uses uncompromising Solid Ink blocks for primary actions, projecting quiet authority through deliberate, high-contrast focal points.
 
 ## Colors
 
-Figma's palette is aggressively restrained, leaning almost entirely on Figma Base White and Figma Ink to define its spatial relationships. True color is deliberately withheld from the interface, delegated instead to the product screenshots and vibrant hero collages.
+The Figma color system is fiercely monochromatic, designed to step back from the work it holds. Figma White provides an expansive backdrop, while Midnight Ink and Solid Ink deliver maximum contrast for typography and critical interface elements.
 
-- **Figma Ink** `#000000` (`canvas`) — This deep foundational black drives Figma's highest-contrast moments, defining solid primary buttons and stark interface outlines.
-- **Figma Base White** `#ffffff` (`primary`) — Serving as the main architectural backdrop, this pure white provides a pristine environment that allows Figma's vibrant creative assets to take center stage.
-- **Figma Core Black** `#000000` (`on-primary`) — Applied to bold headlines and core navigation links, this stark black ensures maximum legibility against Figma's bright white backgrounds.
+- **Solid Ink** `#000000` (`canvas`) — Solid Ink grounds Figma's high-contrast interface elements, appearing in stark primary buttons and defining architectural borders.
+- **Figma White** `#ffffff` (`primary`) — Figma White serves as the expansive, neutral stage across our digital properties, allowing vibrant design artifacts to breathe.
+- **Midnight Ink** `#000000` (`on-primary`) — This uncompromising black drives our primary typography, delivering maximum legibility and sharp contrast across the Figma brand.
 
 ## Typography
 
-Set exclusively in figmaSans, the typographic system scales dramatically from tight, utilitarian navigation links to massive, self-assured section headers. The deployment of Figma Core Black across varying weights establishes an unmistakable reading hierarchy without needing color cues.
+figmaSans drives the entire typographic hierarchy across the platform. Set predominantly in Midnight Ink, this single-family approach unifies everything from stark editorial headlines to precise, functional button labels.
 
 - **button** — figmaSans 18px/300
 - **button-2** — figmaSans 18px/500
 - **button-3** — figmaSans 16px/400
 
 ## Layout
-
-Layouts rely on generous margins and vast expanses of Figma Base White to pace the user's descent down the page. Tight internal padding within structural grids keeps complex technical mockups organized and legible.
 
 Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.
 
@@ -110,6 +107,8 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **xs** `50px`
 
 ## Components
+
+Interface components emphasize sharp utility and rigid structure. Navigation items and core buttons, grounded in Solid Ink and figmaSans, maintain a functional profile while offering clear, predictable interaction patterns.
 
 - **button-tertiary**
 - **button-secondary**

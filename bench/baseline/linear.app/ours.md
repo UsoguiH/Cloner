@@ -1,6 +1,6 @@
 ---
 name: Linear
-description: Linear is an issue tracking and product development system that presents a meticulously engineered, dark-themed interface optimized for deep focus and high-velocity work.
+description: Linear is a precision-focused tool for product teams that presents its interface as a deep, low-noise environment, elevating issue tracking and development workflows through stark contrasts and uncompromising typographic rigor.
 colors:
   canvas: "#08090a"
   primary: "#5e6ad2"
@@ -102,33 +102,33 @@ components:
 
 ## Overview
 
-Linear’s design system is a study in purposeful constraint, built entirely around high-contrast legibility and developer-focused utility. By relying on a stark dark canvas and rigid typographic hierarchy, Linear establishes an environment that feels less like a traditional web app and more like a native, professional IDE.
+Linear's visual language is built around focus and speed. By stripping away extraneous ornament and relying on a deep, dark canvas, the interface directs total attention to the tasks, code, and project metadata that matter most to product teams.
 
 ## Voice
 
-- **Highly Engineered** — The interface relies on precise geometric layouts, rigid alignment, and razor-thin Crisp Hairline borders to create a workspace that feels like a professional-grade instrument.
-- **Focused** — A pervasive Linear Deep Canvas background forces the High Contrast Ink typography to the forefront, removing extraneous visual noise to center attention on the work.
-- **Technical** — The integration of Berkeley Mono for code snippets alongside system-level data points reinforces a surface built specifically for developers and technical operators.
-- **Confident** — Large, unadorned Inter Variable headlines command attention through stark contrast without relying on decorative illustration or vibrant marketing colors.
+- **Precision-engineered** — The interface relies on crisp Structural Divider lines and exact alignment, framing complex data views with mechanical rigor.
+- **Quietly confident** — By utilizing a Deep Canvas background rather than bright colors, Linear lets the actual work and wireframe-like diagrams speak for themselves.
+- **Developer-native** — The inclusion of Berkeley Mono for code snippets and inline chips reflects a direct nod to the primary tools and environments of software engineers.
+- **High-contrast** — Luminous Ink typography cuts sharply against the dark surfaces, ensuring readability is paramount even in dense, data-heavy views.
 
 ## Colors
 
-The palette is decisively dark, anchored by a Linear Deep Canvas that stretches across the entire viewport. Hierarchy is established through subtle elevation using Base Interface Surface and Elevated Popover Surface layers, while a singular Linear Indigo accent is reserved strictly for interactive highlights and crucial states.
+The palette is intentionally constrained, anchored by a Deep Canvas background and layered Elevated Surfaces. Accent Indigo acts as a sparse, deliberate signal to draw the eye toward active states and critical metadata without overwhelming the dark environment.
 
-- **Linear Deep Canvas** `#08090a` (`canvas`) — Provides the infinite dark foundation for the Linear experience, establishing our signature high-contrast aesthetic.
-- **Linear Indigo** `#5e6ad2` (`primary`) — Acts as our primary accent color, drawing attention to critical interactive elements and branded moments across the interface.
-- **High Contrast Ink** `#f7f8f8` (`ink`) — Drives maximum legibility for primary headlines and active interface elements against our dark canvas.
-- **Muted Interface Ink** `#d0d6e0` (`ink-muted`) — Softens secondary typographic elements like navigation links and list items to establish clear visual hierarchy.
-- **Subtle Metadata Ink** `#8a8f98` (`ink-subtle`) — Recedes into the background for tertiary information, supporting body copy and inactive states without demanding focus.
-- **Deep Recessed Ink** `#62666d` (`ink-tertiary`) — Provides the lowest level of typographic contrast for subtle timestamps and deeply nested metadata within the Linear workspace.
-- **Absolute White** `#ffffff` (`on-primary`) — Ensures perfect crispness and absolute clarity for text or icons placed directly on top of our primary indigo accents.
-- **Base Interface Surface** `#0f1011` (`surface-1`) — Defines the primary elevated layers of the application, such as sidebars and main content panels, subtly lifting them from the canvas.
-- **Elevated Popover Surface** `#3b3b3b` (`surface-2`) — Highlights floating interface elements like context menus, modals, and tooltips by bringing them physically closer to the user.
-- **Crisp Hairline** `#23252a` (`hairline`) — Creates razor-thin structural boundaries between distinct application panes, ensuring crisp organization without visual noise.
+- **Deep Canvas** `#08090a` (`canvas`) — Sets the foundation for the Linear interface, providing an infinite, deep backdrop for product and marketing experiences.
+- **Accent Indigo** `#5e6ad2` (`primary`) — Acts as a focused accent color across the Linear brand, drawing attention to status indicators and key interactive elements.
+- **Luminous Ink** `#f7f8f8` (`ink`) — Provides stark, crisp contrast for primary typography and essential headings against Linear's deep canvas.
+- **Muted Silver** `#d0d6e0` (`ink-muted`) — Supports secondary typographic hierarchy across the Linear interface, ensuring readability while gracefully receding from the primary focus.
+- **Subtle Slate** `#8a8f98` (`ink-subtle`) — Guides the user's eye through Linear metadata, supplementary descriptions, and interface labels without competing with core content.
+- **Deep Slate** `#62666d` (`ink-tertiary`) — Grounds the deepest levels of the Linear typographic hierarchy, reserved for minor timestamps, inactive states, and quiet details.
+- **Absolute White** `#ffffff` (`on-primary`) — Delivers absolute contrast for critical interaction points and high-emphasis components within the Linear product ecosystem.
+- **Elevated Surface** `#0f1011` (`surface-1`) — Defines the primary layer of elevation for Linear application panels, sidebars, and structured containers above the core canvas.
+- **Tactile Surface** `#3b3b3b` (`surface-2`) — Distinguishes active surfaces, inline code chips, and elevated hover states to create tactile depth within the Linear application hierarchy.
+- **Structural Divider** `#23252a` (`hairline`) — Organizes the application layout with crisp, subtle borders that delineate panes and sections without introducing visual noise to the Linear app.
 
 ## Typography
 
-Inter Variable drives the entire narrative of the application, scaling effortlessly from commanding headlines to dense 12px interface labels. To support its technical audience, Linear thoughtfully integrates Berkeley Mono, creating distinct visual boundaries between conversational prose and raw code elements.
+Inter Variable handles the structural hierarchy of the interface, providing geometric legibility from small metadata labels up to striking Luminous Ink headers. Berkeley Mono supports this foundation by signaling technical data and code-level precision.
 
 - **button** — Inter Variable 13px/400
 - **body** — Inter Variable 16px/500
@@ -152,7 +152,7 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Components
 
-Linear constructs its interface components with severe precision, using Crisp Hairline borders to delineate dense tables, floating menus, and layered panes. These surfaces rely on stark contrast and rigorous padding rather than heavy shadows to maintain a feeling of high-performance utility.
+UI elements within Linear favor stark utility over decorative depth. Tactile Surface chips, sparse buttons, and tightly constructed data tables integrate seamlessly into the background, revealing complexity only when interacted with.
 
 - **button-tertiary**
 - **button-tertiary-hover**

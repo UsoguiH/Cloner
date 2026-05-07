@@ -307,3 +307,34 @@ Updated overall: 45/54 → ~50/54 ≈ 92% on the 6-axis rubric, surpassing the "
 - Multiple-pattern-per-group: linear's button-tertiary group has two distinct hover patterns (Sidebar 0.02 wash, SharedView 0.05 + ink-subtle border) — we emit only the richest. Consider sub-grouping by hover signature.
 - Pseudo-state probe parent context: when base bg is transparent we composite over canvas. Threading the *actual* parent bg from the DOM tree would catch hovers nested inside pastel sections.
 
+## Session F revision — Phase 6.5.1 (ancestor-scoped hover rules), 2026-05-07
+
+**Diagnosis of the stripe gap:** stripe.com's harvest had 168 interactive probes, all going through CDP `forcePseudoState`, returning **0 diffs**. Not a CORS issue (the harvest reads computed styles from the live page, not the static replay). Not a classification issue (193 probes, 25 buttons + 12 anchors classified correctly). The forcePseudoState calls fired and exited cleanly, but produced no computed-style changes on the targeted leaf nodes.
+
+**Root cause:** stripe (and many modern sites) scope hover at the parent: `.parent:hover .child { ... }`. When CDP forces `:hover` on the child node, the parent isn't in `:hover` state, so the parent-scoped rule never matches. The leaf's computed style is unchanged. Linear/Notion/Figma get hits because they use leaf-scoped rules (`button:hover { ... }`), so direct forcing works.
+
+**Fix in `src/design-md/extract/computed-styles.js`:** when leaf-level forcePseudoState gives an empty diff, walk up to 5 ancestors and try forcing on each. Read computed styles from the original leaf each time. Stop at the first ancestor that produces a diff. Tag the result with `${state}__scope: 'ancestor+N'` so downstream emit can distinguish self-scoped from parent-scoped hover.
+
+Implementation detail: parentMap is built from the same `DOM.getDocument` response used to resolve the probe's nodeId. CDP invalidates nodeIds across `getDocument` calls, so the map MUST share that response.
+
+**Variant counts (Session E → Session F):**
+
+| Site | Variants E | Variants F | Notes |
+|---|---|---|---|
+| linear.app | 1 | 1 | Already had self-scoped hits; no regression |
+| stripe.com | **0** | **2** | First-time variant emission. `button-secondary-hover/focus` via ancestor walk + 2 minted roles (`surface-hover`, `surface-focus`) |
+| notion.so | 5 | 5 | No regression |
+| figma.com | 2 | 2 | No regression |
+| **Total** | **8** | **10** | +2 component variants, +2 minted roles on stripe |
+
+Stripe stats post-fix: `pseudoStateDiffs: 2`, `pseudoStateAncestorHits: 1`. Only one ancestor hit because stripe's homepage is mostly content cards with subtle hovers — the navigation pills are the one place ancestor-scoped rules surfaced. Real gain: stripe is no longer a black hole for pseudo-state evidence.
+
+**Cost:** in fast paths (linear/notion/figma) the ancestor loop is skipped because direct hits succeed. On stripe we add ~5 extra CDP roundtrips per non-hitting probe (~20s on a full harvest, mostly absorbed by forcePseudoState's existing latency).
+
+**Next gap (6.5.2):** Stripe's variant catch is shallow — only 1 of 168 probes had an ancestor-scoped hover that matched. The deeper question is whether stripe's hover treatments are mostly:
+- (a) `::before` / `::after` pseudo-element hovers (not visible on the host's computed style),
+- (b) JS-driven (mouseenter handlers, not CSS), or
+- (c) genuinely sparse (stripe's homepage favors animated illustrations over interactive UI).
+
+A `diag-pseudo-states.mjs` script that spelunks `matched.matchedCSSRules` for `:hover` selectors per ancestor would distinguish (a/b/c) and tell us whether to invest in pseudo-element capture.
+

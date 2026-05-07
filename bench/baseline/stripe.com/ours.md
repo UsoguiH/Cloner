@@ -1,9 +1,9 @@
 ---
 name: Stripe
-description: Stripe presents its financial infrastructure through an authoritative, high-contrast aesthetic that pairs austere, lightweight typography with intensely vibrant mesh gradients.
+description: Stripe combines rigorous structural clarity with vibrant, expressive gradients to present its global financial infrastructure.
 colors:
   canvas: "#ffffff"
-  primary: "#533afd"
+  primary: "#643afd"
   ink: "#061b31"
   on-primary: "#ffffff"
   surface-1: "#f8fafd"
@@ -12,6 +12,8 @@ colors:
   surface-4: "#e2e4ff"
   hairline: "#b9b9f9"
   hairline-strong: "#d6d9fc"
+  surface-hover: "#e4e6fe"
+  surface-focus: "#e7e8ff"
 typography:
   button:
     fontFamily: sohne-var
@@ -32,22 +34,21 @@ typography:
 rounded:
   xs: 4px
   md: 6px
+spacing:
+  space-5: 16px
 components:
   button-tertiary:
     typography: "{typography.button}"
   button-secondary:
-    textColor: "{colors.primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.xs}"
-    padding: 15px 24px 16px 24px
-    height: 48px
-  button-primary:
-    backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
     typography: "{typography.button}"
     rounded: "{rounded.xs}"
     padding: 16px 24px 17px 24px
     height: 48px
+  button-secondary-hover:
+    backgroundColor: "{colors.surface-hover}"
+  button-secondary-focus:
+    backgroundColor: "{colors.surface-focus}"
   hero-section:
     typography: "{typography.display-2}"
   feature-card:
@@ -66,47 +67,54 @@ components:
     backgroundColor: "{colors.surface-1}"
     typography: "{typography.button}"
     padding: 0px 16px
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.space-5}"
+    height: 40px
 ---
 
 # Stripe
 
 ## Overview
 
-Stripe relies on a pristine, architectural foundation to organize complex financial tools. The interface balances stark utility with highly expressive moments, leveraging precise grids and vibrant brand accents to guide the user naturally through dense information.
+Stripe balances structural rigor with sweeping visual expressiveness. The interface builds upon a foundation of Canvas White and Cloud Wash, organizing complex financial tools into clear, digestible bento surfaces punctuated by highly literal product mockups.
 
 ## Voice
 
-- **Technical yet editorial** — The use of delicate, lightweight sohne-var at large display sizes brings a refined, magazine-like pacing to otherwise dense technical capabilities and API documentation.
-- **Vibrantly constrained** — While the core layout relies on a stark Stripe Canvas and Deep Slate Ink text, the interface introduces explosive color exclusively through fluid mesh art and Vibrant Blurple action points.
-- **Architectural** — A strict underlying grid system is made visible through delicate Subtle Blurple Rules that neatly box and separate complex product offerings without adding visual weight.
-- **Confident** — The design system relies heavily on generous negative space and massive typographic scale rather than heavy UI ornamentation to communicate enterprise authority.
+- **Precise** — Subtle borders utilizing Blurple Hairline define strict structural boundaries across the intricate feature grids.
+- **Expressive** — Sweeping, high-contrast background gradients inject energy behind the strictly composed layouts to create a distinctly modern aesthetic.
+- **Confident** — Oversized sohne-var display typography is kept at a stark 300-weight, relying on scale rather than bulk to command attention.
+- **Builder-first** — The recurring use of code snippet tabs, terminal-inspired sections, and deep technical UI mockups signals a platform crafted for developers.
 
 ## Colors
 
-Stripe anchors its interface in extreme contrast, setting Deep Slate Ink typography against a stark Stripe Canvas. It reserves its signature Vibrant Blurple for primary interactive elements, ensuring immediate wayfinding amidst the expansive, layered layouts.
+The palette relies on Deep Ink for stark typographic contrast and Canvas White for essential layout breathing room. Primary Blurple serves as the cornerstone for interaction across Stripe, driving the user's eye toward critical conversion points against softer Lavender Wash and Cool Slate backgrounds.
 
-- **Stripe Canvas** `#ffffff` (`canvas`) — Serves as the fundamental foundation for the Stripe interface, providing maximum contrast for typography and vibrant brand accents.
-- **Vibrant Blurple** `#533afd` (`primary`) — Drives user action as the primary interactive color for key conversion points and bold calls to action across Stripe.
-- **Deep Slate Ink** `#061b31` (`ink`) — Anchors our typography with a deep, authoritative tone that ensures maximum legibility across all Stripe touchpoints.
-- **White Knockout** `#ffffff` (`on-primary`) — Provides stark, crisp contrast for text and icons set against our vibrant primary interactive elements on Stripe.
-- **Frost Surface** `#f8fafd` (`surface-1`) — Defines soft foundational backgrounds for secondary Stripe page sections to gently pace the layout without distracting the eye.
-- **Cool Mist Fill** `#e5edf5` (`surface-2`) — Introduces a slightly deeper neutral fill for layered components or secondary interactive states across the Stripe environment.
-- **Soft Blurple Wash** `#e8e9ff` (`surface-3`) — Acts as a delicate, brand-aligned background wash for highlighted states or subtle interactive hints within the Stripe UI.
-- **Active Blurple Wash** `#e2e4ff` (`surface-4`) — Provides a slightly stronger brand-tinted background for active component states and elevated selections on Stripe.
-- **Blurple Rule** `#b9b9f9` (`hairline`) — Delineates components with a crisp, brand-tinted border that structures the Stripe page without adding unnecessary visual weight.
-- **Subtle Blurple Rule** `#d6d9fc` (`hairline-strong`) — Establishes a highly subtle boundary for structural elements, keeping the Stripe interface organized and cleanly separated.
+- **Stripe Canvas White** `#ffffff` (`canvas`) — Serves as the foundational base for the Stripe interface, creating a crisp, clean canvas for content to breathe.
+- **Primary Blurple** `#643afd` (`primary`) — Drives core interactive moments across the Stripe ecosystem, distinguishing primary calls to action like the Get Started button.
+- **Deep Ink** `#061b31` (`ink`) — Grounds our typographic hierarchy, delivering sharp legibility for primary headings and body copy against light canvases across Stripe.
+- **Action White** `#ffffff` (`on-primary`) — Provides crisp, accessible contrast for typography and iconography set within Stripe's primary interactive components.
+- **Cloud Wash** `#f8fafd` (`surface-1`) — Establishes subtle depth for secondary page sections across Stripe, gently separating content zones without introducing hard boundaries.
+- **Cool Slate** `#e5edf5` (`surface-2`) — Creates grounded containment for nested UI surfaces, supporting elevated Stripe elements with a cool, recessive backdrop.
+- **Lavender Wash** `#e8e9ff` (`surface-3`) — Introduces a subtle hint of Stripe's primary brand hue into background surfaces to create cohesive, branded component areas.
+- **Muted Lavender Surface** `#e2e4ff` (`surface-4`) — Acts as a slightly deeper tinted canvas for specialized Stripe component backgrounds that require clear distinction from standard surfaces.
+- **Blurple Hairline** `#b9b9f9` (`hairline`) — Defines crisp, structural borders for interactive elements like secondary buttons and input fields across the Stripe experience.
+- **Subtle Divider** `#d6d9fc` (`hairline-strong`) — Provides delicate structural separation for layout grids and subtle component borders, maintaining order in the Stripe interface.
+- **Interactive Hover Wash** `#e4e6fe` (`surface-hover`) — Signals interactivity on hover states for secondary Stripe actions, offering a clear, branded visual response to user intent.
+- **Focus Wash** `#e7e8ff` (`surface-focus`) — Anchors accessible focus states across the Stripe UI, ensuring keyboard navigation feels both distinct and seamlessly integrated.
 
 ## Typography
 
-The typographic system for Stripe leans entirely on sohne-var, utilizing surprisingly light weights like 300 for both 48px display headings and 20px body copy. This delicate approach prevents dense technical explanations from feeling heavy or overwhelming to the reader.
+Driven exclusively by sohne-var, Stripe utilizes dramatic scale shifts and restrained font weights to establish clear content hierarchies. High-level messaging is intentionally kept light at a 300 weight, creating an editorial yet highly technical typographic rhythm.
 
 - **button** — sohne-var 16px/400
 - **display-2** — sohne-var 48px/300
 - **body-lg** — sohne-var 20px/300
 
 ## Layout
-
-Stripe employs a highly visible grid system defined by crisp hairlines like the Blurple Rule to compartmentalize information. This architectural approach uses structural lines and massive padding to maintain rhythm across long, feature-dense product pages.
 
 Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.
 
@@ -121,15 +129,19 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Components
 
+Interactive elements across Stripe are highly legible and structurally disciplined, utilizing solid Primary Blurple containers for major actions. Secondary UI panels rely on Cool Slate and Muted Lavender Surface to create subtle nested depth without relying on heavy shadows.
+
 - **button-tertiary**
 - **button-secondary**
-- **button-primary**
+- **button-secondary-hover**
+- **button-secondary-focus**
 - **hero-section**
 - **feature-card**
 - **cta-banner**
 - **nav**
 - **top-nav**
 - **footer**
+- **button-primary**
 
 ## Do's and Don'ts
 
