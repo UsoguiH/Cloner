@@ -701,7 +701,7 @@ export function generateDesignMd(jobDir, options = {}) {
     )
   );
   md += sectionMd('Layout', blurb('spacing') + 'Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.');
-  md += sectionMd('Elevation & Depth', 'Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).');
+  md += sectionMd('Elevation & Depth', 'No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn\'t reaching the elements we sample — re-harvest with extended probe selectors to surface it.');
   md += sectionMd(
     'Shapes',
     Object.keys(roundTable).length
@@ -720,13 +720,31 @@ export function generateDesignMd(jobDir, options = {}) {
     "- **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.\n" +
     "- **Don't** introduce new color roles outside the documented palette without updating this file."
   );
-  md += sectionMd('Responsive Behavior', 'Single-viewport (1280×800) harvest. Per-breakpoint behavior is deferred to Phase 5.');
-  md += sectionMd('Iteration Guide', 'Regenerate from a fresh clone via `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.');
-  md += sectionMd('Known Gaps',
-    "- Pseudo-states (`:hover`, `:focus`) not yet captured.\n" +
-    "- Elevation/box-shadow tokens not emitted.\n" +
-    "- Single-viewport snapshot — responsive scales pending."
-  );
+  // Responsive blurb: report the actual harvest viewport(s) and page count.
+  // Earlier this section was hardcoded to "1280×800" and called per-breakpoint
+  // behavior "deferred to Phase 5" — both stale once multi-page crawl shipped.
+  const vpW = computed.viewport?.width;
+  const vpH = computed.viewport?.height;
+  const vpStr = (vpW && vpH) ? `${vpW}×${vpH}` : 'single viewport';
+  const pageCount = Array.isArray(computed.pages) ? computed.pages.length : 1;
+  const pageStr = pageCount > 1 ? `${pageCount} pages crawled` : 'home page only';
+  md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.`);
+  md += sectionMd('Iteration Guide', 'Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.');
+  // Known Gaps — content-aware. Only flag pseudo-states as a gap if we
+  // emitted zero hover/focus variants; otherwise we'd contradict the
+  // Components list right above. Same idea for shadow tokens.
+  const componentNames = Object.keys(componentBlocks);
+  const hasPseudoVariants = componentNames.some((n) => /-(hover|focus|active|pressed)(-|$)/.test(n));
+  const gaps = [];
+  if (!hasPseudoVariants) {
+    gaps.push("- Pseudo-states (`:hover`, `:focus`) not surfaced on probed components.");
+  }
+  gaps.push("- Elevation / box-shadow tokens not emitted (no shadow evidence on probed elements).");
+  if (pageCount <= 1) {
+    gaps.push("- Single-page harvest — secondary pages (pricing, product, etc.) not crawled.");
+  }
+  gaps.push("- Single-viewport snapshot — responsive scales pending.");
+  md += sectionMd('Known Gaps', gaps.join('\n'));
 
   // --- Lint + Tailwind + DTCG emit ---
   // lint() also returns a parsed designSystem and a tailwindConfig; we reuse

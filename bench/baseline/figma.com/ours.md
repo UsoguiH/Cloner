@@ -1,13 +1,15 @@
 ---
 name: Figma
-description: "Design system extracted from a structural clone. Canvas #000000, primary accent #ffffff, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
+description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #697485, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
-  canvas: "#000000"
-  primary: "#ffffff"
-  ink: "#697485"
-  on-primary: "#000000"
-  surface-1: "#131313"
-  surface-2: "#cb9fd2"
+  canvas: "#ffffff"
+  primary: "#697485"
+  ink: "#000000"
+  ink-muted: "#131313"
+  on-primary: "#ffffff"
+  surface-1: "#f3ffe3"
+  surface-2: "#c7f8fb"
+  surface-3: "#e2e2e2"
   surface-hover: "#222222"
 typography:
   button:
@@ -35,68 +37,75 @@ typography:
     letterSpacing: -0.69px
 rounded:
   lg: 80px
+  md: 50px
+spacing:
+  space-3: 12px
 components:
   button-tertiary:
-    textColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
     typography: "{typography.button}"
     padding: 32px 0px
   button-tertiary-hover:
-    textColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
   button-tertiary-hover-2:
     backgroundColor: "{colors.surface-hover}"
   button-secondary:
-    textColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
     typography: "{typography.button-6}"
     rounded: "{rounded.lg}"
     height: 47px
   button-secondary-hover:
-    backgroundColor: "{colors.primary}"
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    borderColor: "{colors.ink}"
+  button-secondary-hover-2:
     textColor: "{colors.canvas}"
     borderColor: "{colors.canvas}"
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.canvas}"
-    typography: "{typography.button-6}"
-    height: 24px
-  button-primary-hover:
-    textColor: "{colors.primary}"
-    borderColor: "{colors.primary}"
   nav:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.primary}"
+    backgroundColor: "{colors.ink-muted}"
+    textColor: "{colors.canvas}"
     typography: "{typography.button-2}"
     height: 100px
   top-nav:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.canvas}"
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
     typography: "{typography.button-6}"
     height: 81px
   footer:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.primary}"
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.canvas}"
     typography: "{typography.button-6}"
     padding: 120px 0px
   text-input:
-    textColor: "{colors.primary}"
+    textColor: "{colors.canvas}"
     typography: "{typography.headline}"
     padding: 0px 70px 0px 0px
     height: 54px
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.space-3}"
+    height: 40px
 ---
 
 # Figma
 
 ## Overview
 
-Design system extracted from a structural clone. Canvas #000000, primary accent #ffffff, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
+Design system extracted from a structural clone. Canvas #ffffff, primary accent #697485, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-- **canvas** `#000000`
-- **primary** `#ffffff`
-- **ink** `#697485`
-- **on-primary** `#000000`
-- **surface-1** `#131313`
-- **surface-2** `#cb9fd2`
+- **canvas** `#ffffff`
+- **primary** `#697485`
+- **ink** `#000000`
+- **ink-muted** `#131313`
+- **on-primary** `#ffffff`
+- **surface-1** `#f3ffe3`
+- **surface-2** `#c7f8fb`
+- **surface-3** `#e2e2e2`
 - **surface-hover** `#222222`
 
 ## Typography
@@ -112,11 +121,12 @@ Layout principles derived from observed component spacing and grid behavior. See
 
 ## Elevation & Depth
 
-Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
+No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn't reaching the elements we sample — re-harvest with extended probe selectors to surface it.
 
 ## Shapes
 
 - **lg** `80px`
+- **md** `50px`
 
 ## Components
 
@@ -125,12 +135,12 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **button-tertiary-hover-2**
 - **button-secondary**
 - **button-secondary-hover**
-- **button-primary**
-- **button-primary-hover**
+- **button-secondary-hover-2**
 - **nav**
 - **top-nav**
 - **footer**
 - **text-input**
+- **button-primary**
 
 ## Do's and Don'ts
 
@@ -139,15 +149,14 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Responsive Behavior
 
-Single-viewport (1280×800) harvest. Per-breakpoint behavior is deferred to Phase 5.
+Harvest taken at 1440×900 (5 pages crawled). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.
 
 ## Iteration Guide
 
-Regenerate from a fresh clone via `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.
+Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.
 
 ## Known Gaps
 
-- Pseudo-states (`:hover`, `:focus`) not yet captured.
-- Elevation/box-shadow tokens not emitted.
+- Elevation / box-shadow tokens not emitted (no shadow evidence on probed elements).
 - Single-viewport snapshot — responsive scales pending.
 

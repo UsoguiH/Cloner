@@ -34,8 +34,10 @@ export function buildColorUsage(computed, tokenIndex) {
         hex,
         count: 0,
         weightedArea: 0,
+        bgWeightedArea: 0,
         byProperty: { 'background-color': 0, 'color': 0, 'border': 0 },
         byTag: {},
+        bgByTag: {},
         varRefs: new Set(),
         evidence: [],
         likelyButtonBg: 0,
@@ -62,6 +64,10 @@ export function buildColorUsage(computed, tokenIndex) {
       const bucket = prop === 'background-color' ? 'background-color' : (prop === 'color' ? 'color' : 'border');
       e.byProperty[bucket] = (e.byProperty[bucket] || 0) + 1;
       e.byTag[probe.tagName] = (e.byTag[probe.tagName] || 0) + 1;
+      if (prop === 'background-color') {
+        e.bgWeightedArea += area;
+        e.bgByTag[probe.tagName] = (e.bgByTag[probe.tagName] || 0) + 1;
+      }
       if (info.primaryRef) e.varRefs.add(info.primaryRef);
       else for (const r of (info.varRefs || [])) e.varRefs.add(r);
       if (e.evidence.length < 5) {
@@ -293,12 +299,17 @@ export function assignColorRoles(usage, options = {}) {
   const roles = {};
   const used = new Set();
 
-  // canvas: largest weighted-area background, preferring body/html owners
+  // canvas: largest bg-weighted area, with body/html boost gated on actual
+  // background-color evidence on those tags. The earlier formula used
+  // total weightedArea (any color prop) and byTag (any color prop), which
+  // inflated #000 on sites where body has color:#000 text but a transparent
+  // bg — body's full scrollable rect was being credited as "canvas paint."
   const canvas = pickByMax(usage, (e) => {
-    let s = e.byProperty['background-color'] * e.weightedArea;
-    if (e.byTag['BODY']) s *= 4;
-    if (e.byTag['HTML']) s *= 4;
-    if (e.byTag['MAIN']) s *= 2;
+    if (!(e.byProperty['background-color'] > 0)) return -1;
+    let s = e.byProperty['background-color'] * e.bgWeightedArea;
+    if (e.bgByTag['BODY']) s *= 4;
+    if (e.bgByTag['HTML']) s *= 4;
+    if (e.bgByTag['MAIN']) s *= 2;
     return s;
   });
   if (canvas) {
