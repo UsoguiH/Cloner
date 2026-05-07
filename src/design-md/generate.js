@@ -363,21 +363,27 @@ export function generateDesignMd(jobDir, options = {}) {
       else if (kind === 'rounded') usedRound.add(name);
     }
 
-    // Pseudo-state sibling blocks. Pseudo-bearing probes are usually smaller
-    // than the rep (largest area) — we look for any probe in the group that
-    // has hover/focus diffs, falling back to the rep itself if none.
-    const pseudoSrc = group.pseudoProbe || group.probe;
-    const pseudo = pseudoSrc?.pseudoStates;
-    if (pseudo && typeof pseudo === 'object') {
+    // Pseudo-state sibling blocks. A group can carry up to two distinct
+    // hover/focus signatures (e.g. a quiet-wash variant and a bordered-icon
+    // variant of the same button). The first goes to `${comp}-${state}`,
+    // the second to `${comp}-${state}-2` — same role bindings, separate
+    // YAML entry so the design system documents both patterns.
+    const pseudoProbeList = (group.pseudoProbes && group.pseudoProbes.length)
+      ? group.pseudoProbes
+      : (group.pseudoProbe ? [group.pseudoProbe] : (group.probe?.pseudoStates ? [group.probe] : []));
+    for (let pIdx = 0; pIdx < pseudoProbeList.length; pIdx++) {
+      const pseudoSrc = pseudoProbeList[pIdx];
+      const pseudo = pseudoSrc?.pseudoStates;
+      if (!pseudo || typeof pseudo !== 'object') continue;
       const canvasHex = roles.canvas?.hex || null;
       const inkHex = roles.ink?.hex || null;
       const baseBgHex = resolveProbeBaseBg(pseudoSrc, canvasHex);
+      const suffix = pIdx === 0 ? '' : `-${pIdx + 1}`;
       for (const state of ['hover', 'focus']) {
         const diff = pseudo[state];
         if (!diff || Object.keys(diff).length === 0) continue;
         const { block: pBlock, refs: pRefs } = buildPseudoStateBlock(diff, roles, roundedScale, state, baseBgHex, canvasHex, inkHex);
         if (Object.keys(pBlock).length === 0) continue;
-        // Check contrast on hover/focus too — drop textColor if it fails AA against bg.
         if (pBlock.backgroundColor && pBlock.textColor) {
           const bgRole = pBlock.backgroundColor.replace(/^\{colors\.|\}$/g, '');
           const fgRole = pBlock.textColor.replace(/^\{colors\.|\}$/g, '');
@@ -389,7 +395,12 @@ export function generateDesignMd(jobDir, options = {}) {
           }
         }
         if (Object.keys(pBlock).length === 0) continue;
-        componentBlocks[`${compName}-${state}`] = pBlock;
+        const blockName = `${compName}-${state}${suffix}`;
+        // Skip if a prior variant produced an identical block — happens when
+        // hover and focus diffs are the same shape on the same probe.
+        const existing = componentBlocks[`${compName}-${state}`];
+        if (suffix && existing && JSON.stringify(existing) === JSON.stringify(pBlock)) continue;
+        componentBlocks[blockName] = pBlock;
         for (const ref of pRefs) {
           const [kind, name] = ref.split('.');
           if (kind === 'colors') usedColorRoles.add(name);

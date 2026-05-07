@@ -405,6 +405,11 @@ export async function harvestStylesFromPage(page, { tokenIndex, viewport, harves
 
     const computedIdx = indexComputedStyle(computed);
     const declIdx = indexMatchedDeclarations(matched);
+    const pseudoRuleCount = countPseudoRules(matched);
+    const totalHoverRules = pseudoRuleCount.hover + pseudoRuleCount.hoverInherited + pseudoRuleCount.hoverPseudo;
+    const totalFocusRules = pseudoRuleCount.focus + pseudoRuleCount.focusInherited + pseudoRuleCount.focusPseudo;
+    stats.pseudoRulesDetectedHover = (stats.pseudoRulesDetectedHover || 0) + totalHoverRules;
+    stats.pseudoRulesDetectedFocus = (stats.pseudoRulesDetectedFocus || 0) + totalFocusRules;
 
     const props = {};
     for (const p of SPEC_PROPERTIES) {
@@ -474,6 +479,7 @@ export async function harvestStylesFromPage(page, { tokenIndex, viewport, harves
       rect: probe.rect,
       properties: props,
       pseudoStates,
+      pseudoRuleCount,
     });
     stats.probesHarvested += 1;
   }
@@ -491,6 +497,44 @@ function isInteractiveProbe(probe) {
   const cls = (probe.className || '').toLowerCase();
   if (/(^|\s|-)(btn|button|cta|link|chip|tag|badge|tile|card|item|nav|menu)(\s|-|$)/.test(cls)) return true;
   return false;
+}
+
+// Count :hover / :focus selectors across the matched-styles tree. Provides a
+// site-level capture-rate metric: how many hover rules actually exist for this
+// probe (self + ancestor + pseudo-element scope) vs how many we converted into
+// a pseudo-state diff. Persisted on each probe in computed.json so dashboards
+// and bench scripts can compute (variants emitted) / (rules detected) without
+// re-querying the live page.
+function countPseudoRules(matched) {
+  const counts = { hover: 0, focus: 0, hoverInherited: 0, focusInherited: 0, hoverPseudo: 0, focusPseudo: 0 };
+  const scanRules = (rules, hoverKey, focusKey) => {
+    if (!Array.isArray(rules)) return;
+    for (const m of rules) {
+      const sels = m?.rule?.selectorList?.selectors;
+      if (!Array.isArray(sels)) continue;
+      let hasHover = false;
+      let hasFocus = false;
+      for (const s of sels) {
+        const t = s?.text || '';
+        if (!hasHover && /:hover\b/.test(t)) hasHover = true;
+        if (!hasFocus && /:focus(?:-visible|-within)?\b/.test(t)) hasFocus = true;
+      }
+      if (hasHover) counts[hoverKey] += 1;
+      if (hasFocus) counts[focusKey] += 1;
+    }
+  };
+  scanRules(matched?.matchedCSSRules, 'hover', 'focus');
+  if (Array.isArray(matched?.inherited)) {
+    for (const inh of matched.inherited) {
+      scanRules(inh?.matchedCSSRules, 'hoverInherited', 'focusInherited');
+    }
+  }
+  if (Array.isArray(matched?.pseudoElements)) {
+    for (const pe of matched.pseudoElements) {
+      scanRules(pe?.matches, 'hoverPseudo', 'focusPseudo');
+    }
+  }
+  return counts;
 }
 
 // Return only properties whose value changed under the forced pseudo-state.

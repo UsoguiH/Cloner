@@ -1,6 +1,6 @@
 ---
 name: Notion
-description: Notion presents a unified, document-centric workspace that pairs stark, utilitarian foundations with subtle moments of hand-drawn whimsy.
+description: Notion is a highly structured workspace platform that presents itself through a stark, document-driven canvas, utilizing sharp typography and modular interfaces to organize complex knowledge.
 colors:
   canvas: "#ffffff"
   primary: "#191918"
@@ -11,6 +11,7 @@ colors:
   hairline-strong: "#dddddd"
   surface-hover: "#31302e"
   ink-focus: "#494744"
+  ink-focus-2: "#dadcdd"
 typography:
   button-3:
     fontFamily: NotionInter
@@ -64,6 +65,8 @@ components:
     rounded: "{rounded.xs}"
     padding: 6px
     height: 62px
+  text-input-focus:
+    borderColor: "{colors.ink-focus-2}"
   feature-card:
     backgroundColor: "{colors.canvas}"
     typography: "{typography.button-3}"
@@ -95,32 +98,32 @@ components:
 
 ## Overview
 
-The Notion design system balances the quiet utility of a blank page with the structured rigidity of a database. By prioritizing stark contrasts, highly legible typography, and modular components, the interface provides an unopinionated foundation that adapts to any workflow.
+Notion’s visual identity balances the unopinionated nature of a blank document with the rigorous structure of a database. By relying on a stark, high-contrast palette and a strictly modular component architecture, the system effortlessly scales from simple text notes to complex, multi-view workflows.
 
 ## Voice
 
-- **Utilitarian** — The interface relies on a stark pairing of Clean Canvas and Notion Charcoal, stripping away superficial styling to prioritize the user's raw information.
-- **Whimsical** — Hand-drawn character illustrations and playful spot graphics inject a distinct, human warmth into an otherwise highly structural application.
-- **Modular** — Distinct interface cards defined by Structured Border and Subtle Wash reinforce the underlying block-based architecture of the product.
-- **Editorial** — The prominent use of classic serif typography for pull quotes creates an elevated, reading-focused environment reminiscent of printed media.
+- **Document-first** — The interface prioritizes expansive Base White canvases and Notion Charcoal typography, echoing the familiar structure of a blank page waiting to be written on.
+- **Character-driven** — Technical product capabilities are intentionally softened by whimsical, hand-drawn mascot illustrations that add an approachable, human layer to complex automated workflows.
+- **Modular** — Information is consistently organized into rigid, standardized card containers defined by Soft Alabaster washes and Interface Divider borders to maintain layout discipline.
 
 ## Colors
 
-Notion's palette acts as a quiet stage for user content. Relying heavily on a Clean Canvas and Notion Charcoal, the system deploys Absolute Black strictly for maximum contrast, while leaning on Subtle Wash to create gentle hierarchy without introducing visual noise.
+The Notion palette is remarkably restrained, leaning heavily on Base White and Notion Charcoal to establish a reading-focused baseline. Subtle structural colors like Soft Alabaster and Interface Divider organize the workspace without competing with user-generated content.
 
-- **Clean Canvas** `#ffffff` (`canvas`) — The pure white foundation that underpins Notion's signature document-centric interface, providing maximum clarity and focus.
-- **Notion Charcoal** `#191918` (`primary`) — Our foundational dark charcoal anchors typography and core structural elements, ensuring readability without the harshness of pure black.
-- **Absolute Black** `#000000` (`ink`) — Reserved for moments of absolute contrast, providing stark definition for key interface moments within the Notion ecosystem.
-- **Muted Slate** `#615d59` (`ink-muted`) — A supportive slate tone used for metadata, secondary navigation, and subtle icons that shouldn't compete with primary user content.
-- **Contrast White** `#ffffff` (`on-primary`) — The crisp, legible white engineered specifically to maintain perfect contrast when placed atop our darkest primary surfaces.
-- **Subtle Wash** `#f6f5f4` (`hairline`) — A delicate, warm off-white that creates the softest structural dividers and subtle background washes within our editor.
-- **Structured Border** `#dddddd` (`hairline-strong`) — Provides a definitive but unobtrusive boundary for distinct interface components like cards and stronger structural lines.
-- **Elevated Charcoal** `#31302e` (`surface-hover`) — A lifted dark tone utilized for interactive hover states and secondary dark surfaces to create a subtle sense of depth.
-- **Focused Slate** `#494744` (`ink-focus`) — A deliberate mid-tone gray deployed for focused interactive elements and tertiary typographic hierarchy across the application.
+- **Base White** `#ffffff` (`canvas`) — This provides the clean, uninterrupted foundation for Notion pages, giving content room to breathe.
+- **Notion Charcoal** `#191918` (`primary`) — This grounds the Notion experience, acting as our dominant typographic color for main content and primary interface elements.
+- **Absolute Black** `#000000` (`ink`) — Absolute black delivers uncompromising contrast for our most essential iconography and highest-hierarchy text elements within Notion.
+- **Muted Slate** `#615d59` (`ink-muted`) — Serving as our secondary text color, this muted tone gracefully deprioritizes metadata and sidebar navigation in the Notion workspace.
+- **Crisp Invert** `#ffffff` (`on-primary`) — This crisp white guarantees uncompromising legibility when placed over Notion's dark primary surfaces and hero sections.
+- **Soft Alabaster** `#f6f5f4` (`hairline`) — We use this ultra-light wash to define secondary structural areas like the Notion sidebar without relying on heavy borders.
+- **Interface Divider** `#dddddd` (`hairline-strong`) — This light gray provides structural definition, mapping out the borders and dividers within Notion's board and table views.
+- **Elevated Dark** `#31302e` (`surface-hover`) — This subtle, elevated dark gray activates interactive surfaces and hover states across Notion's darker thematic components.
+- **Focused Graphite** `#494744` (`ink-focus`) — Guiding the user's eye, this focused graphite tone highlights active selection states and deep interactive elements across the Notion app.
+- **ink-focus-2** `#dadcdd`
 
 ## Typography
 
-Driven by the NotionInter family, the typographic system is engineered for dense information architecture and comfortable long-form reading. Ranging from precise 16px interactive elements to commanding 42px headlines, the type scale establishes immediate, clear structural hierarchy.
+NotionInter drives the entire typographic hierarchy across the site, shifting smoothly from sturdy 42px headlines to legible, functional interface copy. The type relies on Absolute Black and Muted Slate to differentiate primary content from secondary metadata without requiring heavy structural borders.
 
 - **button-3** — NotionInter 16px/400
 - **button-4** — NotionInter 16px/500
@@ -142,7 +145,7 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Components
 
-Components in Notion are treated as tactile, interlocking blocks. Encased in soft-cornered containers and defined by a Structured Border, interactive elements maintain definitive boundaries without feeling harsh or overly rigid against the primary canvas.
+Surfaces in Notion are deeply systematic, utilizing strict card containers with unified interaction patterns. This predictable containment model allows disparate features to coexist logically on the same canvas, unified by subtle states like Elevated Dark for hover activations.
 
 - **button-tertiary**
 - **button-tertiary-hover**
@@ -153,6 +156,7 @@ Components in Notion are treated as tactile, interlocking blocks. Encased in sof
 - **button-primary-hover**
 - **button-primary-focus**
 - **text-input**
+- **text-input-focus**
 - **feature-card**
 - **status-badge**
 - **nav**

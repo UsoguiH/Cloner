@@ -338,3 +338,50 @@ Stripe stats post-fix: `pseudoStateDiffs: 2`, `pseudoStateAncestorHits: 1`. Only
 
 A `diag-pseudo-states.mjs` script that spelunks `matched.matchedCSSRules` for `:hover` selectors per ancestor would distinguish (a/b/c) and tell us whether to invest in pseudo-element capture.
 
+## Session G — Phase 6.5.2 (multi-pattern variants + capture-rate metric), 2026-05-07
+
+**Two changes:**
+
+1. **Multi-pattern emission per component group.** Linear's `button-tertiary` group contained two distinct hover *signatures* — Sidebar items (single-prop diff: bg only) and SharedView items (3-prop diff: bg + text + border). Session E/F kept only the richest by area, dropping the other. `groupComponents` now picks up to 2 probes with *signature-distinct* diffs (sorted by richness, area as tiebreaker); generate.js iterates them and emits the second under a `-2` suffix (`button-tertiary-hover-2`). Identical-block dedupe prevents noise when the second pattern collapses to the first after binding.
+2. **`pseudoRuleCount` per probe.** Each probe now persists `{ hover, focus, hoverInherited, focusInherited, hoverPseudo, focusPseudo }` — a count of `:hover`/`:focus` selectors visible to `CSS.getMatchedStylesForNode` (self, inherited chain, ::before/::after pseudo-elements). This is the harvest *capture rate* metric: `diffs / rules` tells us what fraction of CSS-declared hover rules forcePseudoState actually surfaces as computed-style changes.
+
+**Variant counts (Session F → Session G):**
+
+| Site | Variants F | Variants G | Notes |
+|---|---|---|---|
+| linear.app | 1 | **2** | `button-tertiary-hover` (3-prop: bg+text+border) + `button-tertiary-hover-2` (1-prop: bg only) |
+| stripe.com | 2 | 2 | No regression; ancestor walk still firing |
+| notion.so | 5 | **6** | New: `text-input-focus` surfaced after re-harvest (probe set jitter) |
+| figma.com | 2 | 2 | No regression |
+| **Total** | **10** | **12** | +2 component variants |
+
+**Capture-rate metric (rules detected vs diffs captured):**
+
+| Site | dHov | dFoc | rHov | rFoc | rHovInh | rPseudo | capture-rate (hover) |
+|---|---|---|---|---|---|---|---|
+| linear | 7 | 0 | 0 | 0 | 0 | 0 | n/a (rules invisible to scanner) |
+| stripe | 2 | 1 | 7 | 0 | 3 | 0 | 28.6% |
+| notion | 9 | 4 | 4 | 4 | 0 | 0 | 225% (diffs > rules) |
+| figma | 5 | 0 | 0 | 0 | 0 | 0 | n/a (rules invisible) |
+
+Signals worth flagging for downstream phases:
+
+- **Linear + figma show 0 rules but produce diffs.** The CSS pipeline (CSS-in-JS, constructed stylesheets, shadow DOM) emits rules that don't surface in `matched.matchedCSSRules` — the engine still applies them under forcePseudoState (so we get diffs), but the scanner can't see the selector text. We can't compute capture rate on these sites; we can only confirm "diffs ≥ what we captured."
+- **Stripe captures ~29% of detected rules.** The 5 missed rules likely use properties outside `SPEC_PROPERTIES` (transform/scale, opacity-only fades) or rely on transitions we don't probe at the right phase. This is the right number to drive a future Phase 6.6 (richer property whitelist + transition timing).
+- **Notion 225% means diffs > detected rules** — a single rule produces diffs across multiple properties (one `:hover` selector toggles bg + text + border in one go). Confirms the metric as a *floor*, not a ceiling.
+- **Pseudo-element rules: 0 across all four sites.** The "missing variants" gap is **not** driven by `::before`/`::after` styling. Drop the pseudo-element capture investigation from the Phase 6.6 plan.
+
+**Lint:** all four sites still 0 errors.
+
+**Scorecard impact (variant-labels axis):**
+
+| Site | Variant-labels F | Variant-labels G |
+|---|---|---|
+| linear | 2/3 | 3/3 (multi-pattern split surfaces both Sidebar + SharedView) |
+| stripe | 2/3 | 2/3 |
+| notion | 3/3 | 3/3 |
+| figma | 2/3 | 2/3 |
+| **Total** | **9/12** | **10/12** |
+
+**Open question for next phase:** linear and figma have *invisible* rule pipelines (capture-rate uncomputable). To grade those harvests we need a different metric — possibly a vision-based diff: render base + render with forced hover, perceptual-diff the screenshots, count distinct visual hover treatments. That's a Phase 6.10 candidate (vision judge). For 6.6 it's enough to know that **forcePseudoState alone is sufficient signal** even without `matched.matchedCSSRules` visibility — the diffs we get are real.
+

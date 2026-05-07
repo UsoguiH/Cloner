@@ -92,20 +92,36 @@ export function groupComponents(computed, roles) {
     // pseudoStates. We expose both so the caller can compose hover/focus
     // blocks even when the rep itself was captured before forcePseudoState
     // had a hit on it.
-    // Pick the richest pseudo-state diff (most properties changed) so the
-    // emitted hover/focus block is the most informative variant the group
-    // can produce. Ties go to largest area.
+    // Pseudo-state probes: pick up to two variants with *distinct* signatures
+    // (the property-name set of the diff). Two probes are signature-distinct
+    // iff their hover/focus diffs touch different property sets — e.g. one
+    // pattern only changes `background-color` while another changes
+    // `background-color + color + border-*-color`. Different patterns get
+    // emitted as separate component blocks (`comp-hover` and `comp-hover-2`),
+    // so a button group with both a quiet-wash hover and a bordered-icon
+    // hover surfaces as two distinct variants in the design system. Sort by
+    // diff richness (more props first) so the canonical variant takes the
+    // unsuffixed name, secondary takes `-2`. Cap at 2 to control YAML noise.
     const pseudoCandidates = probes
       .filter((p) => p.pseudoStates && (p.pseudoStates.hover || p.pseudoStates.focus))
       .map((p) => {
-        const h = Object.keys(p.pseudoStates.hover || {}).length;
-        const f = Object.keys(p.pseudoStates.focus || {}).length;
+        const hKeys = Object.keys(p.pseudoStates.hover || {}).filter((k) => !k.endsWith('__scope')).sort();
+        const fKeys = Object.keys(p.pseudoStates.focus || {}).filter((k) => !k.endsWith('__scope')).sort();
+        const sig = hKeys.join(',') + '|' + fKeys.join(',');
         const area = (p.rect?.width || 0) * (p.rect?.height || 0);
-        return { p, score: h + f, area };
+        return { p, sig, score: hKeys.length + fKeys.length, area };
       })
       .sort((a, b) => b.score - a.score || b.area - a.area);
-    const pseudoProbe = pseudoCandidates[0]?.p || null;
-    reps[name] = { probe: probes[0], pseudoProbe, allProbes: probes };
+    const pseudoProbes = [];
+    const seenSigs = new Set();
+    for (const c of pseudoCandidates) {
+      if (seenSigs.has(c.sig)) continue;
+      seenSigs.add(c.sig);
+      pseudoProbes.push(c.p);
+      if (pseudoProbes.length >= 2) break;
+    }
+    const pseudoProbe = pseudoProbes[0] || null;
+    reps[name] = { probe: probes[0], pseudoProbe, pseudoProbes, allProbes: probes };
   }
   return reps;
 }
