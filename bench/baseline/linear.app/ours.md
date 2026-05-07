@@ -48,6 +48,10 @@ components:
     textColor: "{colors.on-primary}"
     typography: "{typography.button}"
     height: 24px
+  button-tertiary-hover:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink-subtle}"
+    borderColor: "{colors.ink-subtle}"
   button-secondary:
     textColor: "{colors.ink}"
     typography: "{typography.body}"
@@ -151,6 +155,7 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 Linear constructs its interface components with severe precision, using Crisp Hairline borders to delineate dense tables, floating menus, and layered panes. These surfaces rely on stark contrast and rigorous padding rather than heavy shadows to maintain a feeling of high-performance utility.
 
 - **button-tertiary**
+- **button-tertiary-hover**
 - **button-secondary**
 - **text-input**
 - **top-nav**

@@ -10,6 +10,7 @@ import { buildTypographyScale } from './emit/typography-scale.js';
 import { buildRoundedScale } from './emit/rounded-scale.js';
 import { buildSpacingScale } from './emit/spacing-scale.js';
 import { groupComponents, classifyProbe } from './emit/component-classify.js';
+import { compositeOver, resolveProbeBaseBg, bindOrMintRole } from './emit/pseudo-state-roles.js';
 import { createProvenance } from '../ai/provenance.js';
 import { loadRoleNamingEnvelope } from '../ai/stages/role-naming.js';
 import { loadCopyGenerationEnvelope } from '../ai/stages/copy-generation.js';
@@ -110,30 +111,59 @@ function colorRoleByHex(roles, hex) {
 }
 
 // Build a sparse component block from a pseudo-state diff: only properties
-// whose value changed, expressed as token refs where possible. Skip properties
-// whose new value can't be tied to an existing token (don't synthesize new
-// color roles for hover variants — that would produce orphan tokens or
-// require name disambiguation we can't do confidently from CDP signals).
-function buildPseudoStateBlock(diff, roles, roundedScale, allowedColorRoles) {
+// whose value changed, expressed as token refs where possible. Hover/focus
+// backgrounds are commonly translucent overlays (rgba(255,255,255,0.05)) over
+// a transparent base — we composite once over the resolved base bg so the
+// resulting opaque pixel can bind to a real role. When the composite doesn't
+// match an existing role within tolerance we mint a new one (`surface-hover`,
+// etc.) so the variant has somewhere to point. Mutates `roles` when minting.
+function buildPseudoStateBlock(diff, roles, roundedScale, intent, baseBgHex, canvasHex, inkHex) {
   const block = {};
   const refs = new Set();
 
   if (diff['background-color']) {
-    const hex = normalizeColor(diff['background-color']);
-    if (hex && hex !== 'transparent') {
-      const role = colorRoleByHex(roles, hex);
-      if (role && allowedColorRoles.has(role)) {
-        block.backgroundColor = `{colors.${role}}`;
-        refs.add(`colors.${role}`);
+    const raw = normalizeColor(diff['background-color']);
+    if (raw && raw !== 'transparent') {
+      const opaque = compositeOver(raw, baseBgHex || canvasHex);
+      if (opaque) {
+        const role = bindOrMintRole(roles, opaque, { intent, kind: 'bg', canvasHex, inkHex });
+        if (role) {
+          block.backgroundColor = `{colors.${role}}`;
+          refs.add(`colors.${role}`);
+        }
       }
     }
   }
   if (diff['color']) {
-    const hex = normalizeColor(diff['color']);
-    if (hex && hex !== 'transparent') {
-      const role = colorRoleByHex(roles, hex);
-      if (role && allowedColorRoles.has(role)) {
-        block.textColor = `{colors.${role}}`;
+    const raw = normalizeColor(diff['color']);
+    if (raw && raw !== 'transparent') {
+      // Foreground colors are almost always opaque; skip composite (compositeOver
+      // returns the input opaque hex unchanged when alpha >= 1).
+      const opaque = compositeOver(raw, baseBgHex || canvasHex);
+      if (opaque) {
+        const role = bindOrMintRole(roles, opaque, { intent, kind: 'fg', canvasHex, inkHex });
+        if (role) {
+          block.textColor = `{colors.${role}}`;
+          refs.add(`colors.${role}`);
+        }
+      }
+    }
+  }
+  // Border colors arrive as four separate properties (border-top-color, etc.)
+  // when forcePseudoState diffs the computed style. If all four match, emit a
+  // single borderColor; otherwise skip — we don't model per-side borders yet.
+  const borderHexes = [
+    diff['border-top-color'],
+    diff['border-right-color'],
+    diff['border-bottom-color'],
+    diff['border-left-color'],
+  ].map((v) => v ? normalizeColor(v) : null);
+  if (borderHexes.every((h) => h && h !== 'transparent') && borderHexes.every((h) => h === borderHexes[0])) {
+    const opaque = compositeOver(borderHexes[0], baseBgHex || canvasHex);
+    if (opaque) {
+      const role = bindOrMintRole(roles, opaque, { intent, kind: 'border', canvasHex, inkHex });
+      if (role) {
+        block.borderColor = `{colors.${role}}`;
         refs.add(`colors.${role}`);
       }
     }
@@ -333,14 +363,19 @@ export function generateDesignMd(jobDir, options = {}) {
       else if (kind === 'rounded') usedRound.add(name);
     }
 
-    // Pseudo-state sibling blocks. Only emit if at least one property survives
-    // the token-filter — bare `{ opacity: 0.8 }` blocks add noise without depth.
-    const pseudo = group.probe.pseudoStates;
+    // Pseudo-state sibling blocks. Pseudo-bearing probes are usually smaller
+    // than the rep (largest area) — we look for any probe in the group that
+    // has hover/focus diffs, falling back to the rep itself if none.
+    const pseudoSrc = group.pseudoProbe || group.probe;
+    const pseudo = pseudoSrc?.pseudoStates;
     if (pseudo && typeof pseudo === 'object') {
+      const canvasHex = roles.canvas?.hex || null;
+      const inkHex = roles.ink?.hex || null;
+      const baseBgHex = resolveProbeBaseBg(pseudoSrc, canvasHex);
       for (const state of ['hover', 'focus']) {
         const diff = pseudo[state];
         if (!diff || Object.keys(diff).length === 0) continue;
-        const { block: pBlock, refs: pRefs } = buildPseudoStateBlock(diff, roles, roundedScale, allowedColorRoles);
+        const { block: pBlock, refs: pRefs } = buildPseudoStateBlock(diff, roles, roundedScale, state, baseBgHex, canvasHex, inkHex);
         if (Object.keys(pBlock).length === 0) continue;
         // Check contrast on hover/focus too — drop textColor if it fails AA against bg.
         if (pBlock.backgroundColor && pBlock.textColor) {

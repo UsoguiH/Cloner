@@ -36,6 +36,10 @@ components:
     rounded: "{rounded.xs}"
     padding: 8px 18px 10px 18px
     height: 43px
+  button-secondary-hover:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.canvas}"
+    borderColor: "{colors.canvas}"
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
@@ -43,6 +47,9 @@ components:
     rounded: "{rounded.xs}"
     padding: 8px 18px 10px 18px
     height: 43px
+  button-primary-hover:
+    textColor: "{colors.primary}"
+    borderColor: "{colors.primary}"
   nav:
     textColor: "{colors.canvas}"
     typography: "{typography.button-3}"
@@ -106,7 +113,9 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 - **button-tertiary**
 - **button-secondary**
+- **button-secondary-hover**
 - **button-primary**
+- **button-primary-hover**
 - **nav**
 - **top-nav**
 - **footer**

@@ -9,6 +9,8 @@ colors:
   on-primary: "#ffffff"
   hairline: "#f6f5f4"
   hairline-strong: "#dddddd"
+  surface-hover: "#31302e"
+  ink-focus: "#494744"
 typography:
   button-3:
     fontFamily: NotionInter
@@ -34,17 +36,28 @@ components:
   button-tertiary:
     typography: "{typography.button-3}"
     rounded: "{rounded.md}"
+  button-tertiary-hover:
+    textColor: "{colors.ink-muted}"
+    borderColor: "{colors.ink-muted}"
   button-secondary:
     textColor: "{colors.canvas}"
     typography: "{typography.button-4}"
     rounded: "{rounded.sm}"
     padding: 6px 15px
     height: 38px
+  button-secondary-hover:
+    backgroundColor: "{colors.hairline}"
+  button-secondary-focus:
+    backgroundColor: "{colors.hairline}"
   button-primary:
     backgroundColor: "{colors.primary}"
     typography: "{typography.button-3}"
     rounded: "{rounded.sm}"
     height: 57px
+  button-primary-hover:
+    backgroundColor: "{colors.surface-hover}"
+  button-primary-focus:
+    backgroundColor: "{colors.surface-hover}"
   text-input:
     backgroundColor: "{colors.canvas}"
     typography: "{typography.headline}"
@@ -102,6 +115,8 @@ The Notion color palette is intentionally quiet. It anchors on Workspace White a
 - **Primary Knockout** `#ffffff` (`on-primary`) — Guarantees high-contrast readability for text and icons layered over deeply saturated elements in the Notion interface.
 - **Sidebar Wash** `#f6f5f4` (`hairline`) — Establishes a subtle visual foundation for secondary regions like the Notion sidebar without distracting from the main canvas.
 - **Structural Border** `#dddddd` (`hairline-strong`) — Creates distinct boundaries and structural dividers across the Notion interface for clear separation of functional zones.
+- **surface-hover** `#31302e`
+- **ink-focus** `#494744`
 
 ## Typography
 
@@ -130,8 +145,13 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 Interface components in Notion operate as modular, high-contrast blocks. Cards and feature containers frequently sit on a Sidebar Wash background and utilize Structural Border outlines to define interactive boundaries clearly.
 
 - **button-tertiary**
+- **button-tertiary-hover**
 - **button-secondary**
+- **button-secondary-hover**
+- **button-secondary-focus**
 - **button-primary**
+- **button-primary-hover**
+- **button-primary-focus**
 - **text-input**
 - **feature-card**
 - **status-badge**
