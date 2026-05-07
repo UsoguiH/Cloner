@@ -1,17 +1,21 @@
 ---
 name: Notion
-description: Notion is a highly structured workspace platform that presents itself through a stark, document-driven canvas, utilizing sharp typography and modular interfaces to organize complex knowledge.
+description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   canvas: "#ffffff"
   primary: "#191918"
   ink: "#000000"
-  ink-muted: "#615d59"
+  ink-muted: "#31302e"
+  ink-subtle: "#615d59"
   on-primary: "#ffffff"
+  surface-1: "#f9f9f8"
+  surface-2: "#f2f9ff"
+  surface-3: "#fef3f1"
+  surface-4: "#e6f3fe"
   hairline: "#f6f5f4"
   hairline-strong: "#dddddd"
-  surface-hover: "#31302e"
+  surface-hover: "#005bab"
   ink-focus: "#494744"
-  ink-focus-2: "#dadcdd"
 typography:
   button-3:
     fontFamily: NotionInter
@@ -30,48 +34,48 @@ typography:
     lineHeight: 1.14
     letterSpacing: -1.5px
 rounded:
-  md: 12px
+  lg: 12px
   sm: 8px
   xs: 4px
 components:
   button-tertiary:
     typography: "{typography.button-3}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.lg}"
   button-tertiary-hover:
-    textColor: "{colors.ink-muted}"
-    borderColor: "{colors.ink-muted}"
+    textColor: "{colors.ink-subtle}"
+    borderColor: "{colors.ink-subtle}"
+  button-tertiary-hover-2:
+    backgroundColor: "{colors.canvas}"
+  button-tertiary-focus-2:
+    backgroundColor: "{colors.canvas}"
   button-secondary:
     textColor: "{colors.canvas}"
     typography: "{typography.button-4}"
     rounded: "{rounded.sm}"
-    padding: 6px 15px
-    height: 38px
+    padding: 4px 14px
+    height: 36px
   button-secondary-hover:
-    backgroundColor: "{colors.hairline}"
+    backgroundColor: "{colors.surface-hover}"
   button-secondary-focus:
-    backgroundColor: "{colors.hairline}"
+    backgroundColor: "{colors.surface-hover}"
   button-primary:
     backgroundColor: "{colors.primary}"
     typography: "{typography.button-3}"
     rounded: "{rounded.sm}"
     height: 57px
   button-primary-hover:
-    backgroundColor: "{colors.surface-hover}"
+    backgroundColor: "{colors.ink-muted}"
   button-primary-focus:
-    backgroundColor: "{colors.surface-hover}"
+    backgroundColor: "{colors.ink-muted}"
   text-input:
     backgroundColor: "{colors.canvas}"
     typography: "{typography.headline}"
     rounded: "{rounded.xs}"
     padding: 6px
     height: 62px
-  text-input-focus:
-    borderColor: "{colors.ink-focus-2}"
   feature-card:
-    backgroundColor: "{colors.canvas}"
     typography: "{typography.button-3}"
-    rounded: "{rounded.md}"
-    padding: 24px
+    rounded: "{rounded.lg}"
   status-badge:
     typography: "{typography.button-3}"
     height: 55px
@@ -90,40 +94,40 @@ components:
     typography: "{typography.button-3}"
     padding: 0px 0px 32px 0px
   cta-banner:
+    backgroundColor: "{colors.hairline}"
     typography: "{typography.button-3}"
-    height: 24px
+    padding: 80px 32px
+  pricing-card:
+    backgroundColor: "{colors.surface-2}"
+    typography: "{typography.button-3}"
+    rounded: "{rounded.lg}"
+    padding: 32px
 ---
 
 # Notion
 
 ## Overview
 
-Notion’s visual identity balances the unopinionated nature of a blank document with the rigorous structure of a database. By relying on a stark, high-contrast palette and a strictly modular component architecture, the system effortlessly scales from simple text notes to complex, multi-view workflows.
-
-## Voice
-
-- **Document-first** — The interface prioritizes expansive Base White canvases and Notion Charcoal typography, echoing the familiar structure of a blank page waiting to be written on.
-- **Character-driven** — Technical product capabilities are intentionally softened by whimsical, hand-drawn mascot illustrations that add an approachable, human layer to complex automated workflows.
-- **Modular** — Information is consistently organized into rigid, standardized card containers defined by Soft Alabaster washes and Interface Divider borders to maintain layout discipline.
+Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-The Notion palette is remarkably restrained, leaning heavily on Base White and Notion Charcoal to establish a reading-focused baseline. Subtle structural colors like Soft Alabaster and Interface Divider organize the workspace without competing with user-generated content.
-
-- **Base White** `#ffffff` (`canvas`) — This provides the clean, uninterrupted foundation for Notion pages, giving content room to breathe.
-- **Notion Charcoal** `#191918` (`primary`) — This grounds the Notion experience, acting as our dominant typographic color for main content and primary interface elements.
-- **Absolute Black** `#000000` (`ink`) — Absolute black delivers uncompromising contrast for our most essential iconography and highest-hierarchy text elements within Notion.
-- **Muted Slate** `#615d59` (`ink-muted`) — Serving as our secondary text color, this muted tone gracefully deprioritizes metadata and sidebar navigation in the Notion workspace.
-- **Crisp Invert** `#ffffff` (`on-primary`) — This crisp white guarantees uncompromising legibility when placed over Notion's dark primary surfaces and hero sections.
-- **Soft Alabaster** `#f6f5f4` (`hairline`) — We use this ultra-light wash to define secondary structural areas like the Notion sidebar without relying on heavy borders.
-- **Interface Divider** `#dddddd` (`hairline-strong`) — This light gray provides structural definition, mapping out the borders and dividers within Notion's board and table views.
-- **Elevated Dark** `#31302e` (`surface-hover`) — This subtle, elevated dark gray activates interactive surfaces and hover states across Notion's darker thematic components.
-- **Focused Graphite** `#494744` (`ink-focus`) — Guiding the user's eye, this focused graphite tone highlights active selection states and deep interactive elements across the Notion app.
-- **ink-focus-2** `#dadcdd`
+- **canvas** `#ffffff`
+- **primary** `#191918`
+- **ink** `#000000`
+- **ink-muted** `#31302e`
+- **ink-subtle** `#615d59`
+- **on-primary** `#ffffff`
+- **surface-1** `#f9f9f8`
+- **surface-2** `#f2f9ff`
+- **surface-3** `#fef3f1`
+- **surface-4** `#e6f3fe`
+- **hairline** `#f6f5f4`
+- **hairline-strong** `#dddddd`
+- **surface-hover** `#005bab`
+- **ink-focus** `#494744`
 
 ## Typography
-
-NotionInter drives the entire typographic hierarchy across the site, shifting smoothly from sturdy 42px headlines to legible, functional interface copy. The type relies on Absolute Black and Muted Slate to differentiate primary content from secondary metadata without requiring heavy structural borders.
 
 - **button-3** — NotionInter 16px/400
 - **button-4** — NotionInter 16px/500
@@ -139,16 +143,16 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Shapes
 
-- **md** `12px`
+- **lg** `12px`
 - **sm** `8px`
 - **xs** `4px`
 
 ## Components
 
-Surfaces in Notion are deeply systematic, utilizing strict card containers with unified interaction patterns. This predictable containment model allows disparate features to coexist logically on the same canvas, unified by subtle states like Elevated Dark for hover activations.
-
 - **button-tertiary**
 - **button-tertiary-hover**
+- **button-tertiary-hover-2**
+- **button-tertiary-focus-2**
 - **button-secondary**
 - **button-secondary-hover**
 - **button-secondary-focus**
@@ -156,7 +160,6 @@ Surfaces in Notion are deeply systematic, utilizing strict card containers with 
 - **button-primary-hover**
 - **button-primary-focus**
 - **text-input**
-- **text-input-focus**
 - **feature-card**
 - **status-badge**
 - **nav**
@@ -164,6 +167,7 @@ Surfaces in Notion are deeply systematic, utilizing strict card containers with 
 - **footer**
 - **hero-section**
 - **cta-banner**
+- **pricing-card**
 
 ## Do's and Don'ts
 

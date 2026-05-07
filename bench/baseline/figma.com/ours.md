@@ -1,41 +1,54 @@
 ---
 name: Figma
-description: Figma presents a highly functional, unopinionated structural canvas that allows vibrant user-generated design artifacts to command absolute focus.
+description: "Design system extracted from a structural clone. Canvas #000000, primary accent #ffffff, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   canvas: "#000000"
   primary: "#ffffff"
+  ink: "#697485"
   on-primary: "#000000"
+  surface-1: "#131313"
+  surface-2: "#cb9fd2"
+  surface-hover: "#222222"
 typography:
   button:
+    fontFamily: figmaSans
+    fontSize: 32px
+    fontWeight: 400
+    lineHeight: 1.3
+    letterSpacing: -0.32px
+  button-6:
+    fontFamily: figmaSans
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 1.45
+  button-2:
     fontFamily: figmaSans
     fontSize: 18px
     fontWeight: 300
     lineHeight: 1.4
     letterSpacing: -0.14px
-  button-2:
+  headline:
     fontFamily: figmaSans
-    fontSize: 18px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: -0.09px
-  button-3:
-    fontFamily: figmaSans
-    fontSize: 16px
+    fontSize: 46px
     fontWeight: 400
-    lineHeight: 1.45
+    lineHeight: 1.15
+    letterSpacing: -0.69px
 rounded:
-  xs: 50px
+  lg: 80px
 components:
   button-tertiary:
     textColor: "{colors.canvas}"
     typography: "{typography.button}"
-    height: 65px
+    padding: 32px 0px
+  button-tertiary-hover:
+    textColor: "{colors.canvas}"
+  button-tertiary-hover-2:
+    backgroundColor: "{colors.surface-hover}"
   button-secondary:
     textColor: "{colors.canvas}"
-    typography: "{typography.button-2}"
-    rounded: "{rounded.xs}"
-    padding: 8px 18px 10px 18px
-    height: 43px
+    typography: "{typography.button-6}"
+    rounded: "{rounded.lg}"
+    height: 47px
   button-secondary-hover:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
@@ -43,56 +56,55 @@ components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
-    typography: "{typography.button-2}"
-    rounded: "{rounded.xs}"
-    padding: 8px 18px 10px 18px
-    height: 43px
+    typography: "{typography.button-6}"
+    height: 24px
   button-primary-hover:
     textColor: "{colors.primary}"
     borderColor: "{colors.primary}"
   nav:
-    textColor: "{colors.canvas}"
-    typography: "{typography.button-3}"
-    height: 41px
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.primary}"
+    typography: "{typography.button-2}"
+    height: 100px
   top-nav:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.canvas}"
-    typography: "{typography.button-3}"
+    typography: "{typography.button-6}"
     height: 81px
   footer:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.primary}"
-    typography: "{typography.button-3}"
+    typography: "{typography.button-6}"
     padding: 120px 0px
+  text-input:
+    textColor: "{colors.primary}"
+    typography: "{typography.headline}"
+    padding: 0px 70px 0px 0px
+    height: 54px
 ---
 
 # Figma
 
 ## Overview
 
-Figma presents a highly functional, unopinionated structural canvas that allows vibrant user-generated design artifacts to command absolute focus.
-
-## Voice
-
-- **Unopinionated Canvas** — Figma relies on Core Surface White and High Contrast Ink to build a neutral interface that frames user work rather than competing with it.
-- **Typographically Driven** — The brand leverages scale and weight variations within figmaSans to establish clear informational hierarchy across dense product displays.
-- **Tool-Centric** — Visuals consistently showcase the product interface itself, using annotated screenshots and inline components to demonstrate concrete capability.
+Design system extracted from a structural clone. Canvas #000000, primary accent #ffffff, dominant typeface figmaSans. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-The Figma palette is deliberately restrained, using Core Surface White for primary layouts and anchoring the page with Figma True Black. This stark, high-contrast foundation ensures that essential navigational elements remain distinct while allowing vibrant user-created assets to draw the eye.
-
-- **Figma True Black** `#000000` (`canvas`) — Figma relies on this absolute black to anchor our highest-contrast UI elements, including primary conversion buttons and bold structural foundations.
-- **Core Surface White** `#ffffff` (`primary`) — This crisp white serves as the foundational light surface across the Figma experience, establishing necessary breathing room for vibrant user-generated content.
-- **High Contrast Ink** `#000000` (`on-primary`) — Applied directly over our primary light surfaces, this striking black guarantees maximum legibility for Figma interface typography and essential navigation.
+- **canvas** `#000000`
+- **primary** `#ffffff`
+- **ink** `#697485`
+- **on-primary** `#000000`
+- **surface-1** `#131313`
+- **surface-2** `#cb9fd2`
+- **surface-hover** `#222222`
 
 ## Typography
 
-Figma leans heavily on the figmaSans family to structure its marketing and product surfaces. By deploying specific weight variations like 300 and 500 at larger 18px scales, the brand maintains a crisp, legible hierarchy even when overlaid across dynamic, colorful backgrounds.
-
-- **button** — figmaSans 18px/300
-- **button-2** — figmaSans 18px/500
-- **button-3** — figmaSans 16px/400
+- **button** — figmaSans 32px/400
+- **button-6** — figmaSans 16px/400
+- **button-2** — figmaSans 18px/300
+- **headline** — figmaSans 46px/400
 
 ## Layout
 
@@ -104,11 +116,13 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Shapes
 
-- **xs** `50px`
+- **lg** `80px`
 
 ## Components
 
 - **button-tertiary**
+- **button-tertiary-hover**
+- **button-tertiary-hover-2**
 - **button-secondary**
 - **button-secondary-hover**
 - **button-primary**
@@ -116,6 +130,7 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 - **nav**
 - **top-nav**
 - **footer**
+- **text-input**
 
 ## Do's and Don'ts
 

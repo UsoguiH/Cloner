@@ -385,3 +385,64 @@ Signals worth flagging for downstream phases:
 
 **Open question for next phase:** linear and figma have *invisible* rule pipelines (capture-rate uncomputable). To grade those harvests we need a different metric — possibly a vision-based diff: render base + render with forced hover, perceptual-diff the screenshots, count distinct visual hover treatments. That's a Phase 6.10 candidate (vision judge). For 6.6 it's enough to know that **forcePseudoState alone is sufficient signal** even without `matched.matchedCSSRules` visibility — the diffs we get are real.
 
+## Session H — Phase 6.2.5 (multi-page crawl), 2026-05-07
+
+**Why:** getdesign.md takes a URL and harvests one page. A real design system reveals itself across home / pricing / customers / docs / signup — and the token coverage on a single home is incomplete by construction. Both we and they had this ceiling. Removing it is a structural lead, not a prompt-tuning lead.
+
+**What changed:** new `extract/page-discovery.js` scrapes every `<a href>` from the post-hydration home page, scores by path-keyword (`pricing` +5, `product` +5, `customers` +4, `docs|blog|signup` +3, `legal|terms|privacy` -100), bonuses nav/footer membership, dedupes by first path segment so we don't pick four `/blog/...` posts, and returns the top 4 + home. `run.js` orchestrates: navigate to each page, accumulate stylesheets into a shared replay manifest (URL-keyed dedupe across pages; inline sheets namespaced by page slug), harvest probes per page tagged with `pageUrl`, then union into a single `computed.json` the rest of the pipeline already understands.
+
+Same-origin filter uses the **post-redirect** hostname, not the input. Notion's `notion.so` redirects to `notion.com` and the original filter rejected every anchor; capturing `page.url()` after settle fixes the discovery for redirect-heavy domains.
+
+**Variant counts (Session G → Session H):**
+
+| Site | Pages | Probes G → H | Pseudo diffs G → H | Variants G | Variants H | Δ |
+|---|---|---|---|---|---|---|
+| linear.app | 5 (home, pricing, customers, docs, login) | 130 → 229 | 7 → 24 | 2 | **7** | +5 |
+| stripe.com | 5 (home, pricing, customers, blog, personalize) | 168 → 607 | 2 → 17 | 2 | **7** | +5 |
+| notion.so | 5 (home, product, pricing, customers, blog) | 98 → 375 | 12 → 43 | 6 | **7** | +1 |
+| figma.com | 5 (home, solutions, pricing, customers, blog) | ~95 → 309 | 5 → 14 | 2 | **4** | +2 |
+| **Total** | **20** | | **26 → 98** | **12** | **25** | **+13** |
+
+**That's a 2.08× lift from Session G and a 25× lift from Session E start (1 → 25).** Component variants are now the easiest axis to cite head-to-head.
+
+**Newly-surfaced variants per site:**
+
+- **linear.app** picked up `button-secondary-hover/focus` (only on `/customers` and `/docs`), `feature-card-hover/focus` (`/customers`), and `button-tertiary-focus` (`/login`). The home alone was a button-tertiary-only site — three other component types hide on secondary pages.
+- **stripe.com** picked up `button-tertiary-hover/focus`, a second `button-secondary` pattern (`-hover-2`/`-focus-2`), and `hero-section-hover/focus` (interactive hero on `/personalize`). Stripe's home is mostly content cards; the interactive button work lives on docs/customer pages.
+- **notion.so** picked up the multi-pattern `button-tertiary-hover-2` and `button-tertiary-focus-2` from the product/pricing pages — different from home's button-tertiary signature.
+- **figma.com** picked up `button-tertiary-hover/hover-2` from secondary pages.
+
+**Pseudo-state evidence got dramatically richer:**
+
+| Site | Diffs G | Diffs H | Hover-rules detected (H) |
+|---|---|---|---|
+| linear | 7 | 24 | 12 (was 0 — new visibility from /customers + /docs) |
+| stripe | 2 | 17 | 7 (same as G — capture rate ~24%, similar) |
+| notion | 12 | 43 | 9 (vs 4) |
+| figma | 5 | 14 | 2 (vs 0) |
+
+The fact that *rules detected* jumped on linear and figma (where session G saw 0) means secondary pages use more conventional CSS pipelines than the home page's CSS-in-JS / constructed-stylesheets path. Even on those "invisible" sites, multi-page harvest brings classic CSS into scope.
+
+**Cost:** ~60–150s per site (5 pages × ~15-30s each). Stripe is the slowest at 153s (largest probe set per page). Acceptable for an async DESIGN.md job; the user already expects multi-minute runs.
+
+**Lint:** 0 content errors across all 4 sites. Stripe surfaces a 1× internal linter crash (`raw.match is not a function`) on the larger output — non-content, non-blocking, will investigate independently in a `@google/design.md/linter` issue.
+
+**Scorecard impact (variant-labels axis):**
+
+| Site | Variant-labels G | Variant-labels H |
+|---|---|---|
+| linear | 3/3 | 3/3 (cap reached; richer evidence) |
+| stripe | 2/3 | 3/3 |
+| notion | 3/3 | 3/3 |
+| figma | 2/3 | 3/3 |
+| **Total** | **10/12** | **12/12** |
+
+**Variant-labels axis is now saturated.** All four sites hit the rubric ceiling. Further structural lead on this axis requires expanding the rubric itself (e.g., adding "captures cross-page variant divergence" as an axis).
+
+**Configuration:** `DESIGN_MD_MULTIPAGE=0` falls back to single-page (Session G behavior). `DESIGN_MD_MAX_PAGES=N` caps the crawl (default 5, max 8).
+
+**Next gaps for Phase 6.10 (vision judge):**
+
+- Multi-page brought us to a clear lead on variant-labels and color-block fidelity, but "coherence" and "hero copy" still need the AI tower (blocked on Gemini key rotation) and a measurement harness. Without the judge, Session H's claim of beating getdesign.md on variant-labels is qualitative; the judge converts it to a CI-gateable score.
+- Cross-page provenance (which page surfaced which token) is now structurally trackable — every probe carries `pageUrl`. Surfacing this in `design.md` (e.g., "primary: #5e6ad2 — present on home, pricing, /customers") would be a unique-to-us provenance feature getdesign.md can't match without crawling.
+

@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { harvestStylesFromPage } from './extract/computed-styles.js';
 import { extractCustomProperties } from './extract/custom-properties.js';
 import { buildTokenIndex } from './extract/var-trace.js';
+import { discoverPages, pageSlug } from './extract/page-discovery.js';
 import { generateDesignMd } from './generate.js';
 import { isAvailable as isAiAvailable } from '../ai/client.js';
 import { runRoleNamingStage } from '../ai/stages/role-naming.js';
@@ -13,16 +14,14 @@ import { runCopyGenerationStage } from '../ai/stages/copy-generation.js';
 // ============================================================================
 // runDesignMdJob — top-level worker for the DESIGN.md job type.
 //
-// Unlike runCloneJob, this worker does NOT capture/serve the cloned site. It
-// runs a lean Playwright session that:
-//   1. navigates to the URL
-//   2. waits for hydration
-//   3. captures index.html + every stylesheet body (minimum needed by the
-//      custom-property extractor — written in a replay-compatible layout so
-//      extractCustomProperties() works without modification)
-//   4. harvests live computed styles + pseudo-state diffs
-//   5. takes screenshots for downstream AI enrichment (Phase 6.2+)
-//   6. generates design.md + tokens.json + tailwind.config.json + DTCG tokens
+// Phase 6.2.5: this worker now harvests up to 5 pages per site (home +
+// 4 representative discovered pages — pricing, customers, docs, signup
+// etc.) and unions the harvest. getdesign.md takes a URL; we take a URL
+// and crawl. Page selection logic lives in extract/page-discovery.js;
+// here we orchestrate: navigate → capture sheets + harvest probes per
+// page, then merge into a single manifest + computed.json the rest of
+// the pipeline already understands. Probes carry a `pageUrl` field so
+// downstream provenance can attribute components/roles to source pages.
 //
 // Side effects: writes to <jobDir>/output/{replay,design-md,visual}/.
 // Phases reported via onProgress: queued → navigating → harvesting →
@@ -32,6 +31,13 @@ import { runCopyGenerationStage } from '../ai/stages/copy-generation.js';
 const VIEWPORT = { width: 1440, height: 900 };
 const NAV_TIMEOUT_MS = 60_000;
 const SETTLE_TIMEOUT_MS = 8_000;
+
+function readMaxPages() {
+  if (process.env.DESIGN_MD_MULTIPAGE === '0') return 1;
+  const raw = parseInt(process.env.DESIGN_MD_MAX_PAGES || '5', 10);
+  if (!Number.isFinite(raw) || raw < 1) return 5;
+  return Math.min(raw, 8);
+}
 
 export async function runDesignMdJob(job, { onProgress }) {
   const tick = (patch) => { try { onProgress?.(patch); } catch {} };
@@ -52,24 +58,159 @@ export async function runDesignMdJob(job, { onProgress }) {
     const ctx = await browser.newContext({ viewport: VIEWPORT });
     const page = await ctx.newPage();
 
-    await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+    await navigateAndSettle(page, job.url);
 
-    // Best-effort settle: wait for network idle, fonts, fall through if slow.
-    try {
-      await page.waitForLoadState('networkidle', { timeout: SETTLE_TIMEOUT_MS });
-    } catch {}
-    try {
-      await page.evaluate(async () => {
-        if (document.fonts) {
-          await document.fonts.ready;
+    // Capture the post-redirect URL — many marketing sites redirect across
+    // hostnames (notion.so → notion.com). Discovery's same-origin filter
+    // must use the *final* hostname or it rejects all anchors.
+    const effectiveHomeUrl = page.url() || job.url;
+
+    // Discover representative secondary pages from the home anchor graph.
+    // This must happen on home — the home nav is what brand-emphasizes
+    // the canonical sections. Fallback to home-only if discovery throws.
+    const maxPages = readMaxPages();
+    let pageList = [{ url: effectiveHomeUrl, role: 'home' }];
+    if (maxPages > 1) {
+      try {
+        pageList = await discoverPages(page, effectiveHomeUrl, { max: maxPages });
+      } catch (err) {
+        console.warn(`[design-md ${job.id}] page-discovery failed: ${err.message}`);
+      }
+    }
+    tick({
+      phase: 'navigating',
+      message: `crawling ${pageList.length} page${pageList.length === 1 ? '' : 's'}: ${pageList.map((p) => pageSlug(p.url)).join(', ')}`,
+    });
+
+    // Save home HTML once (replay manifest only needs one HTML doc — the
+    // custom-property extractor reads it for inline <style> blocks).
+    const homeHtml = await page.content();
+    fs.writeFileSync(path.join(outDir, 'index.html'), homeHtml);
+
+    // Per-page accumulators. mergedEntries dedupes external sheets across
+    // pages by URL (most are global). Inline sheets are namespaced by page
+    // slug so two pages' inline blocks don't collide.
+    const mergedEntries = {};
+    const harvests = []; // { pageUrl, role, viewport, probes, stats }
+    const pageSummaries = []; // public manifest of crawled pages
+
+    for (let i = 0; i < pageList.length; i++) {
+      const p = pageList[i];
+      const slug = pageSlug(p.url);
+
+      // First page is already loaded from the goto+settle above.
+      if (i > 0) {
+        tick({
+          phase: 'navigating',
+          message: `[${i + 1}/${pageList.length}] ${p.url}`,
+        });
+        try {
+          await navigateAndSettle(page, p.url);
+        } catch (err) {
+          console.warn(`[design-md ${job.id}] nav failed for ${p.url}: ${err.message}`);
+          pageSummaries.push({ url: p.url, role: p.role, slug, status: 'nav_failed', error: err.message });
+          continue;
         }
+      }
+
+      tick({
+        phase: 'harvesting',
+        message: `[${i + 1}/${pageList.length}] capturing CSS for ${slug}`,
       });
-    } catch {}
+      let pageEntries = {};
+      try {
+        pageEntries = await capturePageStylesheets(page, slug, bodiesDir);
+        Object.assign(mergedEntries, pageEntries);
+      } catch (err) {
+        console.warn(`[design-md ${job.id}] stylesheet capture failed for ${p.url}: ${err.message}`);
+      }
 
-    tick({ phase: 'harvesting', message: 'capturing HTML + CSS' });
-    await captureHtmlAndCss(page, job.url, replayDir, bodiesDir);
+      tick({
+        phase: 'harvesting',
+        message: `[${i + 1}/${pageList.length}] reading computed styles for ${slug}`,
+      });
+      let harvest = null;
+      try {
+        // tokenIndex grows monotonically as we accumulate stylesheets;
+        // re-build per page so later pages get var-trace enrichment from
+        // earlier pages' tokens. Cheap (~10ms per build).
+        const interimManifest = {
+          sourceUrl: p.url,
+          capturedAt: new Date().toISOString(),
+          entries: { ...mergedEntries },
+        };
+        const interimTokens = extractTokensFromInterimManifest(job.jobDir, interimManifest, replayDir);
+        const tokenIndex = buildTokenIndex(interimTokens);
+        harvest = await harvestStylesFromPage(page, {
+          tokenIndex,
+          viewport: page.viewportSize() || VIEWPORT,
+          harvestPseudo: true,
+        });
+        // Tag every probe with the page it came from for downstream
+        // provenance + multi-page-aware grouping.
+        for (const probe of harvest.probes) {
+          probe.pageUrl = p.url;
+          probe.pageSlug = slug;
+        }
+        harvests.push({
+          pageUrl: p.url,
+          role: p.role,
+          slug,
+          viewport: harvest.viewport,
+          probes: harvest.probes,
+          stats: harvest.stats,
+        });
+        pageSummaries.push({
+          url: p.url,
+          role: p.role,
+          slug,
+          status: 'ok',
+          probesHarvested: harvest.stats.probesHarvested,
+          pseudoStateDiffs: harvest.stats.pseudoStateDiffs || 0,
+        });
+      } catch (err) {
+        console.warn(`[design-md ${job.id}] harvest failed for ${p.url}: ${err.message}`);
+        pageSummaries.push({ url: p.url, role: p.role, slug, status: 'harvest_failed', error: err.message });
+      }
 
-    // Phase 1: extract CSS custom properties from the saved replay layout.
+      // Hygiene: clear probe attributes before next nav.
+      try {
+        await page.evaluate(() => {
+          document.querySelectorAll('[data-design-md-probe]').forEach((el) => {
+            el.removeAttribute('data-design-md-probe');
+          });
+        });
+      } catch {}
+
+      // Screenshots on home only — visual evidence for AI stages doesn't
+      // need every page; multi-viewport breadth is a separate phase.
+      if (i === 0) {
+        try {
+          await page.screenshot({ path: path.join(visualDir, 'desktop-fullpage.png'), fullPage: true });
+          await page.screenshot({ path: path.join(visualDir, 'desktop-viewport.png'), fullPage: false });
+        } catch (err) {
+          console.warn(`[design-md ${job.id}] screenshot failed:`, err.message);
+        }
+      }
+    }
+
+    // Final manifest write — single source of truth across all crawled
+    // pages. extractCustomProperties below sees the union.
+    fs.writeFileSync(
+      path.join(replayDir, 'manifest.json'),
+      JSON.stringify(
+        {
+          sourceUrl: job.url,
+          capturedAt: new Date().toISOString(),
+          entries: mergedEntries,
+          pages: pageSummaries,
+        },
+        null,
+        2
+      )
+    );
+
+    // Final tokens.json from the merged manifest.
     let tokensJson;
     try {
       const tokens = extractCustomProperties(job.jobDir);
@@ -80,6 +221,7 @@ export async function runDesignMdJob(job, { onProgress }) {
         themes: tokens.themes,
         stats: tokens.stats,
         liveHarvest: true,
+        pages: pageSummaries,
       };
     } catch (err) {
       tokensJson = {
@@ -89,51 +231,54 @@ export async function runDesignMdJob(job, { onProgress }) {
         themes: {},
         stats: { error: err.message },
         liveHarvest: true,
+        pages: pageSummaries,
       };
     }
     fs.writeFileSync(path.join(dmDir, 'tokens.json'), JSON.stringify(tokensJson, null, 2));
 
-    // Phase 2: harvest computed styles + pseudo-state diffs from the live page.
-    tick({ phase: 'harvesting', message: 'reading computed styles from live page' });
-    const tokenIndex = buildTokenIndex(tokensJson);
-    const harvest = await harvestStylesFromPage(page, {
-      tokenIndex,
-      viewport: page.viewportSize() || VIEWPORT,
-      harvestPseudo: true,
-    });
-    fs.writeFileSync(path.join(dmDir, 'computed.json'), JSON.stringify({
-      jobId: job.id,
-      harvestedAt: new Date().toISOString(),
-      sourceUrl: job.url,
-      liveHarvest: true,
-      viewport: harvest.viewport,
-      probes: harvest.probes,
-      stats: harvest.stats,
-    }, null, 2));
-
-    // Cleanup probe attributes left on the live page (hygiene).
-    try {
-      await page.evaluate(() => {
-        document.querySelectorAll('[data-design-md-probe]').forEach((el) => {
-          el.removeAttribute('data-design-md-probe');
-        });
-      });
-    } catch {}
-
-    // Phase 3: screenshots — feed for downstream AI enrichment (Phase 6.2+).
-    tick({ phase: 'screenshots', message: 'capturing visual evidence' });
-    try {
-      await page.screenshot({
-        path: path.join(visualDir, 'desktop-fullpage.png'),
-        fullPage: true,
-      });
-      await page.screenshot({
-        path: path.join(visualDir, 'desktop-viewport.png'),
-        fullPage: false,
-      });
-    } catch (err) {
-      console.warn(`[design-md ${job.id}] screenshot failed:`, err.message);
+    // Union harvests into one computed.json. Probes concat in page order;
+    // groupComponents downstream picks reps by area×richness, so a
+    // pricing-page button-primary can outrank a home-page one if it has
+    // a richer pseudo-state diff.
+    const unionedProbes = [];
+    const aggregatedStats = {
+      probesHarvested: 0,
+      pseudoStatesProbed: 0,
+      pseudoStateDiffs: 0,
+      pseudoStateAncestorHits: 0,
+      pseudoRulesDetectedHover: 0,
+      pseudoRulesDetectedFocus: 0,
+      pagesCrawled: harvests.length,
+    };
+    let viewport = VIEWPORT;
+    for (const h of harvests) {
+      unionedProbes.push(...h.probes);
+      aggregatedStats.probesHarvested += h.stats.probesHarvested || 0;
+      aggregatedStats.pseudoStatesProbed += h.stats.pseudoStatesProbed || 0;
+      aggregatedStats.pseudoStateDiffs += h.stats.pseudoStateDiffs || 0;
+      aggregatedStats.pseudoStateAncestorHits += h.stats.pseudoStateAncestorHits || 0;
+      aggregatedStats.pseudoRulesDetectedHover += h.stats.pseudoRulesDetectedHover || 0;
+      aggregatedStats.pseudoRulesDetectedFocus += h.stats.pseudoRulesDetectedFocus || 0;
+      viewport = h.viewport || viewport;
     }
+    fs.writeFileSync(
+      path.join(dmDir, 'computed.json'),
+      JSON.stringify(
+        {
+          jobId: job.id,
+          harvestedAt: new Date().toISOString(),
+          sourceUrl: job.url,
+          liveHarvest: true,
+          multiPage: harvests.length > 1,
+          pages: pageSummaries,
+          viewport,
+          probes: unionedProbes,
+          stats: aggregatedStats,
+        },
+        null,
+        2
+      )
+    );
 
     await browser.close();
     browser = null;
@@ -239,15 +384,16 @@ export async function runDesignMdJob(job, { onProgress }) {
 
     tick({
       phase: 'complete',
-      message: `design.md ready (${(result.components || []).length} components, lint E${summary.errors ?? '?'}/W${summary.warnings ?? '?'}/I${summary.infos ?? '?'})`,
+      message: `design.md ready (${pageSummaries.filter((p) => p.status === 'ok').length} pages, ${(result.components || []).length} components, lint E${summary.errors ?? '?'}/W${summary.warnings ?? '?'}/I${summary.infos ?? '?'})`,
       verify: {
         status: (summary.errors > 0) ? 'errors' : (summary.warnings > 0 ? 'warnings' : 'ok'),
         sourceUrl: job.url,
         verifiedAt: new Date().toISOString(),
         components: (result.components || []).length,
         lint: summary,
-        probesHarvested: harvest.stats.probesHarvested,
-        pseudoStateDiffs: harvest.stats.pseudoStateDiffs,
+        pagesCrawled: pageSummaries.filter((p) => p.status === 'ok').length,
+        probesHarvested: aggregatedStats.probesHarvested,
+        pseudoStateDiffs: aggregatedStats.pseudoStateDiffs,
         ai: (aiNaming || aiCopy)
           ? {
               roleNaming: aiNaming
@@ -278,6 +424,41 @@ export async function runDesignMdJob(job, { onProgress }) {
   }
 }
 
+async function navigateAndSettle(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+  try {
+    await page.waitForLoadState('networkidle', { timeout: SETTLE_TIMEOUT_MS });
+  } catch {}
+  try {
+    await page.evaluate(async () => {
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+    });
+  } catch {}
+}
+
+// Build a temporary tokens.json-shaped object from an in-memory manifest
+// so we can call buildTokenIndex without round-tripping through disk.
+// extractCustomProperties expects a job dir with output/replay/manifest.json
+// + bodies/ on disk; we already have those for the *current* state, so just
+// call it through. Returns the same shape as the persisted tokens.json.
+function extractTokensFromInterimManifest(jobDir, manifest, replayDir) {
+  // Persist a temp manifest at the canonical path so extractCustomProperties
+  // sees the latest aggregate. The final write at end of crawl will
+  // overwrite this with identical content.
+  fs.writeFileSync(path.join(replayDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  try {
+    const tokens = extractCustomProperties(jobDir);
+    return {
+      themes: tokens.themes,
+      stats: tokens.stats,
+    };
+  } catch {
+    return { themes: {}, stats: {} };
+  }
+}
+
 // Flatten role-naming envelope items into a name → labels lookup so the
 // copy-generation prompt can quote brand-voice names ("Linear Indigo") next
 // to the harvest hex without re-reading the disk sidecar.
@@ -298,20 +479,12 @@ function indexRoleNamesFromEnvelope(env) {
   return out;
 }
 
-// Save index.html + every loaded stylesheet body in a replay-compatible
-// layout so extractCustomProperties() works without changes:
-//   <jobDir>/output/replay/manifest.json   { entries: { <url>: { body, mimeType } } }
-//   <jobDir>/output/replay/bodies/<sha1>   raw body bytes
-//   <jobDir>/output/index.html             root document outerHTML
-async function captureHtmlAndCss(page, sourceUrl, replayDir, bodiesDir) {
-  const html = await page.content();
-  fs.writeFileSync(path.join(path.dirname(replayDir), 'index.html'), html);
-
-  // Enumerate every stylesheet via the CSSOM, serialize each rule list back
-  // to text. For external sheets the browser exposes `cssRules` once CORS
-  // permits — Playwright's same-origin context covers most public sites.
-  // For sheets where access is blocked, we refetch via fetch() (still inside
-  // the page) which works because the page already loaded them.
+// Capture every loaded stylesheet for the current page and write its body
+// to bodiesDir keyed by sha1. Returns { [url]: { body: sha, mimeType } }.
+// External sheets dedupe naturally across pages because we use the URL
+// as the key; inline sheets are namespaced with the page slug so two
+// pages' inline blocks don't collide on `inline://style[0]`.
+async function capturePageStylesheets(page, slug, bodiesDir) {
   const sheets = await page.evaluate(async () => {
     const out = [];
     for (const sheet of Array.from(document.styleSheets)) {
@@ -321,7 +494,6 @@ async function captureHtmlAndCss(page, sourceUrl, replayDir, bodiesDir) {
         const rules = sheet.cssRules || [];
         cssText = Array.from(rules).map((r) => r.cssText).join('\n');
       } catch (_) {
-        // CORS/protected sheet — try refetching the resource.
         if (href) {
           try {
             const r = await fetch(href, { credentials: 'omit' });
@@ -337,14 +509,10 @@ async function captureHtmlAndCss(page, sourceUrl, replayDir, bodiesDir) {
   const entries = {};
   let inlineCounter = 0;
   for (const { href, cssText } of sheets) {
-    const url = href || `inline://style[${inlineCounter++}]`;
+    const url = href || `inline://${slug}/style[${inlineCounter++}]`;
     const sha = crypto.createHash('sha1').update(cssText).digest('hex');
     fs.writeFileSync(path.join(bodiesDir, sha), cssText);
     entries[url] = { body: sha, mimeType: 'text/css' };
   }
-
-  fs.writeFileSync(
-    path.join(replayDir, 'manifest.json'),
-    JSON.stringify({ sourceUrl, capturedAt: new Date().toISOString(), entries }, null, 2)
-  );
+  return entries;
 }

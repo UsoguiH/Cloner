@@ -1,6 +1,6 @@
 ---
 name: Linear
-description: Linear is a high-performance product development system that presents itself through a distinctly dark, austere, and deeply utilitarian interface designed to minimize visual friction.
+description: "Design system extracted from a structural clone. Canvas #08090a, primary accent #5e6ad2, dominant typeface Inter Variable. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   canvas: "#08090a"
   primary: "#5e6ad2"
@@ -11,18 +11,24 @@ colors:
   on-primary: "#ffffff"
   surface-1: "#0f1011"
   surface-2: "#3b3b3b"
+  surface-3: "#474747"
   hairline: "#23252a"
+  hairline-strong: "#2f2f31"
+  hairline-tertiary: "#5c5d5f"
+  ink-hover: "#666a71"
+  surface-hover: "#5e69c1"
+  ink-hover-2: "#34343a"
 typography:
   button:
     fontFamily: Inter Variable
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.5
-  body:
-    fontFamily: Inter Variable
-    fontSize: 16px
+    fontSize: 14px
     fontWeight: 500
-    lineHeight: 2.75
+    lineHeight: 1.5
+    letterSpacing: -0.182px
+  button-4:
+    fontFamily: Inter Variable
+    fontSize: 13px
+    fontWeight: 500
   mono:
     fontFamily: Berkeley Mono
     fontSize: 14px
@@ -32,34 +38,44 @@ typography:
     fontFamily: Inter Variable
     fontSize: 16px
     fontWeight: 400
-  body-sm:
+  body-sm-2:
     fontFamily: Inter Variable
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.4
 rounded:
+  xl: 8px
   full: 9999px
   sm: 4px
   md: 5px
 spacing:
-  space-5: 12px
+  space-5: 16px
 components:
   button-tertiary:
-    textColor: "{colors.on-primary}"
+    textColor: "{colors.ink-subtle}"
     typography: "{typography.button}"
-    height: 24px
+    rounded: "{rounded.xl}"
+    padding: 0px 5px 0px 2px
+    height: 36px
   button-tertiary-hover:
+    textColor: "{colors.ink-hover}"
+    borderColor: "{colors.ink-hover}"
+  button-tertiary-focus:
+    textColor: "{colors.ink-hover}"
+    borderColor: "{colors.ink-hover}"
+  button-tertiary-hover-2:
     backgroundColor: "{colors.surface-1}"
     textColor: "{colors.ink-subtle}"
     borderColor: "{colors.ink-subtle}"
-  button-tertiary-hover-2:
-    backgroundColor: "{colors.surface-1}"
   button-secondary:
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
+    typography: "{typography.button-4}"
     rounded: "{rounded.full}"
-    padding: 0px 20px
+    padding: 0px 18px
     height: 44px
+  button-secondary-hover:
+    backgroundColor: "{colors.surface-hover}"
+  button-secondary-focus:
+    backgroundColor: "{colors.surface-hover}"
   text-input:
     typography: "{typography.mono}"
     padding: 0px 32px 0px 56px
@@ -68,9 +84,9 @@ components:
     typography: "{typography.body-2}"
     height: 73px
   nav:
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.body-2}"
-    padding: 8px 14px 14px 8px
   footer:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
@@ -78,7 +94,12 @@ components:
   feature-card:
     textColor: "{colors.ink}"
     typography: "{typography.body-2}"
-    padding: 12px 12px 0px 12px
+  feature-card-hover:
+    backgroundColor: "{colors.hairline}"
+    borderColor: "{colors.ink-hover-2}"
+  feature-card-focus:
+    backgroundColor: "{colors.hairline}"
+    borderColor: "{colors.ink-hover-2}"
   hero-section:
     textColor: "{colors.ink}"
     typography: "{typography.body-2}"
@@ -88,7 +109,7 @@ components:
     typography: "{typography.body-2}"
   status-badge:
     textColor: "{colors.ink-subtle}"
-    typography: "{typography.body-sm}"
+    typography: "{typography.body-sm-2}"
     rounded: "{rounded.sm}"
     padding: 0px 6px
   button-primary:
@@ -104,38 +125,34 @@ components:
 
 ## Overview
 
-Linear employs a stark, utility-first design system built around high-contrast typography and deeply atmospheric backgrounds. By stripping away extraneous visual noise, the interface focuses the user's attention entirely on the work and data at hand.
-
-## Voice
-
-- **Precision-driven** — The interface relies heavily on strict geometric alignment and structural borders using the Sharp Hairline Divider token to organize dense information.
-- **Developer-centric** — Widespread application of Berkeley Mono for issue identifiers, metadata, and code blocks establishes a visual language native to software engineering.
-- **Unobtrusive** — The atmospheric Linear Deep Canvas background combined with Crisp Primary Ink typography creates a stark reading environment devoid of decorative clutter.
+Design system extracted from a structural clone. Canvas #08090a, primary accent #5e6ad2, dominant typeface Inter Variable. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-The Linear palette is anchored by deep background tones like Linear Deep Canvas and Elevated Surface Dark. Color is treated as a scarce utility, reserving the Linear Brand Accent exclusively for active states, focus rings, and essential badges.
-
-- **Linear Deep Canvas** `#08090a` (`canvas`) — Sets the foundational atmospheric background for the Linear experience, providing deep contrast for elevated app surfaces.
-- **Linear Brand Accent** `#5e6ad2` (`primary`) — Highlights key interactions and brand moments across the Linear interface, such as focus states and promotional badges.
-- **Crisp Primary Ink** `#f7f8f8` (`ink`) — Drives stark legibility for primary typography across Linear, including bold hero headlines and essential interface labels.
-- **Muted Secondary Ink** `#d0d6e0` (`ink-muted`) — Softens secondary typographic elements like top navigation links and standard text to establish visual hierarchy in Linear.
-- **Subtle Tertiary Ink** `#8a8f98` (`ink-subtle`) — Provides low-contrast text for Linear metadata, timestamps, and subtle interface descriptors without competing for attention.
-- **Deep Quaternary Ink** `#62666d` (`ink-tertiary`) — Styles the quietest typographic elements and inactive icons within the Linear workspace for minimal distraction.
-- **Absolute Pure White** `#ffffff` (`on-primary`) — Ensures maximum contrast and readability for text placed within primary buttons or high-emphasis Linear components.
-- **Elevated Surface Dark** `#0f1011` (`surface-1`) — Forms the primary background for elevated application panels, distinguishing the active Linear workspace from the deep canvas.
-- **Interactive Dark Surface** `#3b3b3b` (`surface-2`) — Defines hover states, selected list items, and secondary floating panels within the structural Linear application interface.
-- **Sharp Hairline Divider** `#23252a` (`hairline`) — Creates crisp, subtle structural borders between panes and components to organize the Linear layout without visual noise.
+- **canvas** `#08090a`
+- **primary** `#5e6ad2`
+- **ink** `#f7f8f8`
+- **ink-muted** `#d0d6e0`
+- **ink-subtle** `#8a8f98`
+- **ink-tertiary** `#62666d`
+- **on-primary** `#ffffff`
+- **surface-1** `#0f1011`
+- **surface-2** `#3b3b3b`
+- **surface-3** `#474747`
+- **hairline** `#23252a`
+- **hairline-strong** `#2f2f31`
+- **hairline-tertiary** `#5c5d5f`
+- **ink-hover** `#666a71`
+- **surface-hover** `#5e69c1`
+- **ink-hover-2** `#34343a`
 
 ## Typography
 
-Inter Variable acts as the primary interface workhorse across Linear, scaling down cleanly to 12px for subtle labels. It is deliberately paired with Berkeley Mono to systematically separate technical data and system outputs from conversational prose.
-
-- **button** — Inter Variable 13px/400
-- **body** — Inter Variable 16px/500
+- **button** — Inter Variable 14px/500
+- **button-4** — Inter Variable 13px/500
 - **mono** — Berkeley Mono 14px/400
 - **body-2** — Inter Variable 16px/400
-- **body-sm** — Inter Variable 12px/400
+- **body-sm-2** — Inter Variable 12px/400
 
 ## Layout
 
@@ -147,23 +164,27 @@ Elevation harvest is deferred to Phase 5 (no shadow tokens emitted yet).
 
 ## Shapes
 
+- **xl** `8px`
 - **full** `9999px`
 - **sm** `4px`
 - **md** `5px`
 
 ## Components
 
-Linear builds its interface components with severe, rectangular geometry floating cleanly above the background canvas. Interactive elements frequently rely on Interactive Dark Surface to indicate hover states without breaking the dark atmospheric aesthetic.
-
 - **button-tertiary**
 - **button-tertiary-hover**
+- **button-tertiary-focus**
 - **button-tertiary-hover-2**
 - **button-secondary**
+- **button-secondary-hover**
+- **button-secondary-focus**
 - **text-input**
 - **top-nav**
 - **nav**
 - **footer**
 - **feature-card**
+- **feature-card-hover**
+- **feature-card-focus**
 - **hero-section**
 - **cta-banner**
 - **status-badge**
