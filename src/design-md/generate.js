@@ -1327,14 +1327,91 @@ export function generateDesignMd(jobDir, options = {}) {
     typographyBody = tlines.join('\n').trim();
   }
   md += sectionMd('Typography', blurb('typography') + typographyBody);
-  md += sectionMd('Layout', blurb('spacing') + 'Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.');
+  // Layout: render a Spacing System sub-table + observed component-padding
+  // facts + a deterministic Whitespace Philosophy paragraph. Same shape as
+  // getdesign.md's Layout section, fed entirely by harvested data.
+  let layoutBody;
+  {
+    const ll = [];
+    const spacingEntries = Object.entries(spacingTable);
+    if (spacingEntries.length) {
+      ll.push('### Spacing System');
+      ll.push('');
+      // Try to compute base unit by GCD of numeric pixel values.
+      const px = spacingEntries
+        .map(([, v]) => parseFloat(v))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (px.length) {
+        const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+        let base = px[0];
+        for (let i = 1; i < px.length; i++) base = gcd(base, px[i]);
+        if (base > 1) ll.push(`- **Base unit**: ${Math.round(base)}px.`);
+      }
+      const tokenLine = spacingEntries
+        .map(([n, v]) => `\`{spacing.${n}}\` ${v}`)
+        .join(' · ');
+      ll.push(`- **Tokens**: ${tokenLine}.`);
+      ll.push('');
+    }
+    // Observed component padding — pull from componentBlocks where padding
+    // is set. Useful when no explicit spacing scale was harvested.
+    const paddings = Object.entries(componentBlocks)
+      .filter(([, b]) => b && typeof b.padding === 'string' && b.padding)
+      .slice(0, 6);
+    if (paddings.length) {
+      ll.push('### Component Padding (observed)');
+      ll.push('');
+      for (const [name, b] of paddings) {
+        ll.push(`- \`{components.${name}}\` — ${b.padding}.`);
+      }
+      ll.push('');
+    }
+    // Whitespace Philosophy — one deterministic paragraph derived from the
+    // largest observed spacing token. If no large rhythm constant was
+    // harvested, fall back to a generic statement.
+    const px = spacingEntries.map(([, v]) => parseFloat(v)).filter((n) => Number.isFinite(n));
+    const maxRhythm = px.length ? Math.max(...px) : 0;
+    ll.push('### Whitespace Philosophy');
+    ll.push('');
+    if (maxRhythm >= 64) {
+      ll.push(`White space is a primary structural lever — major sections separate by ~**${maxRhythm}px** of breathing room, letting each block read as a deliberate poster rather than a wall of copy.`);
+    } else {
+      ll.push('Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.');
+    }
+    layoutBody = ll.join('\n').trim() || 'Layout principles derived from observed component spacing and grid behavior.';
+  }
+  md += sectionMd('Layout', blurb('spacing') + layoutBody);
   md += sectionMd('Elevation & Depth', 'No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn\'t reaching the elements we sample — re-harvest with extended probe selectors to surface it.');
-  md += sectionMd(
-    'Shapes',
-    Object.keys(roundTable).length
-      ? Object.entries(roundTable).map(([n, v]) => `- **${n}** \`${v}\``).join('\n')
-      : '_No rounding tokens extracted._'
-  );
+
+  // Shapes: convert flat rounded list into a Border Radius Scale table
+  // with a deterministic Use column anchored to canonical token names.
+  const roundUseDescription = (n, v) => {
+    const px = parseFloat(v);
+    if (/^xs$/i.test(n) || (px >= 1 && px <= 3)) return 'Anchor / link decoration corners.';
+    if (/^sm$/i.test(n) || (px >= 4 && px <= 7)) return 'Small chips, sub-nav tabs.';
+    if (/^md$/i.test(n) || (px >= 8 && px <= 16)) return 'Form inputs, list items, image frames.';
+    if (/^lg$/i.test(n) || (px >= 17 && px <= 28)) return 'Pricing cards, container sections, large image frames.';
+    if (/^xl$/i.test(n) || (px >= 29 && px <= 60)) return 'Hero feature panels, oversized callouts.';
+    if (/^2xl$/i.test(n) || (px >= 60 && px <= 120)) return 'Color-block sections, full-width feature surfaces.';
+    if (/^pill$/i.test(n) || (px >= 40 && px <= 200)) return 'Pill buttons, tab toggles.';
+    if (/^full$/i.test(n) || px >= 999) return 'Circular icon buttons, avatar shapes.';
+    return '—';
+  };
+  let shapesBody;
+  if (Object.keys(roundTable).length) {
+    const sl = [];
+    sl.push('### Border Radius Scale');
+    sl.push('');
+    sl.push('| Token | Value | Use |');
+    sl.push('|---|---|---|');
+    for (const [n, v] of Object.entries(roundTable)) {
+      sl.push(`| \`{rounded.${n}}\` | ${v} | ${roundUseDescription(n, v)} |`);
+    }
+    shapesBody = sl.join('\n');
+  } else {
+    shapesBody = '_No rounding tokens extracted._';
+  }
+  md += sectionMd('Shapes', shapesBody);
   // Components: emit a categorized spec sheet (Buttons / Inputs / Cards / …)
   // with per-component CSS spec lines referencing tokens — the same shape
   // getdesign.md uses. Variants nest under their parent component. AI variant

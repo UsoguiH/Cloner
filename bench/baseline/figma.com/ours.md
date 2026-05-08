@@ -137,7 +137,21 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Layout
 
-Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.
+### Spacing System
+
+- **Base unit**: 16px.
+- **Tokens**: `{spacing.space-4}` 16px.
+
+### Component Padding (observed)
+
+- `{components.button-tertiary}` — 32px 0px.
+- `{components.footer}` — 120px 0px.
+- `{components.text-input}` — 0px 70px 0px 0px.
+- `{components.button-primary}` — {spacing.space-4}.
+
+### Whitespace Philosophy
+
+Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
 
 ## Elevation & Depth
 
@@ -145,8 +159,12 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Shapes
 
-- **lg** `80px`
-- **md** `50px`
+### Border Radius Scale
+
+| Token | Value | Use |
+|---|---|---|
+| `{rounded.lg}` | 80px | Pricing cards, container sections, large image frames. |
+| `{rounded.md}` | 50px | Form inputs, list items, image frames. |
 
 ## Components
 

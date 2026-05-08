@@ -173,7 +173,23 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 
 ## Layout
 
-Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.
+### Spacing System
+
+- **Base unit**: 16px.
+- **Tokens**: `{spacing.space-5}` 16px.
+
+### Component Padding (observed)
+
+- `{components.button-tertiary}` — 0px 5px 0px 2px.
+- `{components.button-secondary}` — 0px 18px.
+- `{components.text-input}` — 0px 32px 0px 56px.
+- `{components.hero-section}` — 0px 32px.
+- `{components.status-badge}` — 0px 6px.
+- `{components.button-primary}` — {spacing.space-5}.
+
+### Whitespace Philosophy
+
+Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
 
 ## Elevation & Depth
 
@@ -181,10 +197,14 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Shapes
 
-- **xl** `8px`
-- **full** `9999px`
-- **sm** `4px`
-- **md** `5px`
+### Border Radius Scale
+
+| Token | Value | Use |
+|---|---|---|
+| `{rounded.xl}` | 8px | Form inputs, list items, image frames. |
+| `{rounded.full}` | 9999px | Circular icon buttons, avatar shapes. |
+| `{rounded.sm}` | 4px | Small chips, sub-nav tabs. |
+| `{rounded.md}` | 5px | Small chips, sub-nav tabs. |
 
 ## Components
 
