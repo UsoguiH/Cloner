@@ -41,6 +41,17 @@ const SPEC_PROPERTIES = [
   'box-shadow',
   'opacity',
   'gap',
+  // Motion (Phase 7-extension). Captures transition/animation declarations so
+  // src/design-md/extract/motion.js can derive duration/easing tiers.
+  'transition-property',
+  'transition-duration',
+  'transition-timing-function',
+  'transition-delay',
+  'animation-name',
+  'animation-duration',
+  'animation-timing-function',
+  'animation-delay',
+  'animation-iteration-count',
 ];
 
 // Heuristic candidate selectors for "interesting" elements. Phase 3 will
@@ -209,6 +220,19 @@ async function discoverProbeNodes(page) {
         // later may collide when the dedup-by-signature uses more classes than
         // the selector we build.
         el.setAttribute('data-design-md-probe', String(probeIndex));
+        // Capture innerText for text-bearing tags (headings, paragraphs,
+        // buttons, links, list items). Truncated to 240 chars so the
+        // computed.json doesn't bloat. Whitespace-collapsed. Skipped
+        // entirely for structural / wrapper tags where text would just
+        // be the concatenated content of every descendant.
+        const TEXT_TAGS = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'A', 'BUTTON', 'LI', 'BLOCKQUOTE', 'FIGCAPTION', 'LABEL']);
+        let text = null;
+        if (TEXT_TAGS.has(el.tagName)) {
+          try {
+            const raw = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+            if (raw.length >= 2 && raw.length <= 600) text = raw.slice(0, 240);
+          } catch { /* ignore */ }
+        }
         probes.push({
           signature: sig,
           tagName: el.tagName,
@@ -218,6 +242,7 @@ async function discoverProbeNodes(page) {
           rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
           instanceCount: 1,
           probeIndex,
+          text,
         });
         if (probes.length >= maxTotal) return probes;
       }
@@ -480,6 +505,7 @@ export async function harvestStylesFromPage(page, { tokenIndex, viewport, harves
       properties: props,
       pseudoStates,
       pseudoRuleCount,
+      text: probe.text || null,
     });
     stats.probesHarvested += 1;
   }

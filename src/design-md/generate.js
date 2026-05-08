@@ -1781,21 +1781,52 @@ export function generateDesignMd(jobDir, options = {}) {
       prov.setHarvest(`${slot}.body`, { confidence: 1.0 });
     }
     md += sectionMd('Brand principles', bl.join('\n'));
+  }
 
-    // Voice — deterministic analysis of the brand's own published copy.
-    // Reuses brand-principles bodies as the corpus (real first-party text,
-    // not site chrome). Emits 3–5 observation lines with concrete numbers
-    // so a designer or copywriter can pattern-match the tone. getdesign.md
-    // doesn't surface this — it's a clean differentiator.
-    const corpus = brandPrinciples.principles
-      .map((p) => `${p.heading}. ${p.body}`)
-      .join(' ');
+  // Voice — deterministic analysis of the brand's own published copy.
+  // Two corpus sources, in priority order:
+  //   1. brand-principles harvest (real first-party "why we are" copy)
+  //   2. probe-captured innerText for H1–H4 + P + BUTTON (fallback when
+  //      principles pages are 401-gated or missing — stripe / notion).
+  // Emits 3–5 observation lines with concrete numbers so a designer can
+  // pattern-match the tone. getdesign.md doesn't surface this.
+  {
+    let corpus = '';
+    let corpusLabel = null;
+    if (brandPrinciples && brandPrinciples.principles.length) {
+      corpus = brandPrinciples.principles.map((p) => `${p.heading}. ${p.body}`).join(' ');
+      corpusLabel = 'brand-principles';
+    } else if (Array.isArray(computed.probes)) {
+      // Pull text-bearing probes (h1–h4, p, button) and weight headings
+      // first so the corpus stays brand-shaped rather than nav-shaped.
+      // Cap to 60 distinct strings so a long /blog page doesn't dominate.
+      const seen = new Set();
+      const heads = [];
+      const bodies = [];
+      const ctas = [];
+      for (const probe of computed.probes) {
+        const t = (probe.text || '').trim();
+        if (!t || t.length < 8 || t.length > 240) continue;
+        if (seen.has(t)) continue;
+        seen.add(t);
+        const tag = String(probe.tagName || '').toUpperCase();
+        if (/^H[1-4]$/.test(tag)) heads.push(t);
+        else if (tag === 'P') bodies.push(t);
+        else if (tag === 'BUTTON') ctas.push(t);
+      }
+      const picked = [...heads.slice(0, 30), ...bodies.slice(0, 30), ...ctas.slice(0, 10)];
+      if (picked.length >= 4) {
+        corpus = picked.join('. ');
+        corpusLabel = 'page-headings-and-paragraphs';
+      }
+    }
+
     const sentences = corpus
       .split(/(?<=[.!?])\s+/)
       .map((s) => s.trim())
       .filter((s) => s.length >= 4);
     const words = corpus.match(/\b[a-zA-Z][a-zA-Z'-]*\b/g) || [];
-    if (sentences.length >= 3 && words.length >= 30) {
+    if (corpusLabel && sentences.length >= 3 && words.length >= 30) {
       const vl = [];
       const avgWords = Math.round(words.length / sentences.length);
       let lengthNote;
@@ -1838,7 +1869,6 @@ export function generateDesignMd(jobDir, options = {}) {
         vl.push(`- **${exclaim}** exclamation mark(s), **${question}** question(s) — punctuation is ${exclaim > 0 ? 'occasionally emphatic' : 'measured'}${question > 0 ? '; rhetorical questions invite the reader in' : ''}.`);
       }
 
-      // Lexicon: most-frequent ≥ 6-letter content word, excluding generic.
       const STOP = new Set(['design','design.','design,','figma','figma.','linear','stripe','notion','brand','company','product','platform','users','people','teams','others','great','better','simply']);
       const freq = new Map();
       for (const w of words) {
@@ -1849,11 +1879,15 @@ export function generateDesignMd(jobDir, options = {}) {
       }
       const topLex = [...freq.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 5);
       if (topLex.length >= 2) {
-        vl.push(`- Lexicon hot-spots (used ≥ 2× in the brand-principles corpus): ${topLex.map(([w, n]) => `**${w}** (×${n})`).join(', ')}. Re-use these words in adjacent product copy and the voice will read continuous with the published brand.`);
+        const corpusName = corpusLabel === 'brand-principles' ? 'brand-principles corpus' : 'home-page heading + paragraph corpus';
+        vl.push(`- Lexicon hot-spots (used ≥ 2× in the ${corpusName}): ${topLex.map(([w, n]) => `**${w}** (×${n})`).join(', ')}. Re-use these words in adjacent product copy and the voice will read continuous with the published brand.`);
       }
 
-      md += sectionMd('Voice', `Deterministic analysis of the brand's own published copy from the **Brand principles** sources above. Numbers reflect the actual harvested corpus, not interpretation.\n\n${vl.join('\n')}`);
-      prov.setHarvest('voice', { confidence: 0.95 });
+      const sourceNote = corpusLabel === 'brand-principles'
+        ? "the brand's own published copy from the **Brand principles** sources above"
+        : `${sentences.length} sentences harvested from page H1–H4 / paragraph / button text (no /design or /principles page was reachable for this brand)`;
+      md += sectionMd('Voice', `Deterministic analysis of ${sourceNote}. Numbers reflect the actual harvested corpus, not interpretation.\n\n${vl.join('\n')}`);
+      prov.setHarvest('voice', { confidence: corpusLabel === 'brand-principles' ? 0.95 : 0.8 });
     }
   }
 
