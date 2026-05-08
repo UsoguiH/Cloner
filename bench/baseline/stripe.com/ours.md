@@ -171,28 +171,66 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Components
 
-- **button-tertiary**
-- **button-tertiary-hover**
-- **button-tertiary-focus**
-- **button-tertiary-hover-2**
-- **button-secondary**
-- **button-secondary-hover**
-- **button-secondary-focus**
-- **button-secondary-hover-2**
-- **button-secondary-focus-2**
-- **hero-section**
-- **hero-section-hover**
-- **hero-section-focus**
-- **feature-card**
-- **cta-banner**
-- **nav**
-- **top-nav**
-- **footer**
-- **pricing-card**
-- **status-badge**
-- **testimonial-card**
-- **text-input**
-- **button-primary**
+### Buttons
+
+**`button-tertiary`**
+- type `{typography.button}`.
+  - **Hover**: text `{colors.ink-hover}`.
+  - **Focus**: text `{colors.ink-focus}`.
+
+**`button-secondary`**
+- background `{colors.canvas}`, type `{typography.button-5}`, padding 17px 32px 19px 16px, height 60px.
+  - **Hover**: background `{colors.surface-hover}`, text `{colors.ink-focus}`.
+  - **Focus**: background `{colors.surface-hover}`, text `{colors.ink-focus}`.
+
+**`cta-banner`**
+- type `{typography.body-lg}`, height 56px.
+
+**`button-primary`**
+- background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding `{spacing.space-5}`, rounded `{rounded.md}`, height 40px.
+
+### Inputs & Forms
+
+**`text-input`**
+- background `{colors.canvas}`, type `{typography.subhead-6}`, padding 11px 17px, height 68px.
+
+### Cards & Containers
+
+**`feature-card`**
+- type `{typography.button}`.
+
+**`pricing-card`**
+- background `{colors.canvas}`, text `{colors.ink}`, type `{typography.subhead-6}`, rounded `{rounded.2xl}`.
+
+**`testimonial-card`**
+- text `{colors.ink}`, type `{typography.subhead-6}`.
+
+### Navigation
+
+**`nav`**
+- type `{typography.subhead-6}`.
+
+### Header
+
+**`top-nav`**
+- type `{typography.button}`.
+
+### Footer
+
+**`footer`**
+- type `{typography.subhead-6}`.
+
+### Sections
+
+**`hero-section`**
+- text `{colors.ink}`, type `{typography.subhead-6}`.
+  - **Hover**: text `{colors.ink-hover-3}`.
+  - **Focus**: text `{colors.ink-hover-3}`.
+
+### Badges & Tags
+
+**`status-badge`**
+- type `{typography.body-sm-3}`, padding 4px 10px, height 24px.
 
 ## Motion
 

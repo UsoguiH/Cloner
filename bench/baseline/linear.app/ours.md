@@ -166,24 +166,59 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Components
 
-- **button-tertiary**
-- **button-tertiary-hover**
-- **button-tertiary-hover-2**
-- **button-secondary**
-- **button-secondary-hover**
-- **button-secondary-focus**
-- **button-secondary-hover-2**
-- **text-input**
-- **top-nav**
-- **nav**
-- **footer**
-- **feature-card**
-- **feature-card-hover**
-- **feature-card-focus**
-- **hero-section**
-- **cta-banner**
-- **status-badge**
-- **button-primary**
+### Buttons
+
+**`button-tertiary`**
+- text `{colors.ink-subtle}`, type `{typography.button}`, padding 0px 5px 0px 2px, rounded `{rounded.xl}`, height 36px.
+  - **Hover**: background `{colors.surface-1}`, text `{colors.ink-subtle}`.
+
+**`button-secondary`**
+- type `{typography.button-4}`, padding 0px 18px, rounded `{rounded.full}`, height 44px.
+  - **Hover**: background `{colors.surface-hover}`.
+  - **Focus**: background `{colors.surface-hover}`.
+
+**`cta-banner`**
+- text `{colors.ink}`, type `{typography.body-2}`.
+
+**`button-primary`**
+- background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding `{spacing.space-5}`, rounded `{rounded.md}`, height 40px.
+
+### Inputs & Forms
+
+**`text-input`**
+- type `{typography.mono}`, padding 0px 32px 0px 56px.
+
+### Cards & Containers
+
+**`feature-card`**
+- text `{colors.ink}`, type `{typography.body-2}`.
+  - **Hover**: background `{colors.hairline}`.
+  - **Focus**: background `{colors.hairline}`.
+
+### Navigation
+
+**`nav`**
+- background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-2}`.
+
+### Header
+
+**`top-nav`**
+- text `{colors.ink}`, type `{typography.body-2}`, height 73px.
+
+### Footer
+
+**`footer`**
+- background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-2}`.
+
+### Sections
+
+**`hero-section`**
+- text `{colors.ink}`, type `{typography.body-2}`, padding 0px 32px.
+
+### Badges & Tags
+
+**`status-badge`**
+- text `{colors.ink-subtle}`, type `{typography.body-sm-2}`, padding 0px 6px, rounded `{rounded.sm}`.
 
 ## Motion
 

@@ -150,24 +150,62 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Components
 
-- **button-tertiary**
-- **button-tertiary-hover**
-- **button-tertiary-hover-2**
-- **button-secondary**
-- **button-secondary-hover-2**
-- **button-secondary-focus-2**
-- **button-primary**
-- **button-primary-hover**
-- **button-primary-focus**
-- **text-input**
-- **feature-card**
-- **status-badge**
-- **nav**
-- **top-nav**
-- **footer**
-- **hero-section**
-- **cta-banner**
-- **pricing-card**
+### Buttons
+
+**`button-tertiary`**
+- type `{typography.button-3}`, rounded `{rounded.lg}`.
+  - **Hover**: background `{colors.surface-hover}`, text `{colors.ink-subtle}`.
+
+**`button-secondary`**
+- text `{colors.canvas}`, type `{typography.button-4}`, padding 4px 14px, rounded `{rounded.sm}`, height 36px.
+  - **Hover**: background `{colors.surface-hover-2}`.
+  - **Focus**: background `{colors.surface-hover-2}`.
+
+**`button-primary`**
+- background `{colors.primary}`, type `{typography.button-3}`, rounded `{rounded.sm}`, height 57px.
+  - **Hover**: background `{colors.ink-muted}`.
+  - **Focus**: background `{colors.ink-muted}`.
+
+**`cta-banner`**
+- background `{colors.hairline}`, type `{typography.button-3}`, padding 80px 32px.
+
+### Inputs & Forms
+
+**`text-input`**
+- background `{colors.canvas}`, type `{typography.headline}`, padding 6px, rounded `{rounded.xs}`, height 62px.
+
+### Cards & Containers
+
+**`feature-card`**
+- type `{typography.button-3}`, rounded `{rounded.lg}`.
+
+**`pricing-card`**
+- background `{colors.surface-2}`, type `{typography.button-3}`, padding 32px, rounded `{rounded.lg}`.
+
+### Navigation
+
+**`nav`**
+- type `{typography.button-3}`, padding 80px 125px.
+
+### Header
+
+**`top-nav`**
+- text `{colors.hairline}`, type `{typography.button-3}`, padding 80px 0px 0px 0px.
+
+### Footer
+
+**`footer`**
+- background `{colors.canvas}`, type `{typography.button-3}`.
+
+### Sections
+
+**`hero-section`**
+- text `{colors.hairline}`, type `{typography.button-3}`, padding 0px 0px 32px 0px.
+
+### Badges & Tags
+
+**`status-badge`**
+- type `{typography.button-3}`, height 55px.
 
 ## Motion
 

@@ -128,17 +128,38 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Components
 
-- **button-tertiary**
-- **button-tertiary-hover**
-- **button-tertiary-hover-2**
-- **button-secondary**
-- **button-secondary-hover**
-- **button-secondary-hover-2**
-- **nav**
-- **top-nav**
-- **footer**
-- **text-input**
-- **button-primary**
+### Buttons
+
+**`button-tertiary`**
+- text `{colors.ink}`, type `{typography.button}`, padding 32px 0px.
+  - **Hover**: background `{colors.surface-hover}`, text `{colors.ink}`.
+
+**`button-secondary`**
+- text `{colors.ink}`, type `{typography.button-6}`, rounded `{rounded.lg}`, height 47px.
+  - **Hover**: background `{colors.canvas}`, text `{colors.ink}`.
+
+**`button-primary`**
+- background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding `{spacing.space-4}`, rounded `{rounded.md}`, height 40px.
+
+### Inputs & Forms
+
+**`text-input`**
+- text `{colors.canvas}`, type `{typography.headline}`, padding 0px 70px 0px 0px, height 54px.
+
+### Navigation
+
+**`nav`**
+- background `{colors.ink-muted}`, text `{colors.canvas}`, type `{typography.button-2}`, height 100px.
+
+### Header
+
+**`top-nav`**
+- background `{colors.canvas}`, text `{colors.ink}`, type `{typography.button-6}`, height 81px.
+
+### Footer
+
+**`footer`**
+- background `{colors.ink}`, text `{colors.canvas}`, type `{typography.button-6}`, padding 120px 0px.
 
 ## Motion
 

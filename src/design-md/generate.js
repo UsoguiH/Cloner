@@ -14,6 +14,84 @@ import { compositeOver, resolveProbeBaseBg, bindOrMintRole } from './emit/pseudo
 import { createProvenance } from '../ai/provenance.js';
 import { loadRoleNamingEnvelope } from '../ai/stages/role-naming.js';
 import { loadCopyGenerationEnvelope } from '../ai/stages/copy-generation.js';
+import { loadColorBlockEnvelope } from '../ai/stages/color-block-discovery.js';
+import { loadVariantEnvelopes } from '../ai/stages/variant-recognition.js';
+import { loadPseudoStateEnvelope } from '../ai/stages/pseudo-state-interpretation.js';
+import { loadTypographySampleEnvelope } from '../ai/stages/typography-sample-copy.js';
+import { loadDesignDecisionsEnvelope } from '../ai/stages/design-decisions.js';
+import { extractMotion } from './extract/motion.js';
+import { extractBreakpoints } from './extract/breakpoints.js';
+
+// Component category inference (deterministic). Mirrors the categorical
+// grouping getdesign.md uses ("Buttons", "Pricing Tabs", etc.) so a flat
+// list of probe names becomes a navigable spec sheet.
+// Each pattern matches the keyword as a hyphen- or word-bounded segment
+// anywhere in the component name (so `feature-card` and `card-hero` both
+// land in Cards). Order matters: first match wins.
+const COMPONENT_CATEGORIES = [
+  ['Buttons', /(^|-)(button|btn|cta)(\b|-|$)/i],
+  ['Inputs & Forms', /(^|-)(input|field|select|textarea|form|checkbox|radio|toggle|switch)(\b|-|$)/i],
+  ['Cards & Containers', /(^|-)(card|tile|panel|container|surface)(\b|-|$)/i],
+  ['Header', /(^|-)(header|topbar|appbar|top-nav)(\b|-|$)/i],
+  ['Footer', /(^|-)(footer|footnav)(\b|-|$)/i],
+  ['Navigation', /(^|-)(nav|menu|tab|breadcrumb|sidebar|pagination)(\b|-|$)/i],
+  ['Sections', /(^|-)(section|block|hero|color-block)(\b|-|$)/i],
+  ['Badges & Tags', /(^|-)(badge|chip|pill|tag|label|status)(\b|-|$)/i],
+  ['Alerts & Banners', /(^|-)(alert|toast|notification|banner|notice|callout)(\b|-|$)/i],
+  ['Icons & Avatars', /(^|-)(avatar|icon|logo)(\b|-|$)/i],
+  ['Typography', /(^|-)(heading|headline|title|text|subhead|paragraph|caption|eyebrow|link)(\b|-|$)/i],
+];
+
+function inferComponentCategory(name) {
+  for (const [label, re] of COMPONENT_CATEGORIES) {
+    if (re.test(name)) return label;
+  }
+  return 'Other';
+}
+
+const VARIANT_STATE_RE = /-(hover|focus|active|pressed|disabled|loading|selected|error|inverse|outline|ghost)(-\d+)?$/i;
+
+function parentComponentName(name) {
+  return name.replace(VARIANT_STATE_RE, '');
+}
+
+function variantStateLabel(name) {
+  const m = VARIANT_STATE_RE.exec(name);
+  if (!m) return null;
+  const word = m[1].toLowerCase();
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+// Render the per-component spec line — same shape as getdesign.md uses:
+// "background `{colors.X}`, text `{colors.Y}`, type `{typography.Z}`,
+// padding 10px 20px, rounded `{rounded.W}`."
+function componentSpecLine(block) {
+  if (!block) return '';
+  const parts = [];
+  const tk = (s) => (typeof s === 'string' ? s : '');
+  // Wrap a value in backticks always when it's a token ref (`{…}`),
+  // optional otherwise. `force` makes raw strings get backticks too
+  // for fields that conventionally read better in code style.
+  const fmt = (v, { force = false } = {}) => {
+    const s = tk(v);
+    if (!s) return '';
+    const isToken = /^\{.+\}$/.test(s);
+    return (isToken || force) ? `\`${s}\`` : s;
+  };
+  if (tk(block.backgroundColor)) parts.push(`background ${fmt(block.backgroundColor, { force: true })}`);
+  if (tk(block.textColor)) parts.push(`text ${fmt(block.textColor, { force: true })}`);
+  const typo = tk(block.typography) || tk(block.type);
+  if (typo) parts.push(`type ${fmt(typo, { force: true })}`);
+  if (tk(block.borderColor)) parts.push(`border ${fmt(block.borderColor, { force: true })}`);
+  if (tk(block.padding)) parts.push(`padding ${fmt(block.padding)}`);
+  if (tk(block.rounded)) parts.push(`rounded ${fmt(block.rounded, { force: true })}`);
+  if (tk(block.gap)) parts.push(`gap ${fmt(block.gap)}`);
+  if (tk(block.height)) parts.push(`height ${fmt(block.height)}`);
+  if (tk(block.width)) parts.push(`width ${fmt(block.width)}`);
+  if (block.opacity !== undefined && block.opacity !== null && block.opacity !== '') parts.push(`opacity ${block.opacity}`);
+  if (tk(block.transitionsTo)) parts.push(`→ ${fmt(block.transitionsTo, { force: true })}`);
+  return parts.length ? parts.join(', ') + '.' : '';
+}
 
 // Read the role-naming envelope (Phase 6.4) if it exists. Returns
 // { name → { displayName, roleDescription, confidence } } keyed by the colors
@@ -64,6 +142,153 @@ function loadAiCopy(jobDir) {
 }
 
 const AI_CONFIDENCE_THRESHOLD = 0.7;
+
+// Color-block discovery envelope (Phase 6.3) — surfaces pastel section
+// backgrounds as block-* tokens. Returns { blocks: [...], modelId } or null.
+// Each block contains { tokenName: 'block-lime', hex: '#cef33a',
+// sectionSelector, viewports[], role, confidence }. Caller folds the high-
+// confidence blocks into the role map so they show up in the Colors table
+// alongside the deterministic palette.
+function loadAiColorBlocks(jobDir) {
+  const env = loadColorBlockEnvelope(jobDir);
+  const items = env?.data?.blocks;
+  if (!Array.isArray(items)) return null;
+  const blocks = items
+    .filter((b) => b && typeof b.tokenName === 'string' && typeof b.hex === 'string')
+    .map((b) => ({
+      tokenName: b.tokenName,
+      hex: b.hex.toLowerCase(),
+      sectionSelector: b.sectionSelector || null,
+      viewports: Array.isArray(b.viewports) ? b.viewports : [],
+      role: b.role || 'section-background',
+      rationale: b.rationale || null,
+      confidence: typeof b.confidence === 'number' ? b.confidence : 0,
+    }));
+  if (!blocks.length) return null;
+  return { blocks, modelId: env?.modelId || null };
+}
+
+// Variant-recognition envelopes (Phase 6.5) — one per component family. Returns
+// { byComponent: { 'button-primary': { description, variants: [...], modelId } } }
+// or null. Each variant carries the canonical variantId enum slot, the
+// brand-voice label, the source probeId, and a stateDescription.
+function loadAiVariants(jobDir) {
+  const envs = loadVariantEnvelopes(jobDir);
+  if (!envs || !Object.keys(envs).length) return null;
+  const byComponent = {};
+  for (const [componentName, env] of Object.entries(envs)) {
+    const data = env?.data;
+    if (!data || !Array.isArray(data.variants)) continue;
+    const variants = data.variants
+      .filter((v) => v && typeof v.variantId === 'string' && typeof v.probeId === 'string')
+      .map((v) => ({
+        variantId: v.variantId,
+        label: v.label || null,
+        probeId: v.probeId,
+        stateDescription: v.stateDescription || null,
+        rationale: v.rationale || null,
+        confidence: typeof v.confidence === 'number' ? v.confidence : 0,
+      }));
+    if (!variants.length) continue;
+    byComponent[componentName] = {
+      description: typeof data.componentDescription === 'string' ? data.componentDescription : null,
+      variants,
+      modelId: env?.modelId || null,
+    };
+  }
+  return Object.keys(byComponent).length ? { byComponent } : null;
+}
+
+// Pseudo-state interpretation envelope (Phase 6.6) — classifies each diff as
+// role-transition / transient-overlay / no-op. Returns a map keyed by
+// `${probeId}|${pseudoState}` so the emitter can decide whether to surface
+// the diff (role-transition) or skip / annotate it. Plus a global modelId
+// for the receipts.
+function loadAiPseudoStates(jobDir) {
+  const env = loadPseudoStateEnvelope(jobDir);
+  const items = env?.data?.interpretations;
+  if (!Array.isArray(items) || !items.length) return null;
+  const byKey = {};
+  for (const it of items) {
+    if (!it || typeof it.probeId !== 'string' || typeof it.pseudoState !== 'string') continue;
+    byKey[`${it.probeId}|${it.pseudoState}`] = {
+      interpretation: it.interpretation,
+      transitionsTo: typeof it.transitionsTo === 'string' ? it.transitionsTo : null,
+      rationale: it.rationale || null,
+      confidence: typeof it.confidence === 'number' ? it.confidence : 0,
+    };
+  }
+  return Object.keys(byKey).length ? { byKey, modelId: env?.modelId || null } : null;
+}
+
+// Typography sample-copy envelope (Phase 6.7b) — supplies on-brand sample text
+// per typography token for the live-preview ladder. Returns map { name →
+// { stepLabel, sampleText, confidence } } keyed by typography token name (no
+// 'typography.' prefix), or null.
+function loadAiTypographySamples(jobDir) {
+  const env = loadTypographySampleEnvelope(jobDir);
+  const items = env?.data?.samples;
+  if (!Array.isArray(items) || !items.length) return null;
+  const out = {};
+  for (const item of items) {
+    if (!item || typeof item.tokenPath !== 'string') continue;
+    const m = /^typography\.(.+)$/.exec(item.tokenPath);
+    if (!m) continue;
+    out[m[1]] = {
+      stepLabel: item.stepLabel || null,
+      sampleText: item.sampleText || null,
+      confidence: typeof item.confidence === 'number' ? item.confidence : 0,
+      modelId: env?.modelId || null,
+    };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Design-decisions envelope (Phase 7.0) — the axis getdesign.md doesn't
+// compete on. Returns { decisions[], usageGuidance[], antiPatterns[], modelId }
+// or null.
+function loadAiDesignDecisions(jobDir) {
+  const env = loadDesignDecisionsEnvelope(jobDir);
+  const data = env?.data;
+  if (!data || typeof data !== 'object') return null;
+  return {
+    decisions: Array.isArray(data.decisions) ? data.decisions : [],
+    usageGuidance: Array.isArray(data.usageGuidance) ? data.usageGuidance : [],
+    antiPatterns: Array.isArray(data.antiPatterns) ? data.antiPatterns : [],
+    globalConfidence: typeof data.globalConfidence === 'number' ? data.globalConfidence : 0,
+    modelId: env?.modelId || null,
+  };
+}
+
+// Real-asset manifest (Phase 7.3) — fonts, logo, favicon downloaded next to
+// the markdown. Returns { fonts[], logo, favicon } or null when absent.
+function loadAssetsManifest(jobDir) {
+  try {
+    const p = path.join(jobDir, 'output', 'design-md', 'assets', 'manifest.json');
+    if (!fs.existsSync(p)) return null;
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!data) return null;
+    return {
+      fonts: Array.isArray(data.fonts) ? data.fonts : [],
+      logo: data.logo || null,
+      favicon: data.favicon || null,
+    };
+  } catch { return null; }
+}
+
+// Brand-principles harvest (Phase 7.2) — real text scraped from the brand's
+// own /design, /principles, /brand pages. Loaded deterministically; emitted
+// even when the AI design-decisions stage fails. Returns { principles[] }
+// or null when the file is missing/empty.
+function loadBrandPrinciples(jobDir) {
+  try {
+    const p = path.join(jobDir, 'output', 'design-md', 'brand-principles.json');
+    if (!fs.existsSync(p)) return null;
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!Array.isArray(data?.principles) || !data.principles.length) return null;
+    return { principles: data.principles, sources: Array.isArray(data.sources) ? data.sources : [] };
+  } catch { return null; }
+}
 
 function pxOrNull(value) {
   if (!value) return null;
@@ -150,8 +375,11 @@ function buildPseudoStateBlock(diff, roles, roundedScale, intent, baseBgHex, can
     }
   }
   // Border colors arrive as four separate properties (border-top-color, etc.)
-  // when forcePseudoState diffs the computed style. If all four match, emit a
-  // single borderColor; otherwise skip — we don't model per-side borders yet.
+  // when forcePseudoState diffs the computed style. If all four match, mint
+  // the role into the palette so it appears in the Colors table; the design.md
+  // component schema does NOT accept `borderColor` as a sub-token (lint warns),
+  // so we don't attach it to the component block — the role binding alone
+  // surfaces it without violating the schema.
   const borderHexes = [
     diff['border-top-color'],
     diff['border-right-color'],
@@ -162,10 +390,7 @@ function buildPseudoStateBlock(diff, roles, roundedScale, intent, baseBgHex, can
     const opaque = compositeOver(borderHexes[0], baseBgHex || canvasHex);
     if (opaque) {
       const role = bindOrMintRole(roles, opaque, { intent, kind: 'border', canvasHex, inkHex });
-      if (role) {
-        block.borderColor = `{colors.${role}}`;
-        refs.add(`colors.${role}`);
-      }
+      if (role) refs.add(`colors.${role}`);
     }
   }
   const rPx = pxOrNull(diff['border-radius']) ?? pxOrNull(diff['border-top-left-radius']);
@@ -175,9 +400,15 @@ function buildPseudoStateBlock(diff, roles, roundedScale, intent, baseBgHex, can
     refs.add(`rounded.${rName}`);
   }
   // Opacity is the most common hover signal that doesn't need a token.
+  // Two guards: (a) skip values within 0.02 of 1 — those are font-rendering
+  // artifacts, not design intent (and triggered a lint error: the linter
+  // calls raw.match() and expects a string). (b) emit as string so the
+  // YAML stays string-typed end-to-end.
   if (diff['opacity']) {
     const o = parseFloat(diff['opacity']);
-    if (!Number.isNaN(o) && o >= 0 && o <= 1) block.opacity = o;
+    if (!Number.isNaN(o) && o >= 0 && o <= 0.98) {
+      block.opacity = String(o);
+    }
   }
 
   return { block, refs };
@@ -331,9 +562,62 @@ export function generateDesignMd(jobDir, options = {}) {
   const spacingScale = buildSpacingScale(computed);
   const components = groupComponents(computed, roles);
 
+  // Phase 7-extension: deterministic motion tokens + multi-viewport breakpoints.
+  // Both are pure functions of the harvest — no AI, no allowlist needed.
+  const motion = extractMotion(computed);
+  let visualManifest = null;
+  try {
+    const idxP = path.join(jobDir, 'output', 'screenshots', 'index.json');
+    if (fs.existsSync(idxP)) visualManifest = JSON.parse(fs.readFileSync(idxP, 'utf8'));
+  } catch { /* ignore */ }
+  const breakpoints = extractBreakpoints(visualManifest, computed);
+
+  // ---------------------------------------------------------------------------
+  // AI envelopes (Phase 6.3 / 6.5 / 6.6 / 6.7b). All four are optional — when
+  // the orchestrator hasn't run, every loader returns null and emit falls back
+  // to deterministic-only output. Loaded up-front so any phase below can
+  // reference them.
+  // ---------------------------------------------------------------------------
+  const aiBlocks = loadAiColorBlocks(jobDir);
+  const aiVariants = loadAiVariants(jobDir);
+  const aiPseudo = loadAiPseudoStates(jobDir);
+  const aiTypoSamples = loadAiTypographySamples(jobDir);
+  const aiDecisions = loadAiDesignDecisions(jobDir);
+  const brandPrinciples = loadBrandPrinciples(jobDir);
+  const assetsManifest = loadAssetsManifest(jobDir);
+
+  // Fold high-confidence block-* discoveries into the role map BEFORE
+  // component blocks reference them. Block hexes always come from harvest
+  // (validator allowlist), so adding them to roles preserves "no invented
+  // tokens." Skip if a block's hex collides with an existing role hex —
+  // deterministic role wins per CLAUDE.md hard rule #3.
+  const aiBlockNames = new Set();
+  if (aiBlocks) {
+    const existingHexes = new Set(Object.values(roles).map((r) => (r.hex || '').toLowerCase()));
+    for (const b of aiBlocks.blocks) {
+      if (b.confidence < AI_CONFIDENCE_THRESHOLD) continue;
+      if (existingHexes.has(b.hex)) continue; // deterministic wins
+      if (roles[b.tokenName]) continue; // name collision, skip
+      roles[b.tokenName] = {
+        hex: b.hex,
+        evidence: { source: 'llm-color-block-discovery', confidence: b.confidence },
+        sectionSelector: b.sectionSelector,
+        blockRole: b.role,
+        blockViewports: b.viewports,
+        rationale: b.rationale,
+      };
+      aiBlockNames.add(b.tokenName);
+      existingHexes.add(b.hex);
+    }
+  }
+
   // Build component blocks first to know which tokens are actually referenced.
   const allowedColorRoles = new Set(Object.keys(roles));
   const componentBlocks = {};
+  // pseudoBlockMeta: blockName → { probeId, state, componentName }. Lets the
+  // pseudo-state interpretation pass (below) resolve a block back to the AI's
+  // role-transition / transient-overlay classification by probeId+state.
+  const pseudoBlockMeta = {};
   const usedColorRoles = new Set();
   const usedTypo = new Set();
   const usedRound = new Set();
@@ -401,11 +685,37 @@ export function generateDesignMd(jobDir, options = {}) {
         const existing = componentBlocks[`${compName}-${state}`];
         if (suffix && existing && JSON.stringify(existing) === JSON.stringify(pBlock)) continue;
         componentBlocks[blockName] = pBlock;
+        if (pseudoSrc?.probeId != null) {
+          pseudoBlockMeta[blockName] = {
+            probeId: String(pseudoSrc.probeId),
+            state,
+            componentName: compName,
+          };
+        }
         for (const ref of pRefs) {
           const [kind, name] = ref.split('.');
           if (kind === 'colors') usedColorRoles.add(name);
           else if (kind === 'rounded') usedRound.add(name);
         }
+      }
+    }
+  }
+
+  // Apply AI pseudo-state interpretation (Phase 6.6). Drop blocks classified
+  // as transient-overlay or no-op with high confidence — those are filter
+  // artifacts (focus-visible flicker, opacity-only hover) that pollute the
+  // public design system. role-transition blocks stay; the AI may also
+  // suggest a transitionsTo token path for the receipts pass below.
+  const pseudoBlockTransitions = {}; // blockName → tokenPath
+  if (aiPseudo) {
+    for (const [blockName, meta] of Object.entries(pseudoBlockMeta)) {
+      const hit = aiPseudo.byKey[`${meta.probeId}|${meta.state}`];
+      if (!hit) continue;
+      if (hit.confidence < AI_CONFIDENCE_THRESHOLD) continue;
+      if (hit.interpretation === 'no-op' || hit.interpretation === 'transient-overlay') {
+        delete componentBlocks[blockName];
+      } else if (hit.interpretation === 'role-transition' && hit.transitionsTo) {
+        pseudoBlockTransitions[blockName] = hit.transitionsTo;
       }
     }
   }
@@ -528,6 +838,10 @@ export function generateDesignMd(jobDir, options = {}) {
   for (const name of allColorRoles) {
     const info = roles[name];
     if (!info) continue;
+    // Skip block-* tokens here — they're stamped in the dedicated AI-blocks
+    // loop below (color-block-discovery, not role-naming). Stamping them as
+    // role-naming-fallback would clutter the receipts with bogus rows.
+    if (aiBlockNames.has(name)) continue;
     prov.setHarvest(`colors.${name}.value`, { confidence: 1.0 });
 
     const aiHit = aiRoleNames?.[name];
@@ -569,10 +883,105 @@ export function generateDesignMd(jobDir, options = {}) {
     if (info.letterSpacing && info.letterSpacing !== 'normal') {
       prov.setHarvest(`typography.${name}.letterSpacing`, { confidence: 1.0 });
     }
-    // Sample copy is canned today; AI will own it via typography-sample-copy
-    prov.setFallback(`typography.${name}.sample`, {
-      rationale: 'Canned sample copy heuristic; will be overwritten by llm-typography-sample-copy when AI stage ships.',
+    const sample = aiTypoSamples?.[name];
+    if (sample?.sampleText && sample.confidence >= AI_CONFIDENCE_THRESHOLD) {
+      prov.setLLM(`typography.${name}.sample`, {
+        stage: 'typography-sample-copy',
+        confidence: sample.confidence,
+      });
+    } else if (sample?.sampleText) {
+      prov.setFallback(`typography.${name}.sample`, {
+        rationale: `llm-typography-sample-copy returned sample with confidence ${sample.confidence} (< ${AI_CONFIDENCE_THRESHOLD}); downgraded.`,
+      });
+    } else {
+      prov.setFallback(`typography.${name}.sample`, {
+        rationale: 'No AI sample available (key absent or stage skipped); ladder uses canned sample text.',
+      });
+    }
+  }
+
+  // block-* color tokens minted by color-block-discovery: every emitted
+  // block hex is from harvest (validator-enforced), so the value gets a
+  // harvest stamp; the *labeling* (kebab name + role + section selector)
+  // is the AI's contribution.
+  for (const name of aiBlockNames) {
+    const info = roles[name];
+    if (!info) continue;
+    const conf = info.evidence?.confidence ?? 0;
+    prov.setHarvest(`colors.${name}.value`, { confidence: 1.0 });
+    prov.setLLM(`colors.${name}.tokenName`, { stage: 'color-block-discovery', confidence: conf });
+    prov.setLLM(`colors.${name}.role`, { stage: 'color-block-discovery', confidence: conf });
+    if (info.sectionSelector) {
+      prov.setLLM(`colors.${name}.sectionSelector`, { stage: 'color-block-discovery', confidence: conf });
+    }
+  }
+
+  // Per-variant labels from variant-recognition (Phase 6.5). Stamps the
+  // labels themselves; the underlying probe-derived properties were already
+  // stamped by the components loop above (or will be — that loop runs after).
+  if (aiVariants) {
+    for (const [compName, info] of Object.entries(aiVariants.byComponent)) {
+      for (const v of info.variants) {
+        if (v.confidence >= AI_CONFIDENCE_THRESHOLD) {
+          prov.setLLM(`components.${compName}.variants.${v.variantId}.label`, {
+            stage: 'variant-recognition',
+            confidence: v.confidence,
+          });
+          if (v.stateDescription) {
+            prov.setLLM(`components.${compName}.variants.${v.variantId}.stateDescription`, {
+              stage: 'variant-recognition',
+              confidence: v.confidence,
+            });
+          }
+        } else {
+          prov.setFallback(`components.${compName}.variants.${v.variantId}.label`, {
+            rationale: `llm-variant-recognition returned label='${v.label}' for ${v.variantId} with confidence ${v.confidence} (< ${AI_CONFIDENCE_THRESHOLD}); downgraded.`,
+          });
+        }
+      }
+    }
+  }
+
+  // Design-decisions provenance (Phase 7.0). One entry per accepted decision
+  // and per usageGuidance row. The decisions section is high-confidence-only
+  // by virtue of the gate in the emitter.
+  if (aiDecisions) {
+    aiDecisions.decisions.forEach((d, i) => {
+      const conf = typeof d?.confidence === 'number' ? d.confidence : (aiDecisions.globalConfidence || 0.8);
+      if (conf >= AI_CONFIDENCE_THRESHOLD) {
+        prov.setLLM(`design-decisions.decisions[${i}].rationale`, {
+          stage: 'design-decisions',
+          confidence: conf,
+        });
+      }
     });
+    aiDecisions.usageGuidance.forEach((g, i) => {
+      const conf = typeof g?.confidence === 'number' ? g.confidence : (aiDecisions.globalConfidence || 0.8);
+      if (conf >= AI_CONFIDENCE_THRESHOLD && g?.token) {
+        prov.setLLM(`design-decisions.usageGuidance[${i}].when`, {
+          stage: 'design-decisions',
+          confidence: conf,
+          tokenPath: g.token,
+        });
+      }
+    });
+  }
+
+  // Pseudo-state classifications (Phase 6.6). Stamps each surfaced
+  // role-transition with its transitionsTo; transient-overlay/no-op blocks
+  // were already removed from componentBlocks above so they don't get a
+  // receipt at all (which is correct — they're not in the design system).
+  if (aiPseudo) {
+    for (const [blockName, transitionsTo] of Object.entries(pseudoBlockTransitions)) {
+      const meta = pseudoBlockMeta[blockName];
+      if (!meta) continue;
+      const hit = aiPseudo.byKey[`${meta.probeId}|${meta.state}`];
+      if (!hit) continue;
+      prov.setLLM(`components.${blockName}.transitionsTo`, {
+        stage: 'pseudo-state-interpretation',
+        confidence: hit.confidence,
+      });
+    }
   }
 
   // rounded
@@ -587,6 +996,25 @@ export function generateDesignMd(jobDir, options = {}) {
     const info = spacingScale[name];
     if (!info) continue;
     prov.setHarvest(`spacing.${name}`, { confidence: 1.0 });
+  }
+
+  // motion (Phase 7-extension) — deterministic, always confidence 1.0.
+  if (motion?.durations) {
+    for (const tier of ['fast', 'medium', 'slow']) {
+      if (motion.durations[tier]) prov.setHarvest(`motion.${tier}`, { confidence: 1.0 });
+    }
+    for (const e of motion.easings || []) {
+      prov.setHarvest(`motion.ease.${e.name}`, { confidence: 1.0 });
+    }
+  }
+
+  // breakpoints (Phase 7-extension) — every per-viewport delta is harvested.
+  if (breakpoints?.deltas?.length) {
+    for (const d of breakpoints.deltas) {
+      for (const ch of d.changes) {
+        prov.setHarvest(`breakpoints.${d.probeId}.${ch.property}`, { confidence: 1.0 });
+      }
+    }
   }
 
   // components — every emitted field gets a receipt
@@ -678,12 +1106,21 @@ export function generateDesignMd(jobDir, options = {}) {
     }
   }
 
+  // aiBlockNames was populated above with the kebab token names that came
+  // from color-block-discovery. Each row gets an annotation citing the
+  // section role + the AI's rationale, so block-* tokens read distinctly
+  // from generic palette roles in the rendered Colors section.
   md += sectionMd(
     'Colors',
     blurb('color-system') + (
       Object.keys(colorsTable).length
         ? Object.entries(colorsTable).map(([n, v]) => {
             const meta = colorMeta[n];
+            if (aiBlockNames.has(n)) {
+              const role = roles[n] || {};
+              const rationale = role.rationale || `Section block-tinted background classified as ${role.blockRole || 'section-background'}.`;
+              return `- **${n}** \`${v}\` — ${rationale}`;
+            }
             if (meta?.displayName && meta?.roleDescription) {
               return `- **${meta.displayName}** \`${v}\` (\`${n}\`) — ${meta.roleDescription}`;
             }
@@ -696,7 +1133,14 @@ export function generateDesignMd(jobDir, options = {}) {
     'Typography',
     blurb('typography') + (
       Object.keys(typoTable).length
-        ? Object.entries(typoTable).map(([n, t]) => `- **${n}** — ${t.fontFamily} ${t.fontSize}/${t.fontWeight}`).join('\n')
+        ? Object.entries(typoTable).map(([n, t]) => {
+            const head = `- **${n}** — ${t.fontFamily} ${t.fontSize}/${t.fontWeight}`;
+            const sample = aiTypoSamples?.[n];
+            if (sample?.sampleText && sample.confidence >= AI_CONFIDENCE_THRESHOLD) {
+              return `${head}\n  > ${sample.sampleText}`;
+            }
+            return head;
+          }).join('\n')
         : '_No typography extracted._'
     )
   );
@@ -708,14 +1152,252 @@ export function generateDesignMd(jobDir, options = {}) {
       ? Object.entries(roundTable).map(([n, v]) => `- **${n}** \`${v}\``).join('\n')
       : '_No rounding tokens extracted._'
   );
-  md += sectionMd(
-    'Components',
-    blurb('components') + (
-      Object.keys(componentBlocks).length
-        ? Object.keys(componentBlocks).map((n) => `- **${n}**`).join('\n')
-        : '_No components classified._'
-    )
-  );
+  // Components: emit a categorized spec sheet (Buttons / Inputs / Cards / …)
+  // with per-component CSS spec lines referencing tokens — the same shape
+  // getdesign.md uses. Variants nest under their parent component. AI variant
+  // descriptions (Phase 6.5) layer on top when available; the deterministic
+  // category + spec line is the floor.
+  let componentsBody;
+  const compNames = Object.keys(componentBlocks);
+  if (compNames.length) {
+    // Group: parent → [variants...]
+    const parentToChildren = new Map();
+    const standalone = [];
+    for (const name of compNames) {
+      const parent = parentComponentName(name);
+      if (parent !== name) {
+        if (!parentToChildren.has(parent)) parentToChildren.set(parent, []);
+        parentToChildren.get(parent).push(name);
+      } else {
+        standalone.push(name);
+      }
+    }
+    // Variants whose parent isn't in componentBlocks become standalone too.
+    for (const [parent, kids] of parentToChildren) {
+      if (!componentBlocks[parent]) {
+        standalone.push(parent);
+        // Promote first child's block so the parent has a spec line. The
+        // remaining children stay nested under the synthesized parent.
+        if (!componentBlocks[parent]) componentBlocks[parent] = componentBlocks[kids[0]];
+      }
+    }
+
+    // Bucket parents by category, preserving stable category order.
+    const byCategory = new Map();
+    for (const compName of standalone) {
+      const cat = inferComponentCategory(compName);
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat).push(compName);
+    }
+    const CATEGORY_ORDER = [
+      'Buttons', 'Inputs & Forms', 'Cards & Containers', 'Navigation',
+      'Header', 'Footer', 'Sections', 'Badges & Tags', 'Alerts & Banners',
+      'Icons & Avatars', 'Typography', 'Other',
+    ];
+
+    const aiByComp = (aiVariants?.byComponent) || {};
+    const lines = [];
+    for (const cat of CATEGORY_ORDER) {
+      const comps = byCategory.get(cat);
+      if (!comps?.length) continue;
+      lines.push(`### ${cat}`);
+      lines.push('');
+      for (const compName of comps) {
+        const block = componentBlocks[compName];
+        const aiInfo = aiByComp[compName];
+        const description = aiInfo?.description ? ` — ${aiInfo.description}` : '';
+        lines.push(`**\`${compName}\`**${description}`);
+        const spec = componentSpecLine(block);
+        if (spec) lines.push(`- ${spec}`);
+        // Nested variants — merge children that share a state label
+        // (e.g. `-hover` + `-hover-2`) so we emit one row per state rather
+        // than duplicate Hover lines.
+        const kids = parentToChildren.get(compName) || [];
+        const byState = new Map();
+        for (const childName of kids) {
+          const stateLabel = variantStateLabel(childName) || 'Variant';
+          if (!byState.has(stateLabel)) byState.set(stateLabel, { merged: {}, ids: [] });
+          const slot = byState.get(stateLabel);
+          slot.ids.push(childName);
+          const cb = componentBlocks[childName] || {};
+          for (const [k, v] of Object.entries(cb)) {
+            if (slot.merged[k] === undefined && v !== undefined && v !== null && v !== '') {
+              slot.merged[k] = v;
+            }
+          }
+        }
+        const stateOrder = ['Hover', 'Focus', 'Active', 'Pressed', 'Selected', 'Disabled', 'Inverse', 'Variant'];
+        const orderedStates = [...byState.keys()].sort(
+          (a, b) => stateOrder.indexOf(a) - stateOrder.indexOf(b),
+        );
+        for (const stateLabel of orderedStates) {
+          const slot = byState.get(stateLabel);
+          const aiVariant = (aiInfo?.variants || [])
+            .find((v) => slot.ids.includes(v.variantId));
+          const aiSuffix = aiVariant?.stateDescription ? ` — ${aiVariant.stateDescription}` : '';
+          const childSpec = componentSpecLine(slot.merged);
+          lines.push(`  - **${stateLabel}**${aiSuffix}${childSpec ? `: ${childSpec}` : ''}`);
+        }
+        lines.push('');
+      }
+    }
+    componentsBody = lines.join('\n').trim();
+  } else {
+    componentsBody = '_No components classified._';
+  }
+  md += sectionMd('Components', blurb('components') + componentsBody);
+
+  // Motion (Phase 7-extension) — deterministic axis getdesign.md doesn't surface.
+  // Renders the duration tier table + observed easings. Skipped when no
+  // transition/animation declarations were harvested.
+  if (motion && (motion.durations.fast || motion.durations.medium || motion.durations.slow)) {
+    const ml = [];
+    ml.push('| Tier | Duration | Probes |');
+    ml.push('|---|---|---|');
+    for (const tier of ['fast', 'medium', 'slow']) {
+      const t = motion.durations[tier];
+      if (!t) continue;
+      ml.push(`| \`motion.${tier}\` | ${t.ms}ms | ${t.sourceCount} |`);
+    }
+    if (motion.easings.length) {
+      ml.push('');
+      ml.push('### Easings');
+      ml.push('');
+      ml.push('| Token | Curve | Probes |');
+      ml.push('|---|---|---|');
+      for (const e of motion.easings) {
+        ml.push(`| \`motion.ease.${e.name}\` | \`${e.value}\` | ${e.sourceCount} |`);
+      }
+    }
+    if (motion.samples.length) {
+      // Dedupe by signature — multiple probes often share the same transition
+      // declaration; rendering "background at 160ms ease-out" four times in
+      // a row is noise, not signal.
+      const seen = new Set();
+      const sampleLines = [];
+      for (const s of motion.samples) {
+        const props = s.properties.length ? s.properties.slice(0, 2).join(' + ') : 'animation';
+        const sig = `${props}@${s.durationMs}${s.easing || ''}`;
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        sampleLines.push(`${props} at ${s.durationMs}ms${s.easing ? ` ${s.easing}` : ''}`);
+        if (sampleLines.length >= 4) break;
+      }
+      if (sampleLines.length) {
+        ml.push('');
+        ml.push('Sample transitions observed: ' + sampleLines.join('; ') + '.');
+      }
+    }
+    md += sectionMd('Motion', ml.join('\n'));
+  }
+
+  // Design decisions (Phase 7.0) — the axis getdesign.md doesn't compete on.
+  // Three blocks: decisions (rationale), usageGuidance (when/don't), antiPatterns.
+  if (aiDecisions
+      && (aiDecisions.decisions.length || aiDecisions.usageGuidance.length || aiDecisions.antiPatterns.length)
+      && (aiDecisions.globalConfidence === 0 || aiDecisions.globalConfidence >= AI_CONFIDENCE_THRESHOLD)) {
+    const dl = [];
+    if (aiDecisions.decisions.length) {
+      for (const d of aiDecisions.decisions) {
+        if (typeof d?.confidence === 'number' && d.confidence < AI_CONFIDENCE_THRESHOLD) continue;
+        dl.push(`### ${d.topic}`);
+        dl.push('');
+        dl.push(d.rationale);
+        if (d.evidence) dl.push(`\n_Evidence: ${d.evidence}_`);
+        dl.push('');
+      }
+    }
+    if (aiDecisions.usageGuidance.length) {
+      dl.push('### Token usage guidance');
+      dl.push('');
+      dl.push('| Token | Use when | Don\'t use for |');
+      dl.push('|---|---|---|');
+      for (const g of aiDecisions.usageGuidance) {
+        if (typeof g?.confidence === 'number' && g.confidence < AI_CONFIDENCE_THRESHOLD) continue;
+        const tk = `\`{${g.token}}\``;
+        const when = String(g.when || '').replace(/\|/g, '\\|');
+        const dont = String(g.dontUseFor || '').replace(/\|/g, '\\|');
+        dl.push(`| ${tk} | ${when} | ${dont} |`);
+      }
+      dl.push('');
+    }
+    if (aiDecisions.antiPatterns.length) {
+      dl.push('### Anti-patterns');
+      dl.push('');
+      for (const ap of aiDecisions.antiPatterns) {
+        dl.push(`- **${ap.pattern}** — ${ap.why}`);
+      }
+      dl.push('');
+    }
+    md += sectionMd('Design decisions', dl.join('\n'));
+  }
+
+  // Real assets (Phase 7.3) — emit ## Assets when fonts/logo/favicon were
+  // downloaded. Differentiator over getdesign.md: a developer can use these
+  // files immediately. Paths are relative to the design.md (assets/...).
+  if (assetsManifest && (assetsManifest.fonts.length || assetsManifest.logo || assetsManifest.favicon)) {
+    const al = [];
+    if (assetsManifest.logo) {
+      al.push('### Logo');
+      al.push('');
+      const dim = assetsManifest.logo.width && assetsManifest.logo.height
+        ? `${assetsManifest.logo.width}×${assetsManifest.logo.height}`
+        : 'inline svg';
+      const src = assetsManifest.logo.sourceUrl ? ` (source: ${assetsManifest.logo.sourceUrl})` : '';
+      al.push(`Saved at \`${assetsManifest.logo.path}\` — ${dim}${src}.`);
+      al.push('');
+      prov.setHarvest('assets.logo', { confidence: 1.0 });
+    }
+    if (assetsManifest.favicon) {
+      al.push('### Favicon');
+      al.push('');
+      al.push(`Saved at \`${assetsManifest.favicon.path}\` (source: ${assetsManifest.favicon.sourceUrl}).`);
+      al.push('');
+      prov.setHarvest('assets.favicon', { confidence: 1.0 });
+    }
+    if (assetsManifest.fonts.length) {
+      al.push('### Fonts');
+      al.push('');
+      al.push('Downloaded next to this file — drop the `assets/fonts/` directory into your project to use them directly.');
+      al.push('');
+      al.push('| Family | Weight | Style | File | Source |');
+      al.push('|---|---|---|---|---|');
+      for (const f of assetsManifest.fonts) {
+        const fam = String(f.family || '').replace(/\|/g, '\\|');
+        const w = String(f.weight || '').replace(/\|/g, '\\|');
+        const sty = String(f.style || '').replace(/\|/g, '\\|');
+        al.push(`| ${fam} | ${w} | ${sty} | \`${f.path}\` | ${f.sourceUrl} |`);
+      }
+      al.push('');
+      for (let i = 0; i < assetsManifest.fonts.length; i++) {
+        prov.setHarvest(`assets.fonts[${i}]`, { confidence: 1.0 });
+      }
+    }
+    md += sectionMd('Assets', al.join('\n'));
+  }
+
+  // Brand-stated principles (Phase 7.2) — verbatim text from the brand's own
+  // /design /principles /brand pages. Emitted unconditionally when present;
+  // this is *their* words, not LLM speculation. getdesign.md doesn't surface
+  // this. Provenance is `harvest` (deterministic), confidence = 1.0.
+  if (brandPrinciples && brandPrinciples.principles.length) {
+    const bl = [];
+    bl.push('Quoted from the brand\'s own published design / principles / brand pages — not interpreted, not paraphrased.');
+    bl.push('');
+    for (let i = 0; i < brandPrinciples.principles.length; i++) {
+      const p = brandPrinciples.principles[i];
+      bl.push(`### ${p.heading}`);
+      bl.push('');
+      bl.push(p.body);
+      if (p.source?.url) bl.push(`\n_Source: ${p.source.url}_`);
+      bl.push('');
+      const slot = `brandPrinciples[${i}]`;
+      prov.setHarvest(`${slot}.heading`, { confidence: 1.0 });
+      prov.setHarvest(`${slot}.body`, { confidence: 1.0 });
+    }
+    md += sectionMd('Brand principles', bl.join('\n'));
+  }
+
   md += sectionMd("Do's and Don'ts",
     "- **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.\n" +
     "- **Don't** introduce new color roles outside the documented palette without updating this file."
@@ -728,7 +1410,42 @@ export function generateDesignMd(jobDir, options = {}) {
   const vpStr = (vpW && vpH) ? `${vpW}×${vpH}` : 'single viewport';
   const pageCount = Array.isArray(computed.pages) ? computed.pages.length : 1;
   const pageStr = pageCount > 1 ? `${pageCount} pages crawled` : 'home page only';
-  md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.`);
+
+  // Breakpoints (Phase 7-extension) — token-level deltas across mobile/tablet/desktop.
+  // Skipped when no per-viewport probe metrics were captured (older harvests, or
+  // single-viewport extractions). Cap at 8 most-changed probes so the section
+  // stays readable; the rest are surfaced via stats line.
+  if (breakpoints?.deltas?.length) {
+    const bl = [];
+    const vps = breakpoints.viewports.map((v) => `${v.name} ${v.width}px`).join(' / ');
+    bl.push(`Per-viewport probe metrics captured at ${vps}. Properties whose computed value differs across viewports surface here.`);
+    bl.push('');
+    bl.push('| Element | Property | Mobile | Tablet | Desktop |');
+    bl.push('|---|---|---|---|---|');
+    const top = breakpoints.deltas.slice(0, 8);
+    for (const d of top) {
+      const label = d.selector
+        ? `\`${String(d.selector).replace(/\|/g, '\\|').slice(0, 48)}\``
+        : `\`${d.tagName || d.probeId}\``;
+      for (const ch of d.changes) {
+        const m = ch.byViewport.mobile;
+        const t = ch.byViewport.tablet;
+        const dk = ch.byViewport.desktop;
+        const fmt = (x) => (x == null ? '—' : (typeof x === 'number' ? `${Math.round(x)}` : String(x)));
+        bl.push(`| ${label} | \`${ch.property}\` | ${fmt(m)} | ${fmt(t)} | ${fmt(dk)} |`);
+      }
+    }
+    if (breakpoints.deltas.length > top.length) {
+      bl.push('');
+      bl.push(`_${breakpoints.deltas.length - top.length} additional probe(s) shift across viewports — see \`output/screenshots/index.json\` per-viewport metrics for the full set._`);
+    }
+    bl.push('');
+    bl.push(`_Stats: ${breakpoints.stats.probesWithChange}/${breakpoints.stats.totalProbes} probes shift across viewports; ${breakpoints.stats.propertiesObserved} distinct properties affected._`);
+    md += sectionMd('Breakpoints', bl.join('\n'));
+    md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.`);
+  } else {
+    md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). Per-breakpoint scales — phone/tablet/desktop variants — were not sampled in this run; re-harvest with a multi-viewport probe pass to populate the Breakpoints section.`);
+  }
   md += sectionMd('Iteration Guide', 'Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.');
   // Known Gaps — content-aware. Only flag pseudo-states as a gap if we
   // emitted zero hover/focus variants; otherwise we'd contradict the
@@ -812,6 +1529,11 @@ export function generateDesignMd(jobDir, options = {}) {
     ds,
     componentBlocks,
     colorMeta,
+    aiBlockNames: Array.from(aiBlockNames),
+    aiVariants: aiVariants?.byComponent || null,
+    aiTypoSamples: aiTypoSamples || null,
+    aiDecisions: aiDecisions || null,
+    pseudoBlockTransitions,
     provenance: prov,
     provenanceJson,
   };
