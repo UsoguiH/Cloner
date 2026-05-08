@@ -51,7 +51,7 @@ rounded:
   2xl: 8px
   md: 5px
 spacing:
-  space-5: 16px
+  space-3: 8px
 components:
   button-tertiary:
     typography: "{typography.button}"
@@ -116,7 +116,7 @@ components:
     textColor: "{colors.on-primary}"
     typography: "{typography.button}"
     rounded: "{rounded.md}"
-    padding: "{spacing.space-5}"
+    padding: "{spacing.space-3}"
     height: 40px
 ---
 
@@ -186,15 +186,24 @@ If implementing without access to `sohne-var`, suitable open-source substitutes 
 
 ### Spacing System
 
-- **Base unit**: 16px.
-- **Tokens**: `{spacing.space-5}` 16px.
+
+| Token | Value | Wired to components |
+|---|---|---|
+| `{spacing.space-1}` | 1px | — |
+| `{spacing.space-2}` | 4px | — |
+| `{spacing.space-3}` | 8px | yes |
+| `{spacing.space-4}` | 11px | — |
+| `{spacing.space-5}` | 15px | — |
+| `{spacing.space-6}` | 19px | — |
+| `{spacing.space-7}` | 32px | — |
+| `{spacing.space-8}` | 112px | — |
 
 ### Component Padding (observed)
 
 - `{components.button-secondary}` — 17px 32px 19px 16px.
 - `{components.status-badge}` — 4px 10px.
 - `{components.text-input}` — 11px 17px.
-- `{components.button-primary}` — {spacing.space-5}.
+- `{components.button-primary}` — {spacing.space-3}.
 
 ### Grid & Container
 
@@ -203,7 +212,7 @@ If implementing without access to `sohne-var`, suitable open-source substitutes 
 
 ### Whitespace Philosophy
 
-Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
+White space is a primary structural lever — major sections separate by ~**112px** of breathing room, letting each block read as a deliberate poster rather than a wall of copy.
 
 ## Elevation & Depth
 
@@ -247,7 +256,7 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 - type `{typography.body-lg}`, height 56px.
 
 **`button-primary`**
-- background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding `{spacing.space-5}`, rounded `{rounded.md}`, height 40px.
+- background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding `{spacing.space-3}`, rounded `{rounded.md}`, height 40px.
 
 ### Inputs & Forms
 

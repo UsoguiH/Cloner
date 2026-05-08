@@ -1377,24 +1377,31 @@ export function generateDesignMd(jobDir, options = {}) {
   let layoutBody;
   {
     const ll = [];
-    const spacingEntries = Object.entries(spacingTable);
-    if (spacingEntries.length) {
+    // Show the full derived scale (not just the subset already wired into
+    // components). The unused tokens still inform a designer about the rhythm
+    // the brand uses across paddings/margins/gaps. Mark which are referenced
+    // so the table doubles as a coverage view.
+    const fullScale = Object.entries(spacingScale)
+      .map(([name, info]) => ({ name, px: info.px, value: info.value }))
+      .sort((a, b) => a.px - b.px);
+    if (fullScale.length) {
       ll.push('### Spacing System');
       ll.push('');
-      // Try to compute base unit by GCD of numeric pixel values.
-      const px = spacingEntries
-        .map(([, v]) => parseFloat(v))
-        .filter((n) => Number.isFinite(n) && n > 0);
+      const px = fullScale.map((e) => e.px).filter((n) => Number.isFinite(n) && n > 0);
       if (px.length) {
         const gcd = (a, b) => (b ? gcd(b, a % b) : a);
         let base = px[0];
         for (let i = 1; i < px.length; i++) base = gcd(base, px[i]);
-        if (base > 1) ll.push(`- **Base unit**: ${Math.round(base)}px.`);
+        if (base > 1) ll.push(`- **Base unit**: ${Math.round(base)}px (every emitted spacing token is a multiple).`);
       }
-      const tokenLine = spacingEntries
-        .map(([n, v]) => `\`{spacing.${n}}\` ${v}`)
-        .join(' · ');
-      ll.push(`- **Tokens**: ${tokenLine}.`);
+      ll.push('');
+      ll.push('| Token | Value | Wired to components |');
+      ll.push('|---|---|---|');
+      const usedSet = new Set(Object.keys(spacingTable));
+      for (const e of fullScale) {
+        const wired = usedSet.has(e.name) ? 'yes' : '—';
+        ll.push(`| \`{spacing.${e.name}}\` | ${e.value} | ${wired} |`);
+      }
       ll.push('');
     }
     // Observed component padding — pull from componentBlocks where padding
@@ -1430,8 +1437,8 @@ export function generateDesignMd(jobDir, options = {}) {
     // Whitespace Philosophy — one deterministic paragraph derived from the
     // largest observed spacing token. If no large rhythm constant was
     // harvested, fall back to a generic statement.
-    const px = spacingEntries.map(([, v]) => parseFloat(v)).filter((n) => Number.isFinite(n));
-    const maxRhythm = px.length ? Math.max(...px) : 0;
+    const rhythmPx = fullScale.map((e) => e.px).filter((n) => Number.isFinite(n));
+    const maxRhythm = rhythmPx.length ? Math.max(...rhythmPx) : 0;
     ll.push('### Whitespace Philosophy');
     ll.push('');
     if (maxRhythm >= 64) {

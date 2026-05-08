@@ -143,8 +143,17 @@ If implementing without access to `figmaSans`, suitable open-source substitutes 
 
 ### Spacing System
 
-- **Base unit**: 16px.
-- **Tokens**: `{spacing.space-4}` 16px.
+
+| Token | Value | Wired to components |
+|---|---|---|
+| `{spacing.space-1}` | 4px | — |
+| `{spacing.space-2}` | 8px | — |
+| `{spacing.space-3}` | 10px | — |
+| `{spacing.space-4}` | 16px | yes |
+| `{spacing.space-5}` | 21px | — |
+| `{spacing.space-6}` | 40px | — |
+| `{spacing.space-7}` | 70px | — |
+| `{spacing.space-8}` | 120px | — |
 
 ### Component Padding (observed)
 
@@ -160,7 +169,7 @@ If implementing without access to `figmaSans`, suitable open-source substitutes 
 
 ### Whitespace Philosophy
 
-Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
+White space is a primary structural lever — major sections separate by ~**120px** of breathing room, letting each block read as a deliberate poster rather than a wall of copy.
 
 ## Elevation & Depth
 

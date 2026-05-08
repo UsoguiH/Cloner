@@ -175,8 +175,17 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 
 ### Spacing System
 
-- **Base unit**: 16px.
-- **Tokens**: `{spacing.space-5}` 16px.
+
+| Token | Value | Wired to components |
+|---|---|---|
+| `{spacing.space-1}` | 1px | — |
+| `{spacing.space-2}` | 4px | — |
+| `{spacing.space-3}` | 8px | — |
+| `{spacing.space-4}` | 12px | — |
+| `{spacing.space-5}` | 16px | yes |
+| `{spacing.space-6}` | 18px | — |
+| `{spacing.space-7}` | 32px | — |
+| `{spacing.space-8}` | 72px | — |
 
 ### Component Padding (observed)
 
@@ -194,7 +203,7 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 
 ### Whitespace Philosophy
 
-Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
+White space is a primary structural lever — major sections separate by ~**72px** of breathing room, letting each block read as a deliberate poster rather than a wall of copy.
 
 ## Elevation & Depth
 
