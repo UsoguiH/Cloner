@@ -365,6 +365,11 @@ _Stats: 65/75 probes shift across viewports; 6 distinct properties affected._
 - Multi-column grids (pricing tiers, feature cards, customer logos) step down through the **1440px → 768px → 390px** viewport set: 4-up at desktop typically becomes 2-up at tablet and 1-up (stacked) on mobile.
 - Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
+### Image Behavior
+
+- **Logo** ships as SVG (`assets/logo.svg`, 26×40) — scales lossless across every breakpoint, no @1x/@2x asset swaps required.
+- **Favicon** is `PNG` (`assets/favicon.png`) — keep the on-page logo and the favicon visually anchored to the same wordmark so the browser-tab silhouette reads as the brand.
+
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).

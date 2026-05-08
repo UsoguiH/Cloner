@@ -419,6 +419,11 @@ _Stats: 166/193 probes shift across viewports; 8 distinct properties affected._
 - Section padding (`{components.hero-section}`, `{components.hero-section-hover}`) shrinks proportionally below the tablet breakpoint — mobile uses tighter horizontal gutters so content edges don't dominate the viewport.
 - Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
+### Image Behavior
+
+- **Logo** ships as SVG (`assets/logo.svg`, 60×25) — scales lossless across every breakpoint, no @1x/@2x asset swaps required.
+- Illustration-bearing surfaces (`{components.hero-section}`, `{components.hero-section-hover}`, `{components.hero-section-focus}`) inherit container width — supply art that crops gracefully from desktop down to mobile rather than depending on fixed pixel dimensions.
+
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).

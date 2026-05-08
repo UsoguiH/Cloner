@@ -422,6 +422,11 @@ _Stats: 74/98 probes shift across viewports; 9 distinct properties affected._
 - Section padding (`{components.feature-card}`, `{components.hero-section}`) shrinks proportionally below the tablet breakpoint — mobile uses tighter horizontal gutters so content edges don't dominate the viewport.
 - Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
+### Image Behavior
+
+- **Favicon** is `ICO` (`assets/favicon.ico`) — keep the on-page logo and the favicon visually anchored to the same wordmark so the browser-tab silhouette reads as the brand.
+- Illustration-bearing surfaces (`{components.hero-section}`) inherit container width — supply art that crops gracefully from desktop down to mobile rather than depending on fixed pixel dimensions.
+
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).

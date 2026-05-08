@@ -441,6 +441,12 @@ _Stats: 90/102 probes shift across viewports; 7 distinct properties affected._
 - Section padding (`{components.feature-card}`, `{components.feature-card-hover}`) shrinks proportionally below the tablet breakpoint — mobile uses tighter horizontal gutters so content edges don't dominate the viewport.
 - Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
+### Image Behavior
+
+- **Logo** ships as SVG (`assets/logo.svg`, 88×22) — scales lossless across every breakpoint, no @1x/@2x asset swaps required.
+- **Favicon** is `PNG` (`assets/favicon.png`) — keep the on-page logo and the favicon visually anchored to the same wordmark so the browser-tab silhouette reads as the brand.
+- Illustration-bearing surfaces (`{components.hero-section}`) inherit container width — supply art that crops gracefully from desktop down to mobile rather than depending on fixed pixel dimensions.
+
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).

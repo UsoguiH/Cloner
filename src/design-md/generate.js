@@ -1996,6 +1996,41 @@ export function generateDesignMd(jobDir, options = {}) {
       rb.push('');
     }
 
+    // ### Image Behavior — derived from the asset manifest. We can speak
+    // to logo and favicon scaling characteristics (vector vs bitmap) and
+    // call out illustration-bearing components by name. We deliberately
+    // don't speculate on lazy-loading or rotation animations — those
+    // require runtime evidence we don't capture in the still harvest.
+    if (assetsManifest && (assetsManifest.logo || assetsManifest.favicon)) {
+      const ib = [];
+      if (assetsManifest.logo) {
+        const ext = String(assetsManifest.logo.path || '').toLowerCase().split('.').pop();
+        const isVector = ext === 'svg';
+        const dim = assetsManifest.logo.width && assetsManifest.logo.height
+          ? `${assetsManifest.logo.width}×${assetsManifest.logo.height}`
+          : 'inline-svg sized by container';
+        if (isVector) {
+          ib.push(`- **Logo** ships as SVG (\`${assetsManifest.logo.path}\`, ${dim}) — scales lossless across every breakpoint, no @1x/@2x asset swaps required.`);
+        } else {
+          ib.push(`- **Logo** ships as a bitmap (\`${assetsManifest.logo.path}\`, ${dim}) — supply @2x / @3x variants when porting to higher-DPR contexts.`);
+        }
+      }
+      if (assetsManifest.favicon) {
+        const fext = String(assetsManifest.favicon.path || '').toLowerCase().split('.').pop();
+        ib.push(`- **Favicon** is \`${fext.toUpperCase()}\` (\`${assetsManifest.favicon.path}\`) — keep the on-page logo and the favicon visually anchored to the same wordmark so the browser-tab silhouette reads as the brand.`);
+      }
+      const illustrationComps = Object.keys(componentBlocks).filter((n) => /(illustration|hero|template|thumbnail|preview|product)/i.test(n));
+      if (illustrationComps.length) {
+        ib.push(`- Illustration-bearing surfaces (\`${illustrationComps.slice(0, 3).map((n) => `{components.${n}}`).join('`, `')}\`) inherit container width — supply art that crops gracefully from desktop down to mobile rather than depending on fixed pixel dimensions.`);
+      }
+      if (ib.length) {
+        rb.push('### Image Behavior');
+        rb.push('');
+        for (const line of ib) rb.push(line);
+        rb.push('');
+      }
+    }
+
     md += sectionMd('Responsive Behavior', rb.join('\n').replace(/\n+$/, ''));
   }
   // Iteration Guide: numbered checklist for designers extending the
