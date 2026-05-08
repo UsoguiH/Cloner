@@ -8,12 +8,11 @@ colors:
   ink-muted: "#31302e"
   ink-subtle: "#615d59"
   on-primary: "#ffffff"
+  block-periwinkle: "#e6f3fe"
+  block-coral: "#fef3f1"
   surface-1: "#f9f9f8"
-  surface-2: "#f2f9ff"
-  surface-3: "#fef3f1"
-  surface-4: "#e6f3fe"
-  hairline: "#f6f5f4"
-  hairline-strong: "#dddddd"
+  surface-2: "#f6f5f4"
+  hairline: "#dddddd"
   surface-hover: "#fefefe"
   surface-hover-2: "#005bab"
   ink-focus: "#494744"
@@ -82,22 +81,21 @@ components:
     typography: "{typography.button-3}"
     padding: 80px 125px
   top-nav:
-    textColor: "{colors.hairline}"
+    textColor: "{colors.surface-2}"
     typography: "{typography.button-3}"
     padding: 80px 0px 0px 0px
   footer:
     backgroundColor: "{colors.canvas}"
     typography: "{typography.button-3}"
   hero-section:
-    textColor: "{colors.hairline}"
+    textColor: "{colors.surface-2}"
     typography: "{typography.button-3}"
     padding: 0px 0px 32px 0px
   cta-banner:
-    backgroundColor: "{colors.hairline}"
+    backgroundColor: "{colors.surface-2}"
     typography: "{typography.button-3}"
     padding: 80px 32px
   pricing-card:
-    backgroundColor: "{colors.surface-2}"
     typography: "{typography.button-3}"
     rounded: "{rounded.lg}"
     padding: 32px
@@ -119,12 +117,11 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 ### Surface
 
 - **Canvas** (`{colors.canvas}`) `#ffffff` — Default page background.
+- **Block Periwinkle** (`{colors.block-periwinkle}`) `#e6f3fe` — Signature pastel section block; used for full-width brand-color story sections.
+- **Block Coral** (`{colors.block-coral}`) `#fef3f1` — Signature pastel section block; used for full-width brand-color story sections.
 - **Surface 1** (`{colors.surface-1}`) `#f9f9f8` — Subtle elevated surface — first tier above canvas.
-- **Surface 2** (`{colors.surface-2}`) `#f2f9ff` — Mid elevated surface — second tier above canvas.
-- **Surface 3** (`{colors.surface-3}`) `#fef3f1` — Highest elevated surface — third tier above canvas.
-- **Surface 4** (`{colors.surface-4}`) `#e6f3fe`
-- **Hairline** (`{colors.hairline}`) `#f6f5f4` — 1px borders on inputs, cards, and table dividers.
-- **Hairline Strong** (`{colors.hairline-strong}`) `#dddddd` — 1px borders on inputs, cards, and table dividers (strong variant).
+- **Surface 2** (`{colors.surface-2}`) `#f6f5f4` — Mid elevated surface — second tier above canvas.
+- **Hairline** (`{colors.hairline}`) `#dddddd` — 1px borders on inputs, cards, and table dividers.
 - **Surface Hover** (`{colors.surface-hover}`) `#fefefe` — Hover-state surface for interactive controls.
 - **Surface Hover 2** (`{colors.surface-hover-2}`) `#005bab` — Hover-state surface for interactive controls (tier 2 variant).
 
@@ -205,7 +202,7 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
   - **Focus**: background `{colors.ink-muted}`.
 
 **`cta-banner`**
-- background `{colors.hairline}`, type `{typography.button-3}`, padding 80px 32px.
+- background `{colors.surface-2}`, type `{typography.button-3}`, padding 80px 32px.
 
 ### Inputs & Forms
 
@@ -218,7 +215,7 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 - type `{typography.button-3}`, rounded `{rounded.lg}`.
 
 **`pricing-card`**
-- background `{colors.surface-2}`, type `{typography.button-3}`, padding 32px, rounded `{rounded.lg}`.
+- type `{typography.button-3}`, padding 32px, rounded `{rounded.lg}`.
 
 ### Navigation
 
@@ -228,7 +225,7 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 ### Header
 
 **`top-nav`**
-- text `{colors.hairline}`, type `{typography.button-3}`, padding 80px 0px 0px 0px.
+- text `{colors.surface-2}`, type `{typography.button-3}`, padding 80px 0px 0px 0px.
 
 ### Footer
 
@@ -238,7 +235,7 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 ### Sections
 
 **`hero-section`**
-- text `{colors.hairline}`, type `{typography.button-3}`, padding 0px 0px 32px 0px.
+- text `{colors.surface-2}`, type `{typography.button-3}`, padding 0px 0px 32px 0px.
 
 ### Badges & Tags
 
@@ -297,13 +294,17 @@ Downloaded next to this file — drop the `assets/fonts/` directory into your pr
 ### Do
 
 - Reserve `{colors.primary}` for genuine primary CTAs and selected states. Don't use it as a decorative accent.
+- When introducing a story section, choose **one** color block from the `{colors.block-*}` family (2 available) and let it span full content width with `{rounded.lg}` corners.
 - Keep type in `NotionInter` at variable weights — pick from 400, 500, 700 to express hierarchy.
+- Allow the page to **return to canvas** between every two color blocks so each block reads as deliberate.
 - Pair `{components.button-primary}` and `{components.button-secondary}` whenever a section needs both a primary action and a secondary action — the contrast pair is the brand signature.
 
 ### Don't
 
 - Don't reach for opacity to soften body type — the documented muted ink token plus weight modulation already covers de-emphasis.
-- Don't introduce new color roles outside the documented palette without updating this file.
+- Don't add drop shadows to color-block sections — the color is the depth device.
+- Don't introduce new accent colors outside the documented `{colors.block-*}` palette.
+- Don't combine more than one color block visible inside a single viewport — let canvas separate them.
 - Don't hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.
 
 ## Breakpoints
@@ -382,10 +383,11 @@ Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for toke
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).
-2. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
-3. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
-4. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
-5. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
+2. When introducing a new section, decide **first** which `{colors.block-*}` token it sits on; the surface choice is the most consequential decision.
+3. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
+4. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
+5. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
+6. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
 
 ## Known Gaps
 

@@ -7,9 +7,9 @@ colors:
   ink: "#000000"
   ink-muted: "#131313"
   on-primary: "#ffffff"
-  surface-1: "#f3ffe3"
-  surface-2: "#c7f8fb"
-  surface-3: "#e2e2e2"
+  block-mint-green: "#f3ffe3"
+  block-sky: "#c7f8fb"
+  surface-1: "#e2e2e2"
   surface-hover: "#222222"
 typography:
   button:
@@ -104,9 +104,9 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 ### Surface
 
 - **Canvas** (`{colors.canvas}`) `#ffffff` — Default page background.
-- **Surface 1** (`{colors.surface-1}`) `#f3ffe3` — Subtle elevated surface — first tier above canvas.
-- **Surface 2** (`{colors.surface-2}`) `#c7f8fb` — Mid elevated surface — second tier above canvas.
-- **Surface 3** (`{colors.surface-3}`) `#e2e2e2` — Highest elevated surface — third tier above canvas.
+- **Block Mint Green** (`{colors.block-mint-green}`) `#f3ffe3` — Signature pastel section block; used for full-width brand-color story sections.
+- **Block Sky** (`{colors.block-sky}`) `#c7f8fb` — Signature pastel section block; used for full-width brand-color story sections.
+- **Surface 1** (`{colors.surface-1}`) `#e2e2e2` — Subtle elevated surface — first tier above canvas.
 - **Surface Hover** (`{colors.surface-hover}`) `#222222` — Hover-state surface for interactive controls.
 
 ### Text
@@ -276,12 +276,16 @@ _Source: https://www.figma.com/design_
 ### Do
 
 - Reserve `{colors.primary}` for genuine primary CTAs and selected states. Don't use it as a decorative accent.
+- When introducing a story section, choose **one** color block from the `{colors.block-*}` family (2 available) and let it span full content width with `{rounded.lg}` corners.
 - Keep type in `figmaSans` at variable weights — pick from 300, 400 to express hierarchy.
+- Allow the page to **return to canvas** between every two color blocks so each block reads as deliberate.
 - Pair `{components.button-primary}` and `{components.button-secondary}` whenever a section needs both a primary action and a secondary action — the contrast pair is the brand signature.
 
 ### Don't
 
-- Don't introduce new color roles outside the documented palette without updating this file.
+- Don't add drop shadows to color-block sections — the color is the depth device.
+- Don't introduce new accent colors outside the documented `{colors.block-*}` palette.
+- Don't combine more than one color block visible inside a single viewport — let canvas separate them.
 - Don't hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.
 
 ## Breakpoints
@@ -326,10 +330,11 @@ Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for toke
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).
-2. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
-3. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
-4. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
-5. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
+2. When introducing a new section, decide **first** which `{colors.block-*}` token it sits on; the surface choice is the most consequential decision.
+3. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
+4. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
+5. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
+6. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
 
 ## Known Gaps
 

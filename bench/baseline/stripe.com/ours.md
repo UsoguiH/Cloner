@@ -7,10 +7,10 @@ colors:
   ink: "#425466"
   ink-muted: "#7d8ba4"
   on-primary: "#ffffff"
+  block-periwinkle: "#e5edf5"
   surface-1: "#f8fafd"
   surface-2: "#f6f9fc"
-  surface-3: "#e5edf5"
-  surface-4: "#e8e9ff"
+  surface-3: "#e6ebf1"
   hairline: "#b9b9f9"
   hairline-strong: "#e2e4ff"
   hairline-tertiary: "#e7ecf1"
@@ -136,10 +136,10 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 ### Surface
 
 - **Canvas** (`{colors.canvas}`) `#ffffff` — Default page background.
+- **Block Periwinkle** (`{colors.block-periwinkle}`) `#e5edf5` — Signature pastel section block; used for full-width brand-color story sections.
 - **Surface 1** (`{colors.surface-1}`) `#f8fafd` — Subtle elevated surface — first tier above canvas.
 - **Surface 2** (`{colors.surface-2}`) `#f6f9fc` — Mid elevated surface — second tier above canvas.
-- **Surface 3** (`{colors.surface-3}`) `#e5edf5` — Highest elevated surface — third tier above canvas.
-- **Surface 4** (`{colors.surface-4}`) `#e8e9ff`
+- **Surface 3** (`{colors.surface-3}`) `#e6ebf1` — Highest elevated surface — third tier above canvas.
 - **Hairline** (`{colors.hairline}`) `#b9b9f9` — 1px borders on inputs, cards, and table dividers.
 - **Hairline Strong** (`{colors.hairline-strong}`) `#e2e4ff` — 1px borders on inputs, cards, and table dividers (strong variant).
 - **Hairline Tertiary** (`{colors.hairline-tertiary}`) `#e7ecf1` — 1px borders on inputs, cards, and table dividers (tertiary variant).
@@ -313,13 +313,15 @@ Downloaded next to this file — drop the `assets/fonts/` directory into your pr
 ### Do
 
 - Reserve `{colors.primary}` for genuine primary CTAs and selected states. Don't use it as a decorative accent.
+- When introducing a story section, choose **one** color block from the `{colors.block-*}` family (1 available) and let it span full content width with `{rounded.2xl}` corners.
 - Keep type in `sohne-var` at variable weights — pick from 300, 400, 500 to express hierarchy.
 - Pair `{components.button-primary}` and `{components.button-secondary}` whenever a section needs both a primary action and a secondary action — the contrast pair is the brand signature.
 
 ### Don't
 
 - Don't reach for opacity to soften body type — the documented muted ink token plus weight modulation already covers de-emphasis.
-- Don't introduce new color roles outside the documented palette without updating this file.
+- Don't add drop shadows to color-block sections — the color is the depth device.
+- Don't introduce new accent colors outside the documented `{colors.block-*}` palette.
 - Don't hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.
 
 ## Breakpoints
@@ -379,11 +381,12 @@ Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for toke
 ## Iteration Guide
 
 1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).
-2. Default body type to `{typography.body-lg}`.
-3. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
-4. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
-5. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
-6. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
+2. When introducing a new section, decide **first** which `{colors.block-*}` token it sits on; the surface choice is the most consequential decision.
+3. Default body type to `{typography.body-lg}`.
+4. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
+5. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
+6. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
+7. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
 
 ## Known Gaps
 

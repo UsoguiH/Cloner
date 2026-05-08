@@ -124,6 +124,62 @@ function isNeutral(hex) {
   return saturation(hex) < 0.1;
 }
 
+// Hue (HSV) in degrees. Returns null for neutrals.
+function hueOf(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const [r, g, b] = rgb.map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return null;
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60;
+  if (h < 0) h += 360;
+  return h;
+}
+
+// Map a hex to a brand-color name used by the block-* token family
+// (e.g., "lime", "mint", "cream", "lilac", "navy"). Returns null for
+// near-neutral or pure-saturated colors that don't read as section
+// pastels. Centered ranges chosen empirically to match figma's signature
+// pastel section blocks.
+function colorBlockName(hex) {
+  const sat = saturation(hex);
+  const lum = luminance(hex);
+  // Pastel band: low-to-mid saturation + high luminance.
+  if (sat < 0.05 || sat > 0.35) {
+    // Allow named darks (navy/forest) for inverse-canvas section blocks.
+    if (lum > 0.1) return null;
+  }
+  // Cap lum at 0.985 not 0.92 — figma's lime block (#f3ffe3) sits at lum
+  // ~0.95 and is a deliberate brand block, not "too close to white".
+  // Canvas is excluded by the caller, so we can be permissive here.
+  if (lum > 0.985) return null;
+  const h = hueOf(hex);
+  if (h === null) return null;
+  // Dark navy / forest category — separate from pastel.
+  if (lum < 0.1) {
+    if (h >= 200 && h < 260) return 'navy';
+    if (h >= 90 && h < 160) return 'forest';
+    return null;
+  }
+  if (h >= 50 && h < 75) return 'lime';
+  if (h >= 75 && h < 110) return 'mint-green';
+  if (h >= 110 && h < 170) return 'mint';
+  if (h >= 170 && h < 200) return 'sky';
+  if (h >= 200 && h < 250) return 'periwinkle';
+  if (h >= 250 && h < 290) return 'lilac';
+  if (h >= 290 && h < 340) return 'pink';
+  if (h >= 340 || h < 15) return 'coral';
+  if (h >= 15 && h < 40) return 'peach';
+  if (h >= 40 && h < 50) return 'cream';
+  return null;
+}
+
 // Relative luminance, copied from contrast.js to keep this module self-contained.
 // Used for tier ordering — surface-1 sits closer to canvas in lightness; ink
 // tiers sort by perceptual distance from canvas (most-readable = ink, least = ink-tertiary).
@@ -454,6 +510,12 @@ export function assignColorRoles(usage, options = {}) {
   const canvasLum = canvas ? luminance(canvas.hex) : 0;
   const onCanvasSide = (lum) => Math.abs(lum - canvasLum) < 0.5;
   const surfaceCandidates = [];
+  // Pastel section backgrounds (e.g. figma's #f3ffe3 lime, #c7f8fb sky)
+  // appear as background-color hits but read as deliberate section
+  // colors rather than elevation tiers. Split them off into block-*
+  // tokens via colorBlockName(). The remainder feeds the surface tier
+  // assignment below — leaving genuine grays as surface-1/2/3.
+  const blockCandidates = [];
   for (const e of usage.values()) {
     if (used.has(e.hex)) continue;
     if (!isOpaque(e.hex)) continue;
@@ -461,7 +523,32 @@ export function assignColorRoles(usage, options = {}) {
     if (saturation(e.hex) > 0.4) continue;
     if (canvas && e.hex === canvas.hex) continue;
     if (!onCanvasSide(luminance(e.hex))) continue;
-    surfaceCandidates.push(e);
+    if (colorBlockName(e.hex)) blockCandidates.push(e);
+    else surfaceCandidates.push(e);
+  }
+  // Emit one block-* token per detected hue family, preferring the
+  // candidate with the most background-color hits. Multiple shades of
+  // the same hue (e.g. two pinks) collapse to a single token.
+  const blockByHue = new Map();
+  for (const e of blockCandidates) {
+    const hue = colorBlockName(e.hex);
+    const prev = blockByHue.get(hue);
+    if (!prev || (e.byProperty['background-color'] > prev.byProperty['background-color'])) {
+      blockByHue.set(hue, e);
+    }
+  }
+  // Sort by usage descending so the most-used block lands as the first
+  // entry in the colors map; emit a stable suffix when multiple hues share
+  // a name family ("block-lime-2") to avoid collisions, though the by-hue
+  // dedupe makes that rare.
+  const blocksSorted = [...blockByHue.entries()].sort(
+    (a, b) => b[1].byProperty['background-color'] - a[1].byProperty['background-color'],
+  );
+  for (const [hue, e] of blocksSorted) {
+    const name = `block-${hue}`;
+    if (roles[name]) continue;
+    roles[name] = e;
+    used.add(e.hex);
   }
   // Tier separation 0.008 — empirical sweet spot. 0.003 over-emits near-
   // identical tints (#e5edf5 / #e3ecf7 collapse perceptually); 0.02 misses
