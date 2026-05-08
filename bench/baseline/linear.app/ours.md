@@ -124,22 +124,30 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 
 ## Colors
 
-- **canvas** `#08090a`
-- **primary** `#5e6ad2`
-- **ink** `#f7f8f8`
-- **ink-muted** `#d0d6e0`
-- **ink-subtle** `#8a8f98`
-- **ink-tertiary** `#62666d`
-- **on-primary** `#ffffff`
-- **surface-1** `#0f1011`
-- **surface-2** `#3b3b3b`
-- **surface-3** `#474747`
-- **hairline** `#23252a`
-- **hairline-strong** `#2f2f31`
-- **hairline-tertiary** `#5c5d5f`
-- **surface-hover** `#5e69c1`
-- **surface-hover-2** `#eaeaeb`
-- **ink-hover** `#34343a`
+### Brand & Accent
+
+- **Primary** (`{colors.primary}`) `#5e6ad2` — System primary; default for primary CTAs and headline emphasis.
+- **On Primary** (`{colors.on-primary}`) `#ffffff` — Foreground on primary surfaces.
+
+### Surface
+
+- **Canvas** (`{colors.canvas}`) `#08090a` — Default page background.
+- **Surface 1** (`{colors.surface-1}`) `#0f1011` — Subtle elevated surface — first tier above canvas.
+- **Surface 2** (`{colors.surface-2}`) `#3b3b3b` — Mid elevated surface — second tier above canvas.
+- **Surface 3** (`{colors.surface-3}`) `#474747` — Highest elevated surface — third tier above canvas.
+- **Hairline** (`{colors.hairline}`) `#23252a` — 1px borders on inputs, cards, and table dividers.
+- **Hairline Strong** (`{colors.hairline-strong}`) `#2f2f31` — 1px borders on inputs, cards, and table dividers (strong variant).
+- **Hairline Tertiary** (`{colors.hairline-tertiary}`) `#5c5d5f` — 1px borders on inputs, cards, and table dividers (tertiary variant).
+- **Surface Hover** (`{colors.surface-hover}`) `#5e69c1` — Hover-state surface for interactive controls.
+- **Surface Hover 2** (`{colors.surface-hover-2}`) `#eaeaeb` — Hover-state surface for interactive controls (tier 2 variant).
+
+### Text
+
+- **Ink** (`{colors.ink}`) `#f7f8f8` — All headline, body, and caption type on light surfaces.
+- **Ink Muted** (`{colors.ink-muted}`) `#d0d6e0` — De-emphasized ink — body sub-copy, captions, secondary metadata.
+- **Ink Subtle** (`{colors.ink-subtle}`) `#8a8f98` — Most-de-emphasized ink — placeholder, helper, and disabled type.
+- **Ink Tertiary** (`{colors.ink-tertiary}`) `#62666d` — All headline, body, and caption type on light surfaces (tertiary variant).
+- **Ink Hover** (`{colors.ink-hover}`) `#34343a` — Hover-state ink for interactive text.
 
 ## Typography
 

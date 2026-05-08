@@ -93,6 +93,78 @@ function componentSpecLine(block) {
   return parts.length ? parts.join(', ') + '.' : '';
 }
 
+// Categorize a color token name into one of the four sections getdesign.md
+// uses (Brand & Accent / Surface / Text / Semantic). First match wins.
+const COLOR_CATEGORIES = [
+  ['Brand & Accent', /^(primary|on-primary|accent|brand)(\b|-|$)/i],
+  ['Text', /^(ink|inverse-ink|on-inverse|text|on-canvas|on-surface)(\b|-|$)/i],
+  ['Surface', /^(canvas|inverse-canvas|surface|hairline|block|tile|panel|background|bg)(\b|-|$)/i],
+  ['Semantic', /^(semantic|success|warning|error|danger|info|overlay|scrim|focus-ring|outline-ring)(\b|-|$)/i],
+];
+
+function inferColorCategory(name) {
+  for (const [label, re] of COLOR_CATEGORIES) {
+    if (re.test(name)) return label;
+  }
+  return 'Surface';
+}
+
+// Convert a kebab token name into a Title-Case display label
+// (`block-lime` → "Block Lime", `on-primary` → "On Primary", `ink-muted`
+// → "Ink Muted"). Used as a deterministic fallback when no AI display
+// name is available.
+function tokenToDisplayName(name) {
+  return name
+    .split('-')
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' ');
+}
+
+// Deterministic short rationale per color role — anchored to the role
+// taxonomy our extractor emits. Used as a fallback when the AI role-naming
+// envelope is absent. One sentence, mirroring the shape of getdesign.md
+// blurbs without inventing specifics.
+function deterministicColorRationale(name) {
+  if (/^primary$/i.test(name)) return 'System primary; default for primary CTAs and headline emphasis.';
+  if (/^on-primary$/i.test(name)) return 'Foreground on primary surfaces.';
+  if (/^accent/i.test(name)) return 'Accent color reserved for promotional moments; use sparingly.';
+  if (/^canvas$/i.test(name)) return 'Default page background.';
+  if (/^inverse-canvas$/i.test(name)) return 'Inverse / dark canvas — used for footer, marquee, and inverted story sections.';
+  if (/^surface-soft$/i.test(name)) return 'Off-white tile background used for tiles and feature illustrations on the canvas.';
+  if (/^surface-1$/i.test(name)) return 'Subtle elevated surface — first tier above canvas.';
+  if (/^surface-2$/i.test(name)) return 'Mid elevated surface — second tier above canvas.';
+  if (/^surface-3$/i.test(name)) return 'Highest elevated surface — third tier above canvas.';
+  if (/^surface-hover$/i.test(name)) return 'Hover-state surface for interactive controls.';
+  if (/^hairline$/i.test(name)) return '1px borders on inputs, cards, and table dividers.';
+  if (/^hairline-soft$/i.test(name)) return 'Subtler dividers — table row separators and footer column rules.';
+  if (/^block-/i.test(name)) return 'Signature pastel section block; used for full-width brand-color story sections.';
+  if (/^ink$/i.test(name)) return 'All headline, body, and caption type on light surfaces.';
+  if (/^inverse-ink$/i.test(name)) return 'Type on inverse-canvas surfaces (footer, dark blocks).';
+  if (/^ink-muted$/i.test(name)) return 'De-emphasized ink — body sub-copy, captions, secondary metadata.';
+  if (/^ink-subtle$/i.test(name)) return 'Most-de-emphasized ink — placeholder, helper, and disabled type.';
+  if (/^ink-hover$/i.test(name)) return 'Hover-state ink for interactive text.';
+  if (/^ink-focus$/i.test(name)) return 'Focus-state ink for keyboard navigation.';
+  if (/^semantic-success$/i.test(name)) return 'Success / confirmation glyph fill.';
+  if (/^semantic-warning$/i.test(name)) return 'Warning / advisory glyph fill.';
+  if (/^semantic-error$/i.test(name)) return 'Error / danger glyph fill.';
+  if (/^semantic-info$/i.test(name)) return 'Informational glyph fill.';
+  if (/^overlay/i.test(name)) return 'Overlay / scrim base color (translucency applied at render time).';
+  // Numeric-suffixed tiers (surface-4, ink-hover-3, hairline-tertiary) reuse
+  // the base role's description with a tier annotation, so coverage extends
+  // beyond the canonical names.
+  const tieredMatch = /^(.*?)-(strong|soft|tertiary|secondary|\d+)$/i.exec(name);
+  if (tieredMatch) {
+    const base = tieredMatch[1];
+    const tier = tieredMatch[2].toLowerCase();
+    const baseDesc = deterministicColorRationale(base);
+    if (baseDesc) {
+      const tierWord = /^\d+$/.test(tier) ? `tier ${tier}` : tier;
+      return `${baseDesc.replace(/\.$/, '')} (${tierWord} variant).`;
+    }
+  }
+  return null;
+}
+
 // Read the role-naming envelope (Phase 6.4) if it exists. Returns
 // { name → { displayName, roleDescription, confidence } } keyed by the colors
 // token name (without the 'colors.' prefix), or null if no envelope present.
@@ -1110,25 +1182,50 @@ export function generateDesignMd(jobDir, options = {}) {
   // from color-block-discovery. Each row gets an annotation citing the
   // section role + the AI's rationale, so block-* tokens read distinctly
   // from generic palette roles in the rendered Colors section.
-  md += sectionMd(
-    'Colors',
-    blurb('color-system') + (
-      Object.keys(colorsTable).length
-        ? Object.entries(colorsTable).map(([n, v]) => {
-            const meta = colorMeta[n];
-            if (aiBlockNames.has(n)) {
-              const role = roles[n] || {};
-              const rationale = role.rationale || `Section block-tinted background classified as ${role.blockRole || 'section-background'}.`;
-              return `- **${n}** \`${v}\` — ${rationale}`;
-            }
-            if (meta?.displayName && meta?.roleDescription) {
-              return `- **${meta.displayName}** \`${v}\` (\`${n}\`) — ${meta.roleDescription}`;
-            }
-            return `- **${n}** \`${v}\``;
-          }).join('\n')
-        : '_No colors extracted._'
-    )
-  );
+  // Render the Colors section as four subsections (Brand & Accent / Surface
+  // / Text / Semantic) — same shape getdesign.md uses. Each row is
+  // `**Display Name** ({colors.token}) — description`. AI display name +
+  // description (Phase 6.4) take priority; deterministic fallback ensures
+  // every row carries a rationale even with no AI envelope.
+  let colorsBody;
+  const colorEntries = Object.entries(colorsTable);
+  if (colorEntries.length === 0) {
+    colorsBody = '_No colors extracted._';
+  } else {
+    const renderRow = ([n, v]) => {
+      const meta = colorMeta[n];
+      const role = roles[n] || {};
+      const isBlock = aiBlockNames.has(n);
+      // Display name: AI-provided or Title-Case the token name.
+      const displayName = (meta?.displayName) || tokenToDisplayName(n);
+      // Description: AI-provided > role rationale (block) > deterministic.
+      let description = '';
+      if (meta?.roleDescription) description = meta.roleDescription;
+      else if (isBlock) description = role.rationale
+        || `Section block-tinted background classified as ${role.blockRole || 'section-background'}.`;
+      else description = deterministicColorRationale(n) || '';
+      const tail = description ? ` — ${description}` : '';
+      return `- **${displayName}** (\`{colors.${n}}\`) \`${v}\`${tail}`;
+    };
+    const CATEGORY_ORDER = ['Brand & Accent', 'Surface', 'Text', 'Semantic'];
+    const byCategory = new Map();
+    for (const [n, v] of colorEntries) {
+      const cat = inferColorCategory(n);
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat).push([n, v]);
+    }
+    const lines = [];
+    for (const cat of CATEGORY_ORDER) {
+      const rows = byCategory.get(cat);
+      if (!rows?.length) continue;
+      lines.push(`### ${cat}`);
+      lines.push('');
+      lines.push(rows.map(renderRow).join('\n'));
+      lines.push('');
+    }
+    colorsBody = lines.join('\n').trim();
+  }
+  md += sectionMd('Colors', blurb('color-system') + colorsBody);
   md += sectionMd(
     'Typography',
     blurb('typography') + (

@@ -128,25 +128,33 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Colors
 
-- **canvas** `#ffffff`
-- **primary** `#643afd`
-- **ink** `#425466`
-- **ink-muted** `#7d8ba4`
-- **on-primary** `#ffffff`
-- **surface-1** `#f8fafd`
-- **surface-2** `#f6f9fc`
-- **surface-3** `#e5edf5`
-- **surface-4** `#e8e9ff`
-- **hairline** `#b9b9f9`
-- **hairline-strong** `#e2e4ff`
-- **hairline-tertiary** `#e7ecf1`
-- **ink-hover** `#4835db`
-- **ink-focus** `#533afc`
-- **surface-hover** `#e1e3ff`
-- **ink-hover-2** `#8b86e6`
-- **ink-focus-2** `#4c37e6`
-- **ink-focus-3** `#a19eef`
-- **ink-hover-3** `#25357a`
+### Brand & Accent
+
+- **Primary** (`{colors.primary}`) `#643afd` — System primary; default for primary CTAs and headline emphasis.
+- **On Primary** (`{colors.on-primary}`) `#ffffff` — Foreground on primary surfaces.
+
+### Surface
+
+- **Canvas** (`{colors.canvas}`) `#ffffff` — Default page background.
+- **Surface 1** (`{colors.surface-1}`) `#f8fafd` — Subtle elevated surface — first tier above canvas.
+- **Surface 2** (`{colors.surface-2}`) `#f6f9fc` — Mid elevated surface — second tier above canvas.
+- **Surface 3** (`{colors.surface-3}`) `#e5edf5` — Highest elevated surface — third tier above canvas.
+- **Surface 4** (`{colors.surface-4}`) `#e8e9ff`
+- **Hairline** (`{colors.hairline}`) `#b9b9f9` — 1px borders on inputs, cards, and table dividers.
+- **Hairline Strong** (`{colors.hairline-strong}`) `#e2e4ff` — 1px borders on inputs, cards, and table dividers (strong variant).
+- **Hairline Tertiary** (`{colors.hairline-tertiary}`) `#e7ecf1` — 1px borders on inputs, cards, and table dividers (tertiary variant).
+- **Surface Hover** (`{colors.surface-hover}`) `#e1e3ff` — Hover-state surface for interactive controls.
+
+### Text
+
+- **Ink** (`{colors.ink}`) `#425466` — All headline, body, and caption type on light surfaces.
+- **Ink Muted** (`{colors.ink-muted}`) `#7d8ba4` — De-emphasized ink — body sub-copy, captions, secondary metadata.
+- **Ink Hover** (`{colors.ink-hover}`) `#4835db` — Hover-state ink for interactive text.
+- **Ink Focus** (`{colors.ink-focus}`) `#533afc` — Focus-state ink for keyboard navigation.
+- **Ink Hover 2** (`{colors.ink-hover-2}`) `#8b86e6` — Hover-state ink for interactive text (tier 2 variant).
+- **Ink Focus 2** (`{colors.ink-focus-2}`) `#4c37e6` — Focus-state ink for keyboard navigation (tier 2 variant).
+- **Ink Focus 3** (`{colors.ink-focus-3}`) `#a19eef` — Focus-state ink for keyboard navigation (tier 3 variant).
+- **Ink Hover 3** (`{colors.ink-hover-3}`) `#25357a` — Hover-state ink for interactive text (tier 3 variant).
 
 ## Typography
 

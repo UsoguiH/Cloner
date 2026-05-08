@@ -136,8 +136,16 @@ async function extractFromPage(page, sourceUrl) {
 // rewriting the lexicon for every brand's vocabulary.
 const PRINCIPLE_PATH_RE = /\/(brand|design|design-system|principles|style|handbook|manifesto|guidelines|guide)(\b|\/|$)/i;
 
+// All-caps headings (PRODUCT, USE CASES, RESOURCES) are nav-menu labels in
+// every megamenu we've harvested. Drop them.
+const ALL_CAPS_NAV_RE = /^[A-Z][A-Z0-9 &\-]{1,40}$/;
+// Marketing CTA verbs that lead a feature card. "Unlock your team…",
+// "Create one source of truth…", "Bring your designs…" etc.
+const CTA_HEADING_RE = /^(unlock|create|bring|build|grow|scale|launch|ship|start|join|try|book|get|see|watch|explore|discover|meet|learn|find out|find|introducing|meet the|new in|powering|trusted by|loved by)\b/i;
+
 function scoreCandidate(c, sourceUrl) {
   if (HEADING_BLOCKLIST.test(c.heading)) return -1;
+  if (ALL_CAPS_NAV_RE.test(c.heading) && !/[a-z]/.test(c.heading)) return -1;
 
   const onPrinciplePath = sourceUrl && PRINCIPLE_PATH_RE.test(sourceUrl);
   const headingLexicon = PRINCIPLE_LEXICON.test(c.heading);
@@ -146,6 +154,10 @@ function scoreCandidate(c, sourceUrl) {
   // tagline becomes a "principle." Either the heading itself names a design
   // concept, or we trust the URL is an explicit brand/design page.
   if (!onPrinciplePath && !headingLexicon) return -1;
+  // CTA-style headings are marketing copy in disguise — even when they
+  // mention "brand" / "design" they are feature pitches, not principles.
+  // Drop unconditionally; we'd rather under-cover than print noise.
+  if (CTA_HEADING_RE.test(c.heading)) return -1;
 
   let s = 0;
   if (headingLexicon) s += 5;

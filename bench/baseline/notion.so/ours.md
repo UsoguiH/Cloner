@@ -111,22 +111,30 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Colors
 
-- **canvas** `#ffffff`
-- **primary** `#191918`
-- **ink** `#000000`
-- **ink-muted** `#31302e`
-- **ink-subtle** `#615d59`
-- **on-primary** `#ffffff`
-- **surface-1** `#f9f9f8`
-- **surface-2** `#f2f9ff`
-- **surface-3** `#fef3f1`
-- **surface-4** `#e6f3fe`
-- **hairline** `#f6f5f4`
-- **hairline-strong** `#dddddd`
-- **surface-hover** `#fefefe`
-- **surface-hover-2** `#005bab`
-- **ink-focus** `#494744`
-- **ink-focus-2** `#dadcdd`
+### Brand & Accent
+
+- **Primary** (`{colors.primary}`) `#191918` — System primary; default for primary CTAs and headline emphasis.
+- **On Primary** (`{colors.on-primary}`) `#ffffff` — Foreground on primary surfaces.
+
+### Surface
+
+- **Canvas** (`{colors.canvas}`) `#ffffff` — Default page background.
+- **Surface 1** (`{colors.surface-1}`) `#f9f9f8` — Subtle elevated surface — first tier above canvas.
+- **Surface 2** (`{colors.surface-2}`) `#f2f9ff` — Mid elevated surface — second tier above canvas.
+- **Surface 3** (`{colors.surface-3}`) `#fef3f1` — Highest elevated surface — third tier above canvas.
+- **Surface 4** (`{colors.surface-4}`) `#e6f3fe`
+- **Hairline** (`{colors.hairline}`) `#f6f5f4` — 1px borders on inputs, cards, and table dividers.
+- **Hairline Strong** (`{colors.hairline-strong}`) `#dddddd` — 1px borders on inputs, cards, and table dividers (strong variant).
+- **Surface Hover** (`{colors.surface-hover}`) `#fefefe` — Hover-state surface for interactive controls.
+- **Surface Hover 2** (`{colors.surface-hover-2}`) `#005bab` — Hover-state surface for interactive controls (tier 2 variant).
+
+### Text
+
+- **Ink** (`{colors.ink}`) `#000000` — All headline, body, and caption type on light surfaces.
+- **Ink Muted** (`{colors.ink-muted}`) `#31302e` — De-emphasized ink — body sub-copy, captions, secondary metadata.
+- **Ink Subtle** (`{colors.ink-subtle}`) `#615d59` — Most-de-emphasized ink — placeholder, helper, and disabled type.
+- **Ink Focus** (`{colors.ink-focus}`) `#494744` — Focus-state ink for keyboard navigation.
+- **Ink Focus 2** (`{colors.ink-focus-2}`) `#dadcdd` — Focus-state ink for keyboard navigation (tier 2 variant).
 
 ## Typography
 

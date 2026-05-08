@@ -96,15 +96,23 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Colors
 
-- **canvas** `#ffffff`
-- **primary** `#697485`
-- **ink** `#000000`
-- **ink-muted** `#131313`
-- **on-primary** `#ffffff`
-- **surface-1** `#f3ffe3`
-- **surface-2** `#c7f8fb`
-- **surface-3** `#e2e2e2`
-- **surface-hover** `#222222`
+### Brand & Accent
+
+- **Primary** (`{colors.primary}`) `#697485` — System primary; default for primary CTAs and headline emphasis.
+- **On Primary** (`{colors.on-primary}`) `#ffffff` — Foreground on primary surfaces.
+
+### Surface
+
+- **Canvas** (`{colors.canvas}`) `#ffffff` — Default page background.
+- **Surface 1** (`{colors.surface-1}`) `#f3ffe3` — Subtle elevated surface — first tier above canvas.
+- **Surface 2** (`{colors.surface-2}`) `#c7f8fb` — Mid elevated surface — second tier above canvas.
+- **Surface 3** (`{colors.surface-3}`) `#e2e2e2` — Highest elevated surface — third tier above canvas.
+- **Surface Hover** (`{colors.surface-hover}`) `#222222` — Hover-state surface for interactive controls.
+
+### Text
+
+- **Ink** (`{colors.ink}`) `#000000` — All headline, body, and caption type on light surfaces.
+- **Ink Muted** (`{colors.ink-muted}`) `#131313` — De-emphasized ink — body sub-copy, captions, secondary metadata.
 
 ## Typography
 
@@ -213,29 +221,11 @@ Use branching to freely explore possibilities, then bring those updates into you
 
 _Source: https://www.figma.com/design_
 
-### Get to coding faster
-
-Translate designs into code faster with Dev Mode, a new space for developers in Figma. Explore Dev Mode
-
-_Source: https://www.figma.com/design_
-
 ### Share libraries and design systems across teams.
 
 Create reusable components, variables, and brand assets to keep your entire organization building with the same visual language.
 
 _Source: https://www.figma.com/about_
-
-### Ship products faster with AI
-
-Drop a design file into Figma Make and chat with AI to quickly create a live, functional app. Explore Figma Make
-
-_Source: https://www.figma.com/about_
-
-### Bring your designs to life—without leaving the canvas
-
-Create realistic, no-code interactions with prototyping. Fine tune every element of your user experience by iterating and testing in a single tool.
-
-_Source: https://www.figma.com/design_
 
 ### A creative canvas for all
 
@@ -243,35 +233,11 @@ Figma’s intuitive interface and features were built for the web, enabling indu
 
 _Source: https://www.figma.com/design_
 
-### PRODUCT
-
-Figma Design Dev Mode FigJam Figma Slides Figma Draw Figma BuzzBETA Figma SitesBETA Figma Make Figma WeaveNEW AI Downloads Release notes
-
-_Source: https://www.figma.com/design_
-
-### USE CASES
-
-UI design UX design Wireframing Diagramming Prototyping Brainstorming Presentation Maker Online whiteboard Strategic planning Mind mapping Concept map AI app builder AI prototype generator AI website builder AI wireframe generator Banner maker Ad maker
-
-_Source: https://www.figma.com/design_
-
-### Unlock your team with on-brand templates.
-
-Share templates with your organization so anyone can quickly create social media assets, display ads, one-pagers, and more.
-
-_Source: https://www.figma.com/about_
-
 ### Alignment made easy
 
 Work together in a multiplayer, version-controlled design file, and get contextual feedback from stakeholders with commenting.
 
 _Source: https://www.figma.com/design_
-
-### Create one source of truth for devs and designers.
-
-Get specs, annotations, and code snippets in one dedicated space with Dev Mode.
-
-_Source: https://www.figma.com/about_
 
 ## Do's and Don'ts
 
