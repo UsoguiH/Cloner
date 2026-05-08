@@ -13,8 +13,7 @@ colors:
   surface-1: "#f9f9f8"
   surface-2: "#f6f5f4"
   hairline: "#dddddd"
-  surface-hover: "#fefefe"
-  surface-hover-2: "#005bab"
+  surface-hover: "#005bab"
   ink-focus: "#494744"
   ink-focus-2: "#dadcdd"
 typography:
@@ -44,8 +43,6 @@ components:
     rounded: "{rounded.lg}"
   button-tertiary-hover:
     textColor: "{colors.ink-subtle}"
-  button-tertiary-hover-2:
-    backgroundColor: "{colors.surface-hover}"
   button-secondary:
     textColor: "{colors.canvas}"
     typography: "{typography.button-4}"
@@ -53,9 +50,9 @@ components:
     padding: 4px 14px
     height: 36px
   button-secondary-hover-2:
-    backgroundColor: "{colors.surface-hover-2}"
+    backgroundColor: "{colors.surface-hover}"
   button-secondary-focus-2:
-    backgroundColor: "{colors.surface-hover-2}"
+    backgroundColor: "{colors.surface-hover}"
   button-primary:
     backgroundColor: "{colors.primary}"
     typography: "{typography.button-3}"
@@ -122,8 +119,7 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 - **Surface 1** (`{colors.surface-1}`) `#f9f9f8` — Subtle elevated surface — first tier above canvas.
 - **Surface 2** (`{colors.surface-2}`) `#f6f5f4` — Mid elevated surface — second tier above canvas.
 - **Hairline** (`{colors.hairline}`) `#dddddd` — 1px borders on inputs, cards, and table dividers.
-- **Surface Hover** (`{colors.surface-hover}`) `#fefefe` — Hover-state surface for interactive controls.
-- **Surface Hover 2** (`{colors.surface-hover-2}`) `#005bab` — Hover-state surface for interactive controls (tier 2 variant).
+- **Surface Hover** (`{colors.surface-hover}`) `#005bab` — Hover-state surface for interactive controls.
 
 ### Text
 
@@ -219,12 +215,12 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 
 **`button-tertiary`**
 - type `{typography.button-3}`, rounded `{rounded.lg}`.
-  - **Hover**: background `{colors.surface-hover}`, text `{colors.ink-subtle}`.
+  - **Hover**: text `{colors.ink-subtle}`.
 
 **`button-secondary`**
 - text `{colors.canvas}`, type `{typography.button-4}`, padding 4px 14px, rounded `{rounded.sm}`, height 36px.
-  - **Hover**: background `{colors.surface-hover-2}`.
-  - **Focus**: background `{colors.surface-hover-2}`.
+  - **Hover**: background `{colors.surface-hover}`.
+  - **Focus**: background `{colors.surface-hover}`.
 
 **`button-primary`**
 - background `{colors.primary}`, type `{typography.button-3}`, rounded `{rounded.sm}`, height 57px.
@@ -318,6 +314,16 @@ Downloaded next to this file — drop the `assets/fonts/` directory into your pr
 | Lyon Text | 600 | italic | `assets/fonts/bb4e3542.woff2` | https://www.notion.com/_next/static/media/LyonText-BoldItalic-Web.8907ab5f.woff2 |
 | iA Writer Mono | 400 | normal | `assets/fonts/197b10a7.woff2` | https://www.notion.com/_next/static/media/iAWriterMonoS-Regular.bf09337b.woff2 |
 | iA Writer Mono | 400 | italic | `assets/fonts/96695283.woff2` | https://www.notion.com/_next/static/media/iAWriterMonoS-Italic.176fc5a8.woff2 |
+
+## Voice
+
+Deterministic analysis of 78 sentences harvested from page H1–H4 / paragraph / button text (no /design or /principles page was reachable for this brand). Numbers reflect the actual harvested corpus, not interpretation.
+
+- Sentences average **7 words** — short and punchy — every line lands a single idea, ad-style.
+- Second-person dominates ("you", "your" — **23** mentions vs **7** "we" mentions): the copy speaks **at the reader**, framing every claim around what they get.
+- 10 of 78 sentences open with an imperative verb. Most beats are descriptive; commands appear sparingly for emphasis.
+- **0** exclamation mark(s), **4** question(s) — punctuation is measured; rhetorical questions invite the reader in.
+- Lexicon hot-spots (used ≥ 2× in the home-page heading + paragraph corpus): **agents** (×8), **knowledge** (×6), **questions** (×5), **workspace** (×4), **features** (×3). Re-use these words in adjacent product copy and the voice will read continuous with the published brand.
 
 ## Do's and Don'ts
 
