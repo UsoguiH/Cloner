@@ -1,0 +1,201 @@
+{
+  "runs": [
+    {
+      "jobId": "bench-figma.com-mox6eibk",
+      "site": "figma.com",
+      "ok": true,
+      "startedAt": "2026-05-08T17:51:25.613Z",
+      "phases": {
+        "static": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "colorCount": 9
+        },
+        "compile": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "cssBytes": 1920,
+          "utilityCount": 29
+        },
+        "paint": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "coverage": 1,
+          "foundCount": 9,
+          "declaredCount": 9,
+          "topPainted": [
+            "#f8f8f8",
+            "#687080",
+            "#000000",
+            "#101010",
+            "#f0f8e0",
+            "#c0f8f8",
+            "#e0e0e0",
+            "#202020"
+          ]
+        }
+      }
+    },
+    {
+      "jobId": "bench-figma.com-mox6eibk",
+      "site": "figma.com",
+      "ok": true,
+      "startedAt": "2026-05-08T17:51:35.572Z",
+      "phases": {
+        "static": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "colorCount": 9
+        },
+        "compile": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "cssBytes": 1920,
+          "utilityCount": 29
+        },
+        "paint": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "coverage": 1,
+          "foundCount": 9,
+          "declaredCount": 9,
+          "topPainted": [
+            "#f8f8f8",
+            "#687080",
+            "#000000",
+            "#101010",
+            "#f0f8e0",
+            "#c0f8f8",
+            "#e0e0e0",
+            "#202020"
+          ]
+        }
+      }
+    },
+    {
+      "jobId": "bench-linear.app-mox6hghh",
+      "site": "linear.app",
+      "ok": true,
+      "startedAt": "2026-05-08T17:51:36.742Z",
+      "phases": {
+        "static": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "colorCount": 16
+        },
+        "compile": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "cssBytes": 3637,
+          "utilityCount": 52
+        },
+        "paint": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "coverage": 1,
+          "foundCount": 16,
+          "declaredCount": 16,
+          "topPainted": [
+            "#080808",
+            "#5868d0",
+            "#f0f8f8",
+            "#d0d0e0",
+            "#888898",
+            "#606068",
+            "#f8f8f8",
+            "#081010"
+          ]
+        }
+      }
+    },
+    {
+      "jobId": "bench-stripe.com-mox6khzf",
+      "site": "stripe.com",
+      "ok": true,
+      "startedAt": "2026-05-08T17:51:37.257Z",
+      "phases": {
+        "static": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "colorCount": 19
+        },
+        "compile": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "cssBytes": 4078,
+          "utilityCount": 59
+        },
+        "paint": {
+          "ok": true,
+          "errors": [],
+          "warnings": [
+            "3 colors not painted: #4c37e6, #a19eef, #25357a"
+          ],
+          "coverage": 0.8421052631578947,
+          "foundCount": 16,
+          "declaredCount": 19,
+          "topPainted": [
+            "#f8f8f8",
+            "#e0e8f0",
+            "#e0e0f8",
+            "#6038f8",
+            "#405060",
+            "#7888a0",
+            "#f0f8f8",
+            "#e8e8f8"
+          ]
+        }
+      }
+    },
+    {
+      "jobId": "bench-notion.so-mox6qqxm",
+      "site": "notion.so",
+      "ok": true,
+      "startedAt": "2026-05-08T17:51:37.719Z",
+      "phases": {
+        "static": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "colorCount": 16
+        },
+        "compile": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "cssBytes": 3495,
+          "utilityCount": 51
+        },
+        "paint": {
+          "ok": true,
+          "errors": [],
+          "warnings": [],
+          "coverage": 1,
+          "foundCount": 16,
+          "declaredCount": 16,
+          "topPainted": [
+            "#f8f8f8",
+            "#d8d8d8",
+            "#181818",
+            "#000000",
+            "#303028",
+            "#605858",
+            "#f0f8f8",
+            "#f8f0f0"
+          ]
+        }
+      }
+    }
+  ]
+}
