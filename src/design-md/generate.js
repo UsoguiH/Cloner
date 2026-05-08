@@ -1875,40 +1875,121 @@ export function generateDesignMd(jobDir, options = {}) {
   const pageCount = Array.isArray(computed.pages) ? computed.pages.length : 1;
   const pageStr = pageCount > 1 ? `${pageCount} pages crawled` : 'home page only';
 
-  // Breakpoints (Phase 7-extension) — token-level deltas across mobile/tablet/desktop.
-  // Skipped when no per-viewport probe metrics were captured (older harvests, or
-  // single-viewport extractions). Cap at 8 most-changed probes so the section
-  // stays readable; the rest are surfaced via stats line.
-  if (breakpoints?.deltas?.length) {
-    const bl = [];
-    const vps = breakpoints.viewports.map((v) => `${v.name} ${v.width}px`).join(' / ');
-    bl.push(`Per-viewport probe metrics captured at ${vps}. Properties whose computed value differs across viewports surface here.`);
-    bl.push('');
-    bl.push('| Element | Property | Mobile | Tablet | Desktop |');
-    bl.push('|---|---|---|---|---|');
-    const top = breakpoints.deltas.slice(0, 8);
-    for (const d of top) {
-      const label = d.selector
-        ? `\`${String(d.selector).replace(/\|/g, '\\|').slice(0, 48)}\``
-        : `\`${d.tagName || d.probeId}\``;
-      for (const ch of d.changes) {
-        const m = ch.byViewport.mobile;
-        const t = ch.byViewport.tablet;
-        const dk = ch.byViewport.desktop;
-        const fmt = (x) => (x == null ? '—' : (typeof x === 'number' ? `${Math.round(x)}` : String(x)));
-        bl.push(`| ${label} | \`${ch.property}\` | ${fmt(m)} | ${fmt(t)} | ${fmt(dk)} |`);
+  // Responsive Behavior — single section with subsections matching the shape
+  // of getdesign.md: ### Breakpoints / ### Touch Targets / ### Collapsing
+  // Strategy. Each subsection emits only when its evidence is present.
+  {
+    const rb = [];
+    rb.push(`Harvest taken at ${vpStr} (${pageStr}).`);
+    rb.push('');
+
+    // ### Breakpoints — full per-viewport deltas table when multi-viewport
+    // metrics were sampled, otherwise a short note explaining what's missing.
+    rb.push('### Breakpoints');
+    rb.push('');
+    if (breakpoints?.deltas?.length) {
+      const vps = breakpoints.viewports.map((v) => `${v.name} ${v.width}px`).join(' / ');
+      rb.push(`Per-viewport probe metrics captured at ${vps}. Properties whose computed value differs across viewports surface here.`);
+      rb.push('');
+      rb.push('| Element | Property | Mobile | Tablet | Desktop |');
+      rb.push('|---|---|---|---|---|');
+      const top = breakpoints.deltas.slice(0, 8);
+      for (const d of top) {
+        const label = d.selector
+          ? `\`${String(d.selector).replace(/\|/g, '\\|').slice(0, 48)}\``
+          : `\`${d.tagName || d.probeId}\``;
+        for (const ch of d.changes) {
+          const m = ch.byViewport.mobile;
+          const t = ch.byViewport.tablet;
+          const dk = ch.byViewport.desktop;
+          const fmtCell = (x) => (x == null ? '—' : (typeof x === 'number' ? `${Math.round(x)}` : String(x)));
+          rb.push(`| ${label} | \`${ch.property}\` | ${fmtCell(m)} | ${fmtCell(t)} | ${fmtCell(dk)} |`);
+        }
       }
+      if (breakpoints.deltas.length > top.length) {
+        rb.push('');
+        rb.push(`_${breakpoints.deltas.length - top.length} additional probe(s) shift across viewports — see \`output/screenshots/index.json\` per-viewport metrics for the full set._`);
+      }
+      rb.push('');
+      rb.push(`_Stats: ${breakpoints.stats.probesWithChange}/${breakpoints.stats.totalProbes} probes shift across viewports; ${breakpoints.stats.propertiesObserved} distinct properties affected._`);
+    } else {
+      rb.push('Per-breakpoint scales — phone/tablet/desktop variants — were not sampled in this run; re-harvest with a multi-viewport probe pass to populate token-level deltas.');
     }
-    if (breakpoints.deltas.length > top.length) {
-      bl.push('');
-      bl.push(`_${breakpoints.deltas.length - top.length} additional probe(s) shift across viewports — see \`output/screenshots/index.json\` per-viewport metrics for the full set._`);
+    rb.push('');
+
+    // ### Touch Targets — derived from observed button / input heights in
+    // componentBlocks. We classify by component-name regex into pill/icon/
+    // input families and report the observed pixel heights so designers can
+    // see if the brand respects the 44px tap-target convention.
+    const touchEntries = [];
+    for (const [name, b] of Object.entries(componentBlocks)) {
+      if (!b || typeof b.height !== 'string') continue;
+      const px = parseInt(b.height, 10);
+      if (!Number.isFinite(px) || px < 24 || px > 96) continue;
+      let family = null;
+      if (/icon/i.test(name)) family = 'Icon button';
+      else if (/^button/i.test(name)) family = 'Pill / pill-tab button';
+      else if (/(input|field|search|select)/i.test(name)) family = 'Form input';
+      else if (/avatar/i.test(name)) family = 'Avatar';
+      else continue;
+      touchEntries.push({ family, name, px });
     }
-    bl.push('');
-    bl.push(`_Stats: ${breakpoints.stats.probesWithChange}/${breakpoints.stats.totalProbes} probes shift across viewports; ${breakpoints.stats.propertiesObserved} distinct properties affected._`);
-    md += sectionMd('Breakpoints', bl.join('\n'));
-    md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.`);
-  } else {
-    md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). Per-breakpoint scales — phone/tablet/desktop variants — were not sampled in this run; re-harvest with a multi-viewport probe pass to populate the Breakpoints section.`);
+    if (touchEntries.length) {
+      // Group by family, take max height per family (the resting/comfortable size).
+      const byFamily = new Map();
+      for (const t of touchEntries) {
+        const prev = byFamily.get(t.family);
+        if (!prev || t.px > prev.px) byFamily.set(t.family, t);
+      }
+      rb.push('### Touch Targets');
+      rb.push('');
+      const familyOrder = ['Pill / pill-tab button', 'Icon button', 'Form input', 'Avatar'];
+      for (const f of familyOrder) {
+        const entry = byFamily.get(f);
+        if (!entry) continue;
+        const meets = entry.px >= 44;
+        const note = meets
+          ? 'meets the 44px iOS / 48dp Android tap-target minimum'
+          : entry.px >= 40
+            ? 'sits between 40–44px — safe on desktop, tight on touch; bump to 44px+ when porting to mobile'
+            : 'falls below the 44px tap-target minimum — only safe inside dense desktop tooling, not for primary touch flows';
+        rb.push(`- **${f}** — \`{components.${entry.name}}\` resting height **${entry.px}px**, ${note}.`);
+      }
+      rb.push('');
+    }
+
+    // ### Collapsing Strategy — derived from breakpoints viewport set + any
+    // grid/columns observations in the harvest. We emit declarative rules
+    // anchored to the brand's actual sampled viewport widths so the guidance
+    // matches what the harvest saw rather than asserting generic breakpoints.
+    if (breakpoints?.viewports?.length >= 2) {
+      const sorted = [...breakpoints.viewports].sort((a, b) => a.width - b.width);
+      const mobile = sorted[0];
+      const tablet = sorted.length >= 3 ? sorted[1] : null;
+      const desktop = sorted[sorted.length - 1];
+      rb.push('### Collapsing Strategy');
+      rb.push('');
+      const navHasItems = Object.keys(componentBlocks).some((n) => /nav|menu|header/i.test(n));
+      if (navHasItems) {
+        rb.push(`- Below ~${mobile.width}px, multi-item top-nav collapses to a hamburger / drawer pattern — the inline links don't fit alongside logo + CTAs at narrower widths.`);
+      }
+      if (tablet) {
+        rb.push(`- Multi-column grids (pricing tiers, feature cards, customer logos) step down through the **${desktop.width}px → ${tablet.width}px → ${mobile.width}px** viewport set: 4-up at desktop typically becomes 2-up at tablet and 1-up (stacked) on mobile.`);
+      } else {
+        rb.push(`- Multi-column grids step down between **${desktop.width}px** and **${mobile.width}px**: side-by-side layouts collapse to single-column stacks once content can't sit at comfortable widths.`);
+      }
+      const padNames = Object.keys(componentBlocks).filter((n) => /(card|section|hero|cta-banner)/i.test(n));
+      if (padNames.length) {
+        rb.push(`- Section padding (\`${padNames.slice(0, 2).map((n) => `{components.${n}}`).join('`, `')}\`) shrinks proportionally below the tablet breakpoint — mobile uses tighter horizontal gutters so content edges don't dominate the viewport.`);
+      }
+      const hasFooter = Object.keys(componentBlocks).some((n) => /footer/i.test(n));
+      if (hasFooter) {
+        rb.push(`- Footer column groups stack vertically below ~${mobile.width}px; on wider viewports they sit side-by-side with consistent inter-group spacing.`);
+      }
+      rb.push('');
+    }
+
+    md += sectionMd('Responsive Behavior', rb.join('\n').replace(/\n+$/, ''));
   }
   // Iteration Guide: numbered checklist for designers extending the
   // system. Mirrors getdesign.md's shape (token-referenced, prescriptive)

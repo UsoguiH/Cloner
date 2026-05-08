@@ -386,7 +386,11 @@ _Source: https://linear.app/brand_
 - Don't square off CTAs. Sharp-corner buttons read as a different brand.
 - Don't hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.
 
-## Breakpoints
+## Responsive Behavior
+
+Harvest taken at 1440×900 (5 pages crawled).
+
+### Breakpoints
 
 Per-viewport probe metrics captured at mobile 390px / tablet 768px / desktop 1440px. Properties whose computed value differs across viewports surface here.
 
@@ -417,9 +421,16 @@ _82 additional probe(s) shift across viewports — see `output/screenshots/index
 
 _Stats: 90/102 probes shift across viewports; 7 distinct properties affected._
 
-## Responsive Behavior
+### Touch Targets
 
-Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.
+- **Pill / pill-tab button** — `{components.button-secondary}` resting height **44px**, meets the 44px iOS / 48dp Android tap-target minimum.
+
+### Collapsing Strategy
+
+- Below ~390px, multi-item top-nav collapses to a hamburger / drawer pattern — the inline links don't fit alongside logo + CTAs at narrower widths.
+- Multi-column grids (pricing tiers, feature cards, customer logos) step down through the **1440px → 768px → 390px** viewport set: 4-up at desktop typically becomes 2-up at tablet and 1-up (stacked) on mobile.
+- Section padding (`{components.feature-card}`, `{components.feature-card-hover}`) shrinks proportionally below the tablet breakpoint — mobile uses tighter horizontal gutters so content edges don't dominate the viewport.
+- Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
 ## Iteration Guide
 

@@ -306,7 +306,11 @@ _Source: https://www.figma.com/design_
 - Don't combine more than one color block visible inside a single viewport — let canvas separate them.
 - Don't hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.
 
-## Breakpoints
+## Responsive Behavior
+
+Harvest taken at 1440×900 (5 pages crawled).
+
+### Breakpoints
 
 Per-viewport probe metrics captured at mobile 390px / tablet 768px / desktop 1440px. Properties whose computed value differs across viewports surface here.
 
@@ -341,9 +345,16 @@ _57 additional probe(s) shift across viewports — see `output/screenshots/index
 
 _Stats: 65/75 probes shift across viewports; 6 distinct properties affected._
 
-## Responsive Behavior
+### Touch Targets
 
-Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.
+- **Pill / pill-tab button** — `{components.button-secondary}` resting height **47px**, meets the 44px iOS / 48dp Android tap-target minimum.
+- **Form input** — `{components.text-input}` resting height **54px**, meets the 44px iOS / 48dp Android tap-target minimum.
+
+### Collapsing Strategy
+
+- Below ~390px, multi-item top-nav collapses to a hamburger / drawer pattern — the inline links don't fit alongside logo + CTAs at narrower widths.
+- Multi-column grids (pricing tiers, feature cards, customer logos) step down through the **1440px → 768px → 390px** viewport set: 4-up at desktop typically becomes 2-up at tablet and 1-up (stacked) on mobile.
+- Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
 ## Iteration Guide
 
