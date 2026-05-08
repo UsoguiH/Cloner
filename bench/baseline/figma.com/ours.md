@@ -116,10 +116,24 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Typography
 
-- **button** — figmaSans 32px/400
-- **button-6** — figmaSans 16px/400
-- **button-2** — figmaSans 18px/300
-- **headline** — figmaSans 46px/400
+### Font Family
+
+- **figmaSans** — weights 300, 400
+
+### Hierarchy
+
+| Token | Size | Weight | Line Height | Letter Spacing | Use |
+|---|---|---|---|---|---|
+| `{typography.button}` | 32px | 400 | 1.3 | -0.32px | — |
+| `{typography.button-6}` | 16px | 400 | 1.45 | 0 | — |
+| `{typography.button-2}` | 18px | 300 | 1.4 | -0.14px | — |
+| `{typography.headline}` | 46px | 400 | 1.15 | -0.69px | — |
+
+### Principles
+
+- Type scale spans **16px → 46px** across 4 roles.
+- Tight line-heights on display (≈1.15), generous on body (≈1.45). The contrast reinforces that headlines are graphics and body copy is for reading.
+- Negative letter-spacing scales with size — display tightens to **-0.69px**, body stays near zero. Editorial-feeling display type without sacrificing readability.
 
 ## Layout
 

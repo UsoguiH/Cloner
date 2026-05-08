@@ -151,11 +151,25 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 
 ## Typography
 
-- **button** — Inter Variable 14px/500
-- **button-4** — Inter Variable 13px/500
-- **mono** — Berkeley Mono 14px/400
-- **body-2** — Inter Variable 16px/400
-- **body-sm-2** — Inter Variable 12px/400
+### Font Family
+
+- **Inter Variable** — weights 400, 500
+- **Berkeley Mono** — weights 400
+
+### Hierarchy
+
+| Token | Size | Weight | Line Height | Letter Spacing | Use |
+|---|---|---|---|---|---|
+| `{typography.button}` | 14px | 500 | 1.5 | -0.182px | — |
+| `{typography.button-4}` | 13px | 500 | — | 0 | — |
+| `{typography.mono}` | 14px | 400 | 1.71 | 0 | — |
+| `{typography.body-2}` | 16px | 400 | — | 0 | — |
+| `{typography.body-sm-2}` | 12px | 400 | 1.4 | 0 | — |
+
+### Principles
+
+- Type scale spans **12px → 16px** across 5 roles.
+- Tight line-heights on display (≈1.4), generous on body (≈1.71). The contrast reinforces that headlines are graphics and body copy is for reading.
 
 ## Layout
 

@@ -138,9 +138,24 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Typography
 
-- **button-3** — NotionInter 16px/400
-- **button-4** — NotionInter 16px/500
-- **headline** — NotionInter 42px/700
+### Font Family
+
+- **NotionInter** — weights 400, 500, 700
+
+### Hierarchy
+
+| Token | Size | Weight | Line Height | Letter Spacing | Use |
+|---|---|---|---|---|---|
+| `{typography.button-3}` | 16px | 400 | 1.5 | 0 | — |
+| `{typography.button-4}` | 16px | 500 | 1.5 | 0 | — |
+| `{typography.headline}` | 42px | 700 | 1.14 | -1.5px | — |
+
+### Principles
+
+- Type scale spans **16px → 42px** across 3 roles.
+- Weight axis exercised at **400, 500, 700** — modulating weight is a primary lever for hierarchy.
+- Tight line-heights on display (≈1.14), generous on body (≈1.5). The contrast reinforces that headlines are graphics and body copy is for reading.
+- Negative letter-spacing scales with size — display tightens to **-1.5px**, body stays near zero. Editorial-feeling display type without sacrificing readability.
 
 ## Layout
 

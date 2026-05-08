@@ -158,11 +158,25 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 
 ## Typography
 
-- **button** — sohne-var 16px/400
-- **button-5** — sohne-var 15px/400
-- **subhead-6** — sohne-var 16px/300
-- **body-lg** — sohne-var 20px/300
-- **body-sm-3** — sohne-var 12px/500
+### Font Family
+
+- **sohne-var** — weights 300, 400, 500
+
+### Hierarchy
+
+| Token | Size | Weight | Line Height | Letter Spacing | Use |
+|---|---|---|---|---|---|
+| `{typography.button}` | 16px | 400 | — | 0 | — |
+| `{typography.button-5}` | 15px | 400 | 1.6 | 0 | — |
+| `{typography.subhead-6}` | 16px | 300 | 1.4 | 0 | — |
+| `{typography.body-lg}` | 20px | 300 | 1.4 | -0.2px | — |
+| `{typography.body-sm-3}` | 12px | 500 | 1.25 | 0 | — |
+
+### Principles
+
+- Type scale spans **12px → 20px** across 5 roles.
+- Weight axis exercised at **300, 400, 500** — modulating weight is a primary lever for hierarchy.
+- Tight line-heights on display (≈1.25), generous on body (≈1.6). The contrast reinforces that headlines are graphics and body copy is for reading.
 
 ## Layout
 

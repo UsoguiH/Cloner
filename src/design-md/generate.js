@@ -1226,21 +1226,107 @@ export function generateDesignMd(jobDir, options = {}) {
     colorsBody = lines.join('\n').trim();
   }
   md += sectionMd('Colors', blurb('color-system') + colorsBody);
-  md += sectionMd(
-    'Typography',
-    blurb('typography') + (
-      Object.keys(typoTable).length
-        ? Object.entries(typoTable).map(([n, t]) => {
-            const head = `- **${n}** — ${t.fontFamily} ${t.fontSize}/${t.fontWeight}`;
-            const sample = aiTypoSamples?.[n];
-            if (sample?.sampleText && sample.confidence >= AI_CONFIDENCE_THRESHOLD) {
-              return `${head}\n  > ${sample.sampleText}`;
-            }
-            return head;
-          }).join('\n')
-        : '_No typography extracted._'
-    )
-  );
+  // Typography: render as three subsections matching getdesign.md
+  // (Font Family / Hierarchy / Principles). Hierarchy is a table with
+  // size / weight / line-height / letter-spacing / use. AI typography
+  // sample-copy (Phase 6.7b) when present supplies the "Use" column.
+  let typographyBody;
+  const typoEntries = Object.entries(typoTable);
+  if (typoEntries.length === 0) {
+    typographyBody = '_No typography extracted._';
+  } else {
+    const tlines = [];
+
+    // Font Family — collect unique families and the weight axis observed
+    // for each. The weight list is the strongest signal that the brand
+    // uses a variable typeface vs a stepped weight family.
+    const familiesMap = new Map();
+    for (const [, t] of typoEntries) {
+      const fam = (t.fontFamily || '').split(',')[0].trim().replace(/^["']|["']$/g, '');
+      if (!fam) continue;
+      if (!familiesMap.has(fam)) familiesMap.set(fam, { weights: new Set(), full: t.fontFamily });
+      if (t.fontWeight !== undefined && t.fontWeight !== null && t.fontWeight !== '') {
+        familiesMap.get(fam).weights.add(String(t.fontWeight));
+      }
+    }
+    if (familiesMap.size) {
+      tlines.push('### Font Family');
+      tlines.push('');
+      for (const [fam, info] of familiesMap) {
+        const weights = [...info.weights].sort((a, b) => Number(a) - Number(b));
+        const fallback = (info.full || '').split(',').slice(1).map((s) => s.trim()).filter(Boolean).join(', ');
+        const tailParts = [];
+        if (weights.length) tailParts.push(`weights ${weights.join(', ')}`);
+        if (fallback) tailParts.push(`fallback \`${fallback}\``);
+        const tail = tailParts.length ? ` — ${tailParts.join('; ')}` : '';
+        tlines.push(`- **${fam}**${tail}`);
+      }
+      tlines.push('');
+    }
+
+    // Hierarchy — full table including line-height + letter-spacing.
+    tlines.push('### Hierarchy');
+    tlines.push('');
+    tlines.push('| Token | Size | Weight | Line Height | Letter Spacing | Use |');
+    tlines.push('|---|---|---|---|---|---|');
+    for (const [n, t] of typoEntries) {
+      const sample = aiTypoSamples?.[n];
+      const use = (sample?.sampleText && sample.confidence >= AI_CONFIDENCE_THRESHOLD)
+        ? sample.sampleText.replace(/\|/g, '\\|')
+        : '—';
+      const lh = (t.lineHeight === undefined || t.lineHeight === null || t.lineHeight === '') ? '—' : t.lineHeight;
+      const ls = (t.letterSpacing === undefined || t.letterSpacing === null || t.letterSpacing === '') ? '0' : t.letterSpacing;
+      tlines.push(`| \`{typography.${n}}\` | ${t.fontSize || '—'} | ${t.fontWeight ?? '—'} | ${lh} | ${ls} | ${use} |`);
+    }
+    tlines.push('');
+
+    // Principles — observations derived from the actual harvested data.
+    // Compare display vs body line-heights, weight spread, letter-spacing
+    // spread. Each principle ships only when its evidence is present.
+    const sizes = typoEntries.map(([, t]) => parseFloat(t.fontSize) || 0).filter((n) => n > 0);
+    const weights = typoEntries
+      .map(([, t]) => Number(t.fontWeight))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const lhs = typoEntries.map(([, t]) => parseFloat(t.lineHeight)).filter((n) => Number.isFinite(n) && n > 0);
+    const lss = typoEntries.map(([, t]) => parseFloat(t.letterSpacing) || 0);
+    const principles = [];
+    if (sizes.length >= 3) {
+      const max = Math.max(...sizes);
+      const min = Math.min(...sizes);
+      principles.push(`Type scale spans **${min}px → ${max}px** across ${typoEntries.length} role${typoEntries.length === 1 ? '' : 's'}.`);
+    }
+    if (weights.length >= 2) {
+      const wsorted = [...new Set(weights)].sort((a, b) => a - b);
+      if (wsorted.length >= 3) {
+        principles.push(`Weight axis exercised at **${wsorted.join(', ')}** — modulating weight is a primary lever for hierarchy.`);
+      }
+    }
+    if (lhs.length >= 2) {
+      const lhMin = Math.min(...lhs);
+      const lhMax = Math.max(...lhs);
+      if (lhMax - lhMin > 0.15) {
+        principles.push(`Tight line-heights on display (≈${lhMin}), generous on body (≈${lhMax}). The contrast reinforces that headlines are graphics and body copy is for reading.`);
+      }
+    }
+    if (lss.length >= 2) {
+      const lsMin = Math.min(...lss);
+      const lsMax = Math.max(...lss);
+      if (lsMin < -0.3) {
+        principles.push(`Negative letter-spacing scales with size — display tightens to **${lsMin}px**, body stays near zero. Editorial-feeling display type without sacrificing readability.`);
+      } else if (lsMax > 0.3) {
+        principles.push(`Positive letter-spacing on small/uppercase eyebrows (up to **${lsMax}px**) — taxonomy vs reading copy.`);
+      }
+    }
+    if (principles.length) {
+      tlines.push('### Principles');
+      tlines.push('');
+      for (const p of principles) tlines.push(`- ${p}`);
+      tlines.push('');
+    }
+
+    typographyBody = tlines.join('\n').trim();
+  }
+  md += sectionMd('Typography', blurb('typography') + typographyBody);
   md += sectionMd('Layout', blurb('spacing') + 'Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.');
   md += sectionMd('Elevation & Depth', 'No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn\'t reaching the elements we sample — re-harvest with extended probe selectors to surface it.');
   md += sectionMd(
