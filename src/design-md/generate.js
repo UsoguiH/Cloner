@@ -1781,6 +1781,80 @@ export function generateDesignMd(jobDir, options = {}) {
       prov.setHarvest(`${slot}.body`, { confidence: 1.0 });
     }
     md += sectionMd('Brand principles', bl.join('\n'));
+
+    // Voice — deterministic analysis of the brand's own published copy.
+    // Reuses brand-principles bodies as the corpus (real first-party text,
+    // not site chrome). Emits 3–5 observation lines with concrete numbers
+    // so a designer or copywriter can pattern-match the tone. getdesign.md
+    // doesn't surface this — it's a clean differentiator.
+    const corpus = brandPrinciples.principles
+      .map((p) => `${p.heading}. ${p.body}`)
+      .join(' ');
+    const sentences = corpus
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 4);
+    const words = corpus.match(/\b[a-zA-Z][a-zA-Z'-]*\b/g) || [];
+    if (sentences.length >= 3 && words.length >= 30) {
+      const vl = [];
+      const avgWords = Math.round(words.length / sentences.length);
+      let lengthNote;
+      if (avgWords <= 10) lengthNote = 'short and punchy — every line lands a single idea, ad-style.';
+      else if (avgWords <= 16) lengthNote = 'medium-cadence — long enough to make an argument, short enough to read aloud without losing the reader.';
+      else if (avgWords <= 24) lengthNote = 'expository — sentences earn their length by stacking a claim with the reasoning behind it.';
+      else lengthNote = 'long-form — paragraphs over headlines; the brand is willing to spend the reader\'s attention.';
+      vl.push(`- Sentences average **${avgWords} words** — ${lengthNote}`);
+
+      const youCount = (corpus.match(/\b(you|your|you're|you've|you'll)\b/gi) || []).length;
+      const weCount = (corpus.match(/\b(we|our|us)\b/gi) || []).length;
+      const brandFirstPerson = weCount > youCount * 1.2;
+      const readerFirstPerson = youCount > weCount * 1.2;
+      if (brandFirstPerson) {
+        vl.push(`- First-person plural dominates ("we", "our" — **${weCount}** mentions vs **${youCount}** "you" mentions): the brand speaks **as itself**, narrating intent rather than addressing the reader directly.`);
+      } else if (readerFirstPerson) {
+        vl.push(`- Second-person dominates ("you", "your" — **${youCount}** mentions vs **${weCount}** "we" mentions): the copy speaks **at the reader**, framing every claim around what they get.`);
+      } else if (youCount + weCount >= 3) {
+        vl.push(`- Mixed pronoun stance — **${weCount}** "we"/"our" + **${youCount}** "you"/"your": the brand alternates between stating its own intent and addressing the reader.`);
+      } else {
+        vl.push(`- Pronoun-light copy — fewer than ${weCount + youCount + 1} "we"/"you" mentions across ${sentences.length} sentences. Tone is **descriptive**, not conversational.`);
+      }
+
+      const IMPERATIVE_OPENERS = /^(build|bring|create|design|make|start|try|use|launch|ship|join|get|see|watch|explore|discover|meet|learn|find|introduce|share|collaborate|iterate|customize|connect)\b/i;
+      const imperativeOpens = sentences.filter((s) => IMPERATIVE_OPENERS.test(s)).length;
+      const imperativeRatio = imperativeOpens / sentences.length;
+      if (imperativeRatio >= 0.3) {
+        vl.push(`- **${imperativeOpens} of ${sentences.length}** sentences open with an imperative verb (Build, Bring, Create, Make…). The voice is **action-leading** — the reader is invited to do something on almost every beat.`);
+      } else if (imperativeOpens >= 1) {
+        vl.push(`- ${imperativeOpens} of ${sentences.length} sentences open with an imperative verb. Most beats are descriptive; commands appear sparingly for emphasis.`);
+      } else {
+        vl.push(`- No sentences open with an imperative verb. Every beat is **descriptive** — the brand explains what it does rather than telling the reader what to do.`);
+      }
+
+      const exclaim = (corpus.match(/!/g) || []).length;
+      const question = (corpus.match(/\?/g) || []).length;
+      if (exclaim + question === 0) {
+        vl.push('- Zero exclamation marks, zero questions across the corpus — the register is **measured and confident**, never breathless or interrogative.');
+      } else {
+        vl.push(`- **${exclaim}** exclamation mark(s), **${question}** question(s) — punctuation is ${exclaim > 0 ? 'occasionally emphatic' : 'measured'}${question > 0 ? '; rhetorical questions invite the reader in' : ''}.`);
+      }
+
+      // Lexicon: most-frequent ≥ 6-letter content word, excluding generic.
+      const STOP = new Set(['design','design.','design,','figma','figma.','linear','stripe','notion','brand','company','product','platform','users','people','teams','others','great','better','simply']);
+      const freq = new Map();
+      for (const w of words) {
+        const lc = w.toLowerCase();
+        if (lc.length < 6) continue;
+        if (STOP.has(lc)) continue;
+        freq.set(lc, (freq.get(lc) || 0) + 1);
+      }
+      const topLex = [...freq.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      if (topLex.length >= 2) {
+        vl.push(`- Lexicon hot-spots (used ≥ 2× in the brand-principles corpus): ${topLex.map(([w, n]) => `**${w}** (×${n})`).join(', ')}. Re-use these words in adjacent product copy and the voice will read continuous with the published brand.`);
+      }
+
+      md += sectionMd('Voice', `Deterministic analysis of the brand's own published copy from the **Brand principles** sources above. Numbers reflect the actual harvested corpus, not interpretation.\n\n${vl.join('\n')}`);
+      prov.setHarvest('voice', { confidence: 0.95 });
+    }
   }
 
   // Do's and Don'ts: brand-specific guidance derived from the actual

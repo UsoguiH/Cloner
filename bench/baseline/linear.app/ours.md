@@ -378,6 +378,16 @@ Intake Plan Build Diffs Monitor Pricing Security
 
 _Source: https://linear.app/brand_
 
+## Voice
+
+Deterministic analysis of the brand's own published copy from the **Brand principles** sources above. Numbers reflect the actual harvested corpus, not interpretation.
+
+- Sentences average **10 words** — short and punchy — every line lands a single idea, ad-style.
+- First-person plural dominates ("we", "our" — **3** mentions vs **2** "you" mentions): the brand speaks **as itself**, narrating intent rather than addressing the reader directly.
+- 2 of 23 sentences open with an imperative verb. Most beats are descriptive; commands appear sparingly for emphasis.
+- Zero exclamation marks, zero questions across the corpus — the register is **measured and confident**, never breathless or interrogative.
+- Lexicon hot-spots (used ≥ 2× in the brand-principles corpus): **wordmark** (×4), **referring** (×2), **method** (×2), **monochrome** (×2), **preferred** (×2). Re-use these words in adjacent product copy and the voice will read continuous with the published brand.
+
 ## Do's and Don'ts
 
 ### Do

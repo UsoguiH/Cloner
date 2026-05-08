@@ -298,6 +298,16 @@ Work together in a multiplayer, version-controlled design file, and get contextu
 
 _Source: https://www.figma.com/design_
 
+## Voice
+
+Deterministic analysis of the brand's own published copy from the **Brand principles** sources above. Numbers reflect the actual harvested corpus, not interpretation.
+
+- Sentences average **13 words** — medium-cadence — long enough to make an argument, short enough to read aloud without losing the reader.
+- Second-person dominates ("you", "your" — **2** mentions vs **0** "we" mentions): the copy speaks **at the reader**, framing every claim around what they get.
+- **3 of 10** sentences open with an imperative verb (Build, Bring, Create, Make…). The voice is **action-leading** — the reader is invited to do something on almost every beat.
+- Zero exclamation marks, zero questions across the corpus — the register is **measured and confident**, never breathless or interrogative.
+- Lexicon hot-spots (used ≥ 2× in the brand-principles corpus): **together** (×2), **multiplayer** (×2), **explore** (×2), **feedback** (×2). Re-use these words in adjacent product copy and the voice will read continuous with the published brand.
+
 ## Do's and Don'ts
 
 ### Do
