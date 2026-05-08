@@ -1658,10 +1658,96 @@ export function generateDesignMd(jobDir, options = {}) {
     md += sectionMd('Brand principles', bl.join('\n'));
   }
 
-  md += sectionMd("Do's and Don'ts",
-    "- **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.\n" +
-    "- **Don't** introduce new color roles outside the documented palette without updating this file."
-  );
+  // Do's and Don'ts: brand-specific guidance derived from the actual
+  // harvested data. Each rule ships only when its evidence is present —
+  // we don't emit "use block-* family" advice on a site without block
+  // tokens. Compared to the previous two-line generic stub, this gives
+  // a designer real prescriptive guidance per token taxonomy.
+  // (Token-derived facts hoisted so the Iteration Guide below can reuse them.)
+  const hasPrimary = !!colorsTable.primary;
+  const blockTokens = Object.keys(colorsTable).filter((n) => /^block-/.test(n));
+  const accentTokens = Object.keys(colorsTable).filter((n) => /^accent-/.test(n));
+  const hasInk = !!colorsTable.ink;
+  const hasInkMuted = !!colorsTable['ink-muted'] || !!colorsTable['ink-subtle'];
+  const roundedNames = new Set(Object.keys(roundTable));
+  const pillToken = roundedNames.has('pill') ? 'pill' : (roundedNames.has('full') ? 'full' : null);
+  const compNamesSet = new Set(Object.keys(componentBlocks));
+  const hasPrimaryComp = [...compNamesSet].some((n) => /^button-primary$/.test(n));
+  const hasSecondaryComp = [...compNamesSet].some((n) => /^button-secondary$/.test(n));
+  const typoFamilies = new Set();
+  const allWeights = new Set();
+  for (const [, t] of Object.entries(typoTable)) {
+    const fam = (t.fontFamily || '').split(',')[0].trim().replace(/^["']|["']$/g, '');
+    if (fam) typoFamilies.add(fam);
+    if (t.fontWeight !== undefined && t.fontWeight !== null && t.fontWeight !== '') {
+      allWeights.add(String(t.fontWeight));
+    }
+  }
+  const primaryFamily = [...typoFamilies][0];
+  const weightAxis = [...allWeights].sort((a, b) => Number(a) - Number(b));
+  const sortedRounded = Object.entries(roundTable)
+    .map(([n, v]) => [n, parseFloat(v) || 0])
+    .sort((a, b) => b[1] - a[1]);
+  const largestRounded = sortedRounded[0]?.[0];
+  {
+    const dos = [];
+    const donts = [];
+
+    // Do rules
+    if (hasPrimary) {
+      dos.push('Reserve `{colors.primary}` for genuine primary CTAs and selected states. Don\'t use it as a decorative accent.');
+    }
+    if (blockTokens.length && largestRounded) {
+      dos.push(`When introducing a story section, choose **one** color block from the \`{colors.block-*}\` family (${blockTokens.length} available) and let it span full content width with \`{rounded.${largestRounded}}\` corners.`);
+    }
+    if (primaryFamily && weightAxis.length >= 2) {
+      dos.push(`Keep type in \`${primaryFamily}\` at variable weights — pick from ${weightAxis.join(', ')} to express hierarchy.`);
+    }
+    if (pillToken) {
+      dos.push(`Compose every CTA as a pill (\`{rounded.${pillToken}}\`)${roundedNames.has('full') ? ' and every icon button as a circle (`{rounded.full}`)' : ''}.`);
+    }
+    if (blockTokens.length >= 2 && colorsTable.canvas) {
+      dos.push('Allow the page to **return to canvas** between every two color blocks so each block reads as deliberate.');
+    }
+    if (hasPrimaryComp && hasSecondaryComp) {
+      dos.push('Pair `{components.button-primary}` and `{components.button-secondary}` whenever a section needs both a primary action and a secondary action — the contrast pair is the brand signature.');
+    }
+
+    // Don't rules
+    if (hasInk && !hasInkMuted) {
+      donts.push('Don\'t introduce mid-gray text. Body hierarchy comes from weight, not from opacity.');
+    } else if (hasInkMuted && weightAxis.length >= 3) {
+      donts.push('Don\'t reach for opacity to soften body type — the documented muted ink token plus weight modulation already covers de-emphasis.');
+    }
+    if (blockTokens.length) {
+      donts.push('Don\'t add drop shadows to color-block sections — the color is the depth device.');
+      donts.push(`Don\'t introduce new accent colors outside the documented \`{colors.block-*}\` palette${accentTokens.length ? ' and accent tokens' : ''}.`);
+    } else {
+      donts.push('Don\'t introduce new color roles outside the documented palette without updating this file.');
+    }
+    if (blockTokens.length >= 2) {
+      donts.push('Don\'t combine more than one color block visible inside a single viewport — let canvas separate them.');
+    }
+    if (pillToken) {
+      donts.push('Don\'t square off CTAs. Sharp-corner buttons read as a different brand.');
+    }
+    // Always-on hygiene rule.
+    donts.push('Don\'t hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.');
+
+    const dndLines = [];
+    if (dos.length) {
+      dndLines.push('### Do');
+      dndLines.push('');
+      for (const d of dos) dndLines.push(`- ${d}`);
+      dndLines.push('');
+    }
+    if (donts.length) {
+      dndLines.push('### Don\'t');
+      dndLines.push('');
+      for (const d of donts) dndLines.push(`- ${d}`);
+    }
+    md += sectionMd("Do's and Don'ts", dndLines.join('\n'));
+  }
   // Responsive blurb: report the actual harvest viewport(s) and page count.
   // Earlier this section was hardcoded to "1280×800" and called per-breakpoint
   // behavior "deferred to Phase 5" — both stale once multi-page crawl shipped.
@@ -1706,7 +1792,33 @@ export function generateDesignMd(jobDir, options = {}) {
   } else {
     md += sectionMd('Responsive Behavior', `Harvest taken at ${vpStr} (${pageStr}). Per-breakpoint scales — phone/tablet/desktop variants — were not sampled in this run; re-harvest with a multi-viewport probe pass to populate the Breakpoints section.`);
   }
-  md += sectionMd('Iteration Guide', 'Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.');
+  // Iteration Guide: numbered checklist for designers extending the
+  // system. Mirrors getdesign.md's shape (token-referenced, prescriptive)
+  // with steps anchored to actual tokens emitted in this design.md.
+  {
+    const ig = [];
+    let i = 1;
+    ig.push(`${i++}. Focus on ONE component at a time and reference it by its \`components:\` token name (e.g., ${[...compNamesSet].slice(0, 2).map((n) => `\`{components.${n}}\``).join(', ') || '`{components.button-primary}`'}).`);
+    if (blockTokens.length) {
+      ig.push(`${i++}. When introducing a new section, decide **first** which \`{colors.block-*}\` token it sits on; the surface choice is the most consequential decision.`);
+    }
+    const bodyToken = Object.keys(typoTable).find((n) => /^body$/i.test(n))
+      || Object.keys(typoTable).find((n) => /body/i.test(n));
+    const headlineToken = Object.keys(typoTable).find((n) => /^(headline|display)/i.test(n));
+    if (bodyToken) {
+      ig.push(`${i++}. Default body type to \`{typography.${bodyToken}}\`${headlineToken ? `; reach for \`{typography.${headlineToken}}\` only inside a story section or hero block` : ''}.`);
+    }
+    ig.push(`${i++}. Run \`npx @google/design.md lint DESIGN.md\` after edits — \`broken-ref\`, \`contrast-ratio\`, and \`orphaned-tokens\` warnings flag issues automatically.`);
+    ig.push(`${i++}. Add new variants as separate component entries (\`-hover\`, \`-focus\`, \`-pressed\`, \`-selected\`) — do not bury them in prose.`);
+    if (hasPrimary) {
+      ig.push(`${i++}. Keep \`{colors.primary}\` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.`);
+    }
+    if (accentTokens.length) {
+      ig.push(`${i++}. Treat \`${accentTokens.map((n) => `{colors.${n}}`).join(', ')}\` as single-shot accents — one promo CTA per page, never two.`);
+    }
+    ig.push(`${i++}. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with \`node src/design-md/generate.mjs <jobId>\`.`);
+    md += sectionMd('Iteration Guide', ig.join('\n'));
+  }
   // Known Gaps — content-aware. Only flag pseudo-states as a gap if we
   // emitted zero hover/focus variants; otherwise we'd contradict the
   // Components list right above. Same idea for shadow tokens.

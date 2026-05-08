@@ -310,8 +310,17 @@ Downloaded next to this file — drop the `assets/fonts/` directory into your pr
 
 ## Do's and Don'ts
 
-- **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.
-- **Don't** introduce new color roles outside the documented palette without updating this file.
+### Do
+
+- Reserve `{colors.primary}` for genuine primary CTAs and selected states. Don't use it as a decorative accent.
+- Keep type in `sohne-var` at variable weights — pick from 300, 400, 500 to express hierarchy.
+- Pair `{components.button-primary}` and `{components.button-secondary}` whenever a section needs both a primary action and a secondary action — the contrast pair is the brand signature.
+
+### Don't
+
+- Don't reach for opacity to soften body type — the documented muted ink token plus weight modulation already covers de-emphasis.
+- Don't introduce new color roles outside the documented palette without updating this file.
+- Don't hardcode hex values in product code — reference tokens via `{colors.*}` / `{typography.*}` so the system stays the single source of truth.
 
 ## Breakpoints
 
@@ -369,7 +378,12 @@ Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for toke
 
 ## Iteration Guide
 
-Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`. Token roles are heuristic — review and rename before publishing.
+1. Focus on ONE component at a time and reference it by its `components:` token name (e.g., `{components.button-tertiary}`, `{components.button-tertiary-hover}`).
+2. Default body type to `{typography.body-lg}`.
+3. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
+4. Add new variants as separate component entries (`-hover`, `-focus`, `-pressed`, `-selected`) — do not bury them in prose.
+5. Keep `{colors.primary}` scarce. If two primary actions appear in the same viewport, the section is doing too much — neutralize one to a secondary variant.
+6. Re-run the design-md job for a fresh extraction, or regenerate from an existing harvest with `node src/design-md/generate.mjs <jobId>`.
 
 ## Known Gaps
 
