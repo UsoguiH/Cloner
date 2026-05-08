@@ -1324,6 +1324,50 @@ export function generateDesignMd(jobDir, options = {}) {
       tlines.push('');
     }
 
+    // Note on Font Substitutes — for known proprietary or paid families,
+    // suggest open-source equivalents. Anchors the design.md to something
+    // a developer can actually implement without a font license.
+    const FONT_SUBSTITUTES = {
+      figmasans: { sub: 'Inter', alt: 'Geist', kind: 'sans' },
+      figmamono: { sub: 'JetBrains Mono', alt: 'Geist Mono', kind: 'mono' },
+      'sohne-var': { sub: 'Inter', alt: 'Geist', kind: 'sans' },
+      sohne: { sub: 'Inter', alt: 'Geist', kind: 'sans' },
+      'sohne-mono': { sub: 'JetBrains Mono', alt: 'Geist Mono', kind: 'mono' },
+      inter: null, // already open-source
+      'gt walsheim': { sub: 'Manrope', alt: 'DM Sans', kind: 'sans' },
+      'gt-walsheim': { sub: 'Manrope', alt: 'DM Sans', kind: 'sans' },
+      circular: { sub: 'DM Sans', alt: 'Plus Jakarta Sans', kind: 'sans' },
+      'sf pro display': { sub: 'Inter', alt: 'Geist', kind: 'sans' },
+      'sf pro text': { sub: 'Inter', alt: 'Geist', kind: 'sans' },
+      'sf mono': { sub: 'JetBrains Mono', alt: 'Geist Mono', kind: 'mono' },
+      'helvetica neue': { sub: 'Inter', alt: 'Manrope', kind: 'sans' },
+      helvetica: { sub: 'Inter', alt: 'Manrope', kind: 'sans' },
+      monumentgrotesk: { sub: 'Manrope', alt: 'DM Sans', kind: 'sans' },
+      'monument grotesk': { sub: 'Manrope', alt: 'DM Sans', kind: 'sans' },
+      'soehne-buch': { sub: 'Inter', alt: 'Geist', kind: 'sans' },
+      'inter-var': null,
+    };
+    const subs = [];
+    for (const fam of familiesMap.keys()) {
+      const info = FONT_SUBSTITUTES[fam.toLowerCase()];
+      if (info === null) continue; // open-source already
+      if (!info) continue; // unknown
+      subs.push({ fam, ...info });
+    }
+    if (subs.length) {
+      tlines.push('### Note on Font Substitutes');
+      tlines.push('');
+      const families = subs.map((s) => `\`${s.fam}\``).join(' / ');
+      const sansSub = subs.find((s) => s.kind === 'sans');
+      const monoSub = subs.find((s) => s.kind === 'mono');
+      const parts = [];
+      if (sansSub) parts.push(`**${sansSub.sub}** (or **${sansSub.alt}**) for the sans`);
+      if (monoSub) parts.push(`**${monoSub.sub}** (or **${monoSub.alt}**) for the mono`);
+      const body = `If implementing without access to ${families}, suitable open-source substitutes are ${parts.join(', and ')}. Variable-weight subs match the fine-grained weight axis these brands use; expect to manually adjust line-heights by ±0.02 to compensate for x-height differences.`;
+      tlines.push(body);
+      tlines.push('');
+    }
+
     typographyBody = tlines.join('\n').trim();
   }
   md += sectionMd('Typography', blurb('typography') + typographyBody);
@@ -1366,6 +1410,23 @@ export function generateDesignMd(jobDir, options = {}) {
       }
       ll.push('');
     }
+    // Grid & Container — derive max content width from breakpoints viewport
+    // bounding when available; otherwise infer from harvested viewport.
+    if (breakpoints?.viewports?.length) {
+      ll.push('### Grid & Container');
+      ll.push('');
+      const desktop = breakpoints.viewports.find((v) => /desktop/i.test(v.name)) || breakpoints.viewports[breakpoints.viewports.length - 1];
+      const mobile = breakpoints.viewports.find((v) => /mobile/i.test(v.name)) || breakpoints.viewports[0];
+      const desktopW = desktop?.width;
+      if (desktopW) {
+        ll.push(`- Max content width sits around **${desktopW}px** at the desktop breakpoint — beyond which the layout stops growing and side gutters absorb extra width.`);
+      }
+      if (mobile?.width && desktop?.width && mobile.width !== desktop.width) {
+        ll.push(`- Side gutters scale from desktop down to **${mobile.width}px** mobile; layout collapses to a single column at the smaller breakpoint.`);
+      }
+      ll.push('');
+    }
+
     // Whitespace Philosophy — one deterministic paragraph derived from the
     // largest observed spacing token. If no large rhythm constant was
     // harvested, fall back to a generic statement.
@@ -1381,7 +1442,29 @@ export function generateDesignMd(jobDir, options = {}) {
     layoutBody = ll.join('\n').trim() || 'Layout principles derived from observed component spacing and grid behavior.';
   }
   md += sectionMd('Layout', blurb('spacing') + layoutBody);
-  md += sectionMd('Elevation & Depth', 'No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn\'t reaching the elements we sample — re-harvest with extended probe selectors to surface it.');
+  // Elevation & Depth: when a brand has block-* tokens, elevation is
+  // expressed via color shifts rather than shadows. Note that explicitly
+  // and add a Decorative Depth subsection enumerating the depth devices
+  // we *can* observe (color blocks, dark inverse-canvas, etc.).
+  {
+    const blockTokensList = Object.keys(colorsTable).filter((n) => /^block-/.test(n));
+    const hasInverseCanvas = !!colorsTable['inverse-canvas'];
+    const el = [];
+    if (blockTokensList.length) {
+      el.push(`This brand expresses depth through **color blocks** rather than shadows. No \`box-shadow\` tokens were harvested — sections separate by transitioning between canvas and one of the \`{colors.block-*}\` tints.`);
+      el.push('');
+      el.push('### Decorative Depth');
+      el.push('');
+      el.push(`- **Color-block sections** are the primary depth device. The change from canvas to ${blockTokensList.slice(0, 3).map((n) => `\`{colors.${n}}\``).join(' / ')} is the section break.`);
+      if (hasInverseCanvas) {
+        el.push('- **Inverse-canvas surfaces** (footer, marquee strips, navy story blocks) introduce contrast through luminance rather than overlaid shadow.');
+      }
+      el.push('- Elevation is **flat and saturated**, not soft and shadowed — typical card stacks read as collage rather than physical layering.');
+    } else {
+      el.push('No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn\'t reaching the elements we sample — re-harvest with extended probe selectors to surface it.');
+    }
+    md += sectionMd('Elevation & Depth', el.join('\n'));
+  }
 
   // Shapes: convert flat rounded list into a Border Radius Scale table
   // with a deterministic Use column anchored to canonical token names.
@@ -1407,7 +1490,42 @@ export function generateDesignMd(jobDir, options = {}) {
     for (const [n, v] of Object.entries(roundTable)) {
       sl.push(`| \`{rounded.${n}}\` | ${v} | ${roundUseDescription(n, v)} |`);
     }
-    shapesBody = sl.join('\n');
+    sl.push('');
+
+    // Photography & Illustration Geometry — derive observations from the
+    // rounded scale + observed component patterns. Pick the "image radius"
+    // as the smallest md/lg-tier value (typical image-frame range 8-16px),
+    // falling back to the median radius. Each observation ships only when
+    // its evidence is present.
+    const obs = [];
+    const roundedEntries = Object.entries(roundTable)
+      .map(([n, v]) => ({ name: n, px: parseFloat(v) || 0 }))
+      .filter((r) => r.px > 0);
+    const imageFrame = roundedEntries.find((r) => r.px >= 6 && r.px <= 16)
+      || roundedEntries.find((r) => r.px >= 17 && r.px <= 24);
+    if (imageFrame) {
+      obs.push(`Image frames use \`{rounded.${imageFrame.name}}\` (${imageFrame.px}px) — generous enough to feel friendly, conservative enough to read as editorial.`);
+    }
+    const stickyRadius = roundedEntries.find((r) => r.px >= 2 && r.px <= 6);
+    if (stickyRadius && imageFrame && stickyRadius.name !== imageFrame.name) {
+      obs.push(`Smaller decorative tiles preserve a \`{rounded.${stickyRadius.name}}\` corner for elements that should read as physical objects (badges, sticky notes).`);
+    }
+    const fullRound = roundedEntries.find((r) => r.px >= 999);
+    if (fullRound) {
+      obs.push(`Circular icon containers use \`{rounded.${fullRound.name}}\` — reserved for icon-button surfaces and status glyphs, not photographic frames.`);
+    }
+    // Avatar-shape observation derived from component naming.
+    const hasAvatar = Object.keys(componentBlocks).some((n) => /avatar/i.test(n));
+    if (!hasAvatar) {
+      obs.push('No avatar circles appear in marketing surfaces — the brand avoids personification on its public-facing pages.');
+    }
+    if (obs.length) {
+      sl.push('### Photography & Illustration Geometry');
+      sl.push('');
+      for (const o of obs) sl.push(`- ${o}`);
+    }
+
+    shapesBody = sl.join('\n').trim();
   } else {
     shapesBody = '_No rounding tokens extracted._';
   }

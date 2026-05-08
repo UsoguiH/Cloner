@@ -135,6 +135,10 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 - Tight line-heights on display (≈1.15), generous on body (≈1.45). The contrast reinforces that headlines are graphics and body copy is for reading.
 - Negative letter-spacing scales with size — display tightens to **-0.69px**, body stays near zero. Editorial-feeling display type without sacrificing readability.
 
+### Note on Font Substitutes
+
+If implementing without access to `figmaSans`, suitable open-source substitutes are **Inter** (or **Geist**) for the sans. Variable-weight subs match the fine-grained weight axis these brands use; expect to manually adjust line-heights by ±0.02 to compensate for x-height differences.
+
 ## Layout
 
 ### Spacing System
@@ -149,13 +153,23 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 - `{components.text-input}` — 0px 70px 0px 0px.
 - `{components.button-primary}` — {spacing.space-4}.
 
+### Grid & Container
+
+- Max content width sits around **1440px** at the desktop breakpoint — beyond which the layout stops growing and side gutters absorb extra width.
+- Side gutters scale from desktop down to **390px** mobile; layout collapses to a single column at the smaller breakpoint.
+
 ### Whitespace Philosophy
 
 Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
 
 ## Elevation & Depth
 
-No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn't reaching the elements we sample — re-harvest with extended probe selectors to surface it.
+This brand expresses depth through **color blocks** rather than shadows. No `box-shadow` tokens were harvested — sections separate by transitioning between canvas and one of the `{colors.block-*}` tints.
+
+### Decorative Depth
+
+- **Color-block sections** are the primary depth device. The change from canvas to `{colors.block-mint-green}` / `{colors.block-sky}` is the section break.
+- Elevation is **flat and saturated**, not soft and shadowed — typical card stacks read as collage rather than physical layering.
 
 ## Shapes
 
@@ -165,6 +179,10 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 |---|---|---|
 | `{rounded.lg}` | 80px | Pricing cards, container sections, large image frames. |
 | `{rounded.md}` | 50px | Form inputs, list items, image frames. |
+
+### Photography & Illustration Geometry
+
+- No avatar circles appear in marketing surfaces — the brand avoids personification on its public-facing pages.
 
 ## Components
 

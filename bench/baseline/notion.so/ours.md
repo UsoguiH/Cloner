@@ -165,13 +165,23 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 - `{components.hero-section}` — 0px 0px 32px 0px.
 - `{components.cta-banner}` — 80px 32px.
 
+### Grid & Container
+
+- Max content width sits around **1440px** at the desktop breakpoint — beyond which the layout stops growing and side gutters absorb extra width.
+- Side gutters scale from desktop down to **390px** mobile; layout collapses to a single column at the smaller breakpoint.
+
 ### Whitespace Philosophy
 
 Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
 
 ## Elevation & Depth
 
-No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn't reaching the elements we sample — re-harvest with extended probe selectors to surface it.
+This brand expresses depth through **color blocks** rather than shadows. No `box-shadow` tokens were harvested — sections separate by transitioning between canvas and one of the `{colors.block-*}` tints.
+
+### Decorative Depth
+
+- **Color-block sections** are the primary depth device. The change from canvas to `{colors.block-periwinkle}` / `{colors.block-coral}` is the section break.
+- Elevation is **flat and saturated**, not soft and shadowed — typical card stacks read as collage rather than physical layering.
 
 ## Shapes
 
@@ -182,6 +192,12 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 | `{rounded.lg}` | 12px | Form inputs, list items, image frames. |
 | `{rounded.sm}` | 8px | Small chips, sub-nav tabs. |
 | `{rounded.xs}` | 4px | Anchor / link decoration corners. |
+
+### Photography & Illustration Geometry
+
+- Image frames use `{rounded.lg}` (12px) — generous enough to feel friendly, conservative enough to read as editorial.
+- Smaller decorative tiles preserve a `{rounded.xs}` corner for elements that should read as physical objects (badges, sticky notes).
+- No avatar circles appear in marketing surfaces — the brand avoids personification on its public-facing pages.
 
 ## Components
 

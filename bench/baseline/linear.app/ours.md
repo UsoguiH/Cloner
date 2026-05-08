@@ -187,13 +187,23 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 - `{components.status-badge}` — 0px 6px.
 - `{components.button-primary}` — {spacing.space-5}.
 
+### Grid & Container
+
+- Max content width sits around **1440px** at the desktop breakpoint — beyond which the layout stops growing and side gutters absorb extra width.
+- Side gutters scale from desktop down to **390px** mobile; layout collapses to a single column at the smaller breakpoint.
+
 ### Whitespace Philosophy
 
 Spacing rhythm derives from a small base unit; sections are distinguished by repeated multiples of the base rather than a single oversized rhythm constant.
 
 ## Elevation & Depth
 
-No `box-shadow` tokens harvested from probes on this site. If the brand uses elevation, it isn't reaching the elements we sample — re-harvest with extended probe selectors to surface it.
+This brand expresses depth through **color blocks** rather than shadows. No `box-shadow` tokens were harvested — sections separate by transitioning between canvas and one of the `{colors.block-*}` tints.
+
+### Decorative Depth
+
+- **Color-block sections** are the primary depth device. The change from canvas to `{colors.block-navy}` is the section break.
+- Elevation is **flat and saturated**, not soft and shadowed — typical card stacks read as collage rather than physical layering.
 
 ## Shapes
 
@@ -205,6 +215,13 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 | `{rounded.full}` | 9999px | Circular icon buttons, avatar shapes. |
 | `{rounded.sm}` | 4px | Small chips, sub-nav tabs. |
 | `{rounded.md}` | 5px | Small chips, sub-nav tabs. |
+
+### Photography & Illustration Geometry
+
+- Image frames use `{rounded.xl}` (8px) — generous enough to feel friendly, conservative enough to read as editorial.
+- Smaller decorative tiles preserve a `{rounded.sm}` corner for elements that should read as physical objects (badges, sticky notes).
+- Circular icon containers use `{rounded.full}` — reserved for icon-button surfaces and status glyphs, not photographic frames.
+- No avatar circles appear in marketing surfaces — the brand avoids personification on its public-facing pages.
 
 ## Components
 
