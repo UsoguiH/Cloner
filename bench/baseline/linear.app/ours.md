@@ -50,6 +50,7 @@ rounded:
   md: 5px
 spacing:
   space-5: 16px
+  space-8: 72px
 components:
   button-tertiary:
     textColor: "{colors.ink-subtle}"
@@ -114,6 +115,11 @@ components:
     rounded: "{rounded.md}"
     padding: "{spacing.space-5}"
     height: 40px
+  color-block-section-navy:
+    backgroundColor: "{colors.block-navy}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.space-8}"
 ---
 
 # Linear
@@ -185,7 +191,7 @@ Design system extracted from a structural clone. Canvas #08090a, primary accent 
 | `{spacing.space-5}` | 16px | yes |
 | `{spacing.space-6}` | 18px | — |
 | `{spacing.space-7}` | 32px | — |
-| `{spacing.space-8}` | 72px | — |
+| `{spacing.space-8}` | 72px | yes |
 
 ### Component Padding (observed)
 
@@ -282,6 +288,11 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 
 **`hero-section`**
 - text `{colors.ink}`, type `{typography.body-2}`, padding 0px 32px.
+
+### Color-Block Sections
+
+**`color-block-section-navy`**
+- background `{colors.block-navy}`, text `{colors.ink}`, padding `{spacing.space-8}`, rounded `{rounded.xl}`.
 
 ### Badges & Tags
 

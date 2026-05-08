@@ -35,7 +35,8 @@ const COMPONENT_CATEGORIES = [
   ['Header', /(^|-)(header|topbar|appbar|top-nav)(\b|-|$)/i],
   ['Footer', /(^|-)(footer|footnav)(\b|-|$)/i],
   ['Navigation', /(^|-)(nav|menu|tab|breadcrumb|sidebar|pagination)(\b|-|$)/i],
-  ['Sections', /(^|-)(section|block|hero|color-block)(\b|-|$)/i],
+  ['Color-Block Sections', /^color-block(\b|-|$)/i],
+  ['Sections', /(^|-)(section|block|hero)(\b|-|$)/i],
   ['Badges & Tags', /(^|-)(badge|chip|pill|tag|label|status)(\b|-|$)/i],
   ['Alerts & Banners', /(^|-)(alert|toast|notification|banner|notice|callout)(\b|-|$)/i],
   ['Icons & Avatars', /(^|-)(avatar|icon|logo)(\b|-|$)/i],
@@ -839,6 +840,55 @@ export function generateDesignMd(jobDir, options = {}) {
     componentBlocks['button-primary'] = block;
   }
 
+  // Synthesize color-block-section-<hue> components for every `block-*` color
+  // in the role assignment. These wire orphaned block-* tokens (lint-warns
+  // cleared) and add a Color-Block Sections subsection to ## Components —
+  // matching the structural shape of getdesign.md's "Color-Block Sections
+  // (signature)" group on figma.com. Each section uses the largest rounded
+  // scale (so the corners read as "panel") and the largest available
+  // spacing token for interior padding (matching the poster-style padding
+  // brands actually use on these surfaces).
+  const blockRoleNames = Object.keys(roles).filter((n) => /^block-/.test(n));
+  if (blockRoleNames.length) {
+    // Pick a "panel" rounded — prefer xl/lg, fall back to md.
+    const roundCandidates = Object.entries(roundedScale).filter(([n]) => n !== 'full');
+    const panelRound = roundCandidates.find(([n]) => n === 'xl')
+      || roundCandidates.find(([n]) => n === 'lg')
+      || roundCandidates.find(([n]) => n === 'md')
+      || roundCandidates[0];
+    // Pick a generous interior padding from the spacing scale (largest emit).
+    const sortedSpacing = Object.entries(spacingScale).sort((a, b) => b[1].px - a[1].px);
+    const panelSpace = sortedSpacing[0];
+    // Determine an ink color for content sitting on the block. Most blocks
+    // are pastels → ink reads dark; a `block-navy` / `block-forest` would
+    // need inverse-ink, but our hue mapping puts those under surface tiers
+    // not block-* (block-* requires saturation 0.05–0.35), so default to ink.
+    const inkRole = roles.ink ? '{colors.ink}' : (roles.primary ? '{colors.primary}' : null);
+
+    for (const blockName of blockRoleNames) {
+      const compName = `color-block-section-${blockName.replace(/^block-/, '')}`;
+      if (componentBlocks[compName]) continue;
+      const block = {
+        backgroundColor: `{colors.${blockName}}`,
+      };
+      usedColorRoles.add(blockName);
+      if (inkRole) {
+        block.textColor = inkRole;
+        if (roles.ink) usedColorRoles.add('ink');
+        else if (roles.primary) usedColorRoles.add('primary');
+      }
+      if (panelRound) {
+        block.rounded = `{rounded.${panelRound[0]}}`;
+        usedRound.add(panelRound[0]);
+      }
+      if (panelSpace) {
+        block.padding = `{spacing.${panelSpace[0]}}`;
+        usedSpacing.add(panelSpace[0]);
+      }
+      componentBlocks[compName] = block;
+    }
+  }
+
   // If primary or on-primary still aren't referenced (e.g., no roles found),
   // we'll fail the missing-primary lint — that's a "this site has no extractable
   // design system" signal, which is correct behavior.
@@ -1576,7 +1626,8 @@ export function generateDesignMd(jobDir, options = {}) {
     }
     const CATEGORY_ORDER = [
       'Buttons', 'Inputs & Forms', 'Cards & Containers', 'Navigation',
-      'Header', 'Footer', 'Sections', 'Badges & Tags', 'Alerts & Banners',
+      'Header', 'Footer', 'Sections', 'Color-Block Sections',
+      'Badges & Tags', 'Alerts & Banners',
       'Icons & Avatars', 'Typography', 'Other',
     ];
 

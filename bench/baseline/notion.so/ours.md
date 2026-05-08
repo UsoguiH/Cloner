@@ -37,6 +37,9 @@ rounded:
   lg: 12px
   sm: 8px
   xs: 4px
+  xl: 14px
+spacing:
+  space-8: 125px
 components:
   button-tertiary:
     typography: "{typography.button-3}"
@@ -96,6 +99,16 @@ components:
     typography: "{typography.button-3}"
     rounded: "{rounded.lg}"
     padding: 32px
+  color-block-section-periwinkle:
+    backgroundColor: "{colors.block-periwinkle}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.space-8}"
+  color-block-section-coral:
+    backgroundColor: "{colors.block-coral}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.space-8}"
 ---
 
 # Notion
@@ -164,7 +177,7 @@ Design system extracted from a structural clone. Canvas #ffffff, primary accent 
 | `{spacing.space-5}` | 16px | — |
 | `{spacing.space-6}` | 32px | — |
 | `{spacing.space-7}` | 56px | — |
-| `{spacing.space-8}` | 125px | — |
+| `{spacing.space-8}` | 125px | yes |
 
 ### Component Padding (observed)
 
@@ -202,6 +215,7 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 | `{rounded.lg}` | 12px | Form inputs, list items, image frames. |
 | `{rounded.sm}` | 8px | Small chips, sub-nav tabs. |
 | `{rounded.xs}` | 4px | Anchor / link decoration corners. |
+| `{rounded.xl}` | 14px | Form inputs, list items, image frames. |
 
 ### Photography & Illustration Geometry
 
@@ -262,6 +276,14 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 
 **`hero-section`**
 - text `{colors.surface-2}`, type `{typography.button-3}`, padding 0px 0px 32px 0px.
+
+### Color-Block Sections
+
+**`color-block-section-periwinkle`**
+- background `{colors.block-periwinkle}`, text `{colors.ink}`, padding `{spacing.space-8}`, rounded `{rounded.xl}`.
+
+**`color-block-section-coral`**
+- background `{colors.block-coral}`, text `{colors.ink}`, padding `{spacing.space-8}`, rounded `{rounded.xl}`.
 
 ### Badges & Tags
 
@@ -330,7 +352,7 @@ Deterministic analysis of 78 sentences harvested from page H1–H4 / paragraph /
 ### Do
 
 - Reserve `{colors.primary}` for genuine primary CTAs and selected states. Don't use it as a decorative accent.
-- When introducing a story section, choose **one** color block from the `{colors.block-*}` family (2 available) and let it span full content width with `{rounded.lg}` corners.
+- When introducing a story section, choose **one** color block from the `{colors.block-*}` family (2 available) and let it span full content width with `{rounded.xl}` corners.
 - Keep type in `NotionInter` at variable weights — pick from 400, 500, 700 to express hierarchy.
 - Allow the page to **return to canvas** between every two color blocks so each block reads as deliberate.
 - Pair `{components.button-primary}` and `{components.button-secondary}` whenever a section needs both a primary action and a secondary action — the contrast pair is the brand signature.

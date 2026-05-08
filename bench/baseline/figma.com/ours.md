@@ -40,6 +40,7 @@ rounded:
   md: 50px
 spacing:
   space-4: 16px
+  space-8: 120px
 components:
   button-tertiary:
     textColor: "{colors.ink}"
@@ -86,6 +87,16 @@ components:
     rounded: "{rounded.md}"
     padding: "{spacing.space-4}"
     height: 40px
+  color-block-section-mint-green:
+    backgroundColor: "{colors.block-mint-green}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: "{spacing.space-8}"
+  color-block-section-sky:
+    backgroundColor: "{colors.block-sky}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: "{spacing.space-8}"
 ---
 
 # Figma
@@ -153,7 +164,7 @@ If implementing without access to `figmaSans`, suitable open-source substitutes 
 | `{spacing.space-5}` | 21px | — |
 | `{spacing.space-6}` | 40px | — |
 | `{spacing.space-7}` | 70px | — |
-| `{spacing.space-8}` | 120px | — |
+| `{spacing.space-8}` | 120px | yes |
 
 ### Component Padding (observed)
 
@@ -161,6 +172,8 @@ If implementing without access to `figmaSans`, suitable open-source substitutes 
 - `{components.footer}` — 120px 0px.
 - `{components.text-input}` — 0px 70px 0px 0px.
 - `{components.button-primary}` — {spacing.space-4}.
+- `{components.color-block-section-mint-green}` — {spacing.space-8}.
+- `{components.color-block-section-sky}` — {spacing.space-8}.
 
 ### Grid & Container
 
@@ -227,6 +240,14 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 
 **`footer`**
 - background `{colors.ink}`, text `{colors.canvas}`, type `{typography.button-6}`, padding 120px 0px.
+
+### Color-Block Sections
+
+**`color-block-section-mint-green`**
+- background `{colors.block-mint-green}`, text `{colors.ink}`, padding `{spacing.space-8}`, rounded `{rounded.lg}`.
+
+**`color-block-section-sky`**
+- background `{colors.block-sky}`, text `{colors.ink}`, padding `{spacing.space-8}`, rounded `{rounded.lg}`.
 
 ## Motion
 
@@ -373,6 +394,7 @@ _Stats: 65/75 probes shift across viewports; 6 distinct properties affected._
 
 - Below ~390px, multi-item top-nav collapses to a hamburger / drawer pattern — the inline links don't fit alongside logo + CTAs at narrower widths.
 - Multi-column grids (pricing tiers, feature cards, customer logos) step down through the **1440px → 768px → 390px** viewport set: 4-up at desktop typically becomes 2-up at tablet and 1-up (stacked) on mobile.
+- Section padding (`{components.color-block-section-mint-green}`, `{components.color-block-section-sky}`) shrinks proportionally below the tablet breakpoint — mobile uses tighter horizontal gutters so content edges don't dominate the viewport.
 - Footer column groups stack vertically below ~390px; on wider viewports they sit side-by-side with consistent inter-group spacing.
 
 ### Image Behavior

@@ -53,6 +53,9 @@ rounded:
   2xl: 8px
   sm: 4px
   md: 5px
+  xl: 7px
+spacing:
+  space-8: 112px
 components:
   button-tertiary:
     typography: "{typography.button}"
@@ -123,6 +126,11 @@ components:
     rounded: "{rounded.md}"
     padding: 8px 16px
     height: 40px
+  color-block-section-periwinkle:
+    backgroundColor: "{colors.block-periwinkle}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.xl}"
+    padding: "{spacing.space-8}"
 ---
 
 # Stripe
@@ -203,13 +211,14 @@ If implementing without access to `sohne-var`, suitable open-source substitutes 
 | `{spacing.space-5}` | 15px | — |
 | `{spacing.space-6}` | 20px | — |
 | `{spacing.space-7}` | 34px | — |
-| `{spacing.space-8}` | 112px | — |
+| `{spacing.space-8}` | 112px | yes |
 
 ### Component Padding (observed)
 
 - `{components.button-secondary}` — 1px 6px.
 - `{components.text-input}` — 5px 12px 7px 12px.
 - `{components.button-primary}` — 8px 16px.
+- `{components.color-block-section-periwinkle}` — {spacing.space-8}.
 
 ### Grid & Container
 
@@ -238,6 +247,7 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 | `{rounded.2xl}` | 8px | Form inputs, list items, image frames. |
 | `{rounded.sm}` | 4px | Small chips, sub-nav tabs. |
 | `{rounded.md}` | 5px | Small chips, sub-nav tabs. |
+| `{rounded.xl}` | 7px | Small chips, sub-nav tabs. |
 
 ### Photography & Illustration Geometry
 
@@ -301,6 +311,11 @@ This brand expresses depth through **color blocks** rather than shadows. No `box
 - text `{colors.ink}`, type `{typography.subhead-4}`.
   - **Hover**: text `{colors.ink-hover-5}`.
   - **Focus**: text `{colors.ink-focus-2}`.
+
+### Color-Block Sections
+
+**`color-block-section-periwinkle`**
+- background `{colors.block-periwinkle}`, text `{colors.ink}`, padding `{spacing.space-8}`, rounded `{rounded.xl}`.
 
 ### Badges & Tags
 
