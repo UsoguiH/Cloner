@@ -1,10 +1,11 @@
 ---
 name: Stripe
-description: Stripe pairs a highly technical, grid-driven architecture with sweeping gradients and oversized typography to communicate scale and modern financial infrastructure.
+description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #643afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   canvas: "#ffffff"
-  primary: "#635bff"
+  primary: "#643afd"
   ink: "#425466"
+  ink-muted: "#7d8ba4"
   on-primary: "#ffffff"
   surface-1: "#f8fafd"
   surface-2: "#f6f9fc"
@@ -14,11 +15,12 @@ colors:
   hairline-strong: "#e2e4ff"
   hairline-tertiary: "#e7ecf1"
   ink-hover: "#4835db"
-  ink-focus: "#5039f5"
-  ink-hover-2: "#2e2b8c"
-  ink-hover-3: "#3b43a9"
-  ink-focus-2: "#142b55"
-  surface-hover: "#484bc5"
+  ink-focus: "#533afc"
+  surface-hover: "#e1e3ff"
+  ink-hover-2: "#8b86e6"
+  ink-focus-2: "#4c37e6"
+  ink-focus-3: "#a19eef"
+  ink-hover-3: "#25357a"
 typography:
   button:
     fontFamily: sohne-var
@@ -46,38 +48,41 @@ typography:
     fontWeight: 500
     lineHeight: 1.25
 rounded:
-  xl-7: 17px
   2xl: 8px
+  md: 5px
+spacing:
+  space-5: 16px
 components:
   button-tertiary:
     typography: "{typography.button}"
   button-tertiary-hover:
     textColor: "{colors.ink-hover}"
-    borderColor: "{colors.ink-hover}"
   button-tertiary-focus:
     textColor: "{colors.ink-focus}"
-    borderColor: "{colors.ink-focus}"
+  button-tertiary-hover-2:
+    textColor: "{colors.ink-focus}"
   button-secondary:
     backgroundColor: "{colors.canvas}"
     typography: "{typography.button-5}"
     padding: 17px 32px 19px 16px
     height: 60px
   button-secondary-hover:
-    textColor: "{colors.ink-hover-2}"
-    borderColor: "{colors.ink-hover-2}"
+    backgroundColor: "{colors.surface-hover}"
+    textColor: "{colors.ink-focus}"
+  button-secondary-focus:
+    backgroundColor: "{colors.surface-hover}"
+    textColor: "{colors.ink-focus}"
   button-secondary-hover-2:
-    opacity: 0.878295
+    textColor: "{colors.ink}"
   button-secondary-focus-2:
-    opacity: 0.878295
+    textColor: "{colors.ink-focus-2}"
   hero-section:
     textColor: "{colors.ink}"
     typography: "{typography.subhead-6}"
   hero-section-hover:
     textColor: "{colors.ink-hover-3}"
-    borderColor: "{colors.ink-hover-3}"
   hero-section-focus:
-    textColor: "{colors.ink-focus-2}"
-    borderColor: "{colors.ink-focus-2}"
+    textColor: "{colors.ink-hover-3}"
   feature-card:
     typography: "{typography.button}"
   cta-banner:
@@ -89,17 +94,6 @@ components:
     typography: "{typography.button}"
   footer:
     typography: "{typography.subhead-6}"
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.canvas}"
-    typography: "{typography.button-5}"
-    rounded: "{rounded.xl-7}"
-    padding: 3px 12px 6px 16px
-    height: 33px
-  button-primary-hover:
-    backgroundColor: "{colors.surface-hover}"
-  button-primary-focus:
-    backgroundColor: "{colors.surface-hover}"
   pricing-card:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
@@ -117,45 +111,44 @@ components:
     typography: "{typography.subhead-6}"
     padding: 11px 17px
     height: 68px
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.space-5}"
+    height: 40px
 ---
 
 # Stripe
 
 ## Overview
 
-Stripe balances strict utility with visual drama. The system leans heavily on precise architectural layouts punctuated by energetic background meshes and massive, confident typography.
-
-## Voice
-
-- **Architectural** — Faint grid lines rendered in Ghost Wireframe and stacked backgrounds like Cloud Surface create a highly structured, layered canvas.
-- **Vibrant** — Sweeping, high-energy background gradients and sharp Stripe Blurple buttons contrast aggressively against the stark Canvas White base.
-- **Precise** — Crisp sohne-var typography and exactingly placed Soft Lavender Line borders partition complex product details into strict bento layouts.
+Design system extracted from a structural clone. Canvas #ffffff, primary accent #643afd, dominant typeface sohne-var. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-The foundation relies on a clean Canvas White ground layered with cool, subtle tones like Mist Gray and Cloud Surface. Vibrant interactive touches are strictly reserved for core actions, driven entirely by Stripe Blurple and Active Surface Blurple.
-
-- **Canvas White** `#ffffff` (`canvas`) — Forms the foundational background for Stripe, providing a clean expanse that allows dynamic typography and vibrant gradients to stand out.
-- **Stripe Blurple** `#635bff` (`primary`) — Serves as the signature accent across the Stripe experience, driving primary calls to action and highlighting key marketing typography.
-- **Slate Ink** `#425466` (`ink`) — Acts as the primary workhorse for typography, delivering crisp legibility and a professional tone for paragraphs and secondary headers.
-- **Knockout White** `#ffffff` (`on-primary`) — Ensures strict accessibility and high contrast when rendering text or icons inside primary branded buttons and active components.
-- **Cloud Surface** `#f8fafd` (`surface-1`) — Provides a barely-there blue tint for alternating layout sections, creating subtle pacing in Stripe product layouts.
-- **Mist Gray** `#f6f9fc` (`surface-2`) — Establishes hierarchy for secondary background panels and subdued structural areas without overwhelming the core content.
-- **Dusk Surface** `#e5edf5` (`surface-3`) — Defines deeper elevated layers or muted component backgrounds to establish a clear architectural hierarchy.
-- **Soft Lavender Surface** `#e8e9ff` (`surface-4`) — Introduces a faint branded purple hue for secondary interactive components and emphasized background callouts.
-- **Vibrant Divider** `#b9b9f9` (`hairline`) — Draws precise, colorful boundaries and borders for interactive components like secondary buttons and focused input fields.
-- **Soft Lavender Line** `#e2e4ff` (`hairline-strong`) — Details fine structural borders and subtle dividers that partition content with a hint of the signature Stripe brand identity.
-- **Ghost Wireframe** `#e7ecf1` (`hairline-tertiary`) — Renders the faintest architectural grid lines across the Stripe canvas, establishing a highly technical and precise aesthetic.
-- **Deep Blurple Hover** `#4835db` (`ink-hover`) — Signals interactivity by deepening the primary brand color when a user hovers over key links and active typography.
-- **Vibrant Ink Focus** `#5039f5` (`ink-focus`) — Catches the user's attention during keyboard navigation, ensuring focused text elements are accessible and distinctly highlighted.
-- **Midnight Ink Hover** `#2e2b8c` (`ink-hover-2`) — Provides a darker, more dramatic hover state for secondary interactive text strings and nuanced navigational links.
-- **ink-hover-3** `#3b43a9`
-- **ink-focus-2** `#142b55`
-- **Active Surface Blurple** `#484bc5` (`surface-hover`) — Elevates hovered container elements and secondary buttons with a distinct mid-tone wash of the core Stripe identity.
+- **canvas** `#ffffff`
+- **primary** `#643afd`
+- **ink** `#425466`
+- **ink-muted** `#7d8ba4`
+- **on-primary** `#ffffff`
+- **surface-1** `#f8fafd`
+- **surface-2** `#f6f9fc`
+- **surface-3** `#e5edf5`
+- **surface-4** `#e8e9ff`
+- **hairline** `#b9b9f9`
+- **hairline-strong** `#e2e4ff`
+- **hairline-tertiary** `#e7ecf1`
+- **ink-hover** `#4835db`
+- **ink-focus** `#533afc`
+- **surface-hover** `#e1e3ff`
+- **ink-hover-2** `#8b86e6`
+- **ink-focus-2** `#4c37e6`
+- **ink-focus-3** `#a19eef`
+- **ink-hover-3** `#25357a`
 
 ## Typography
-
-Driven exclusively by sohne-var, the type system scales gracefully from lightweight, oversized hero statements to tightly tracked utility text. Slate Ink grounds paragraph legibility, while Knockout White ensures high contrast inside primary buttons.
 
 - **button** — sohne-var 16px/400
 - **button-5** — sohne-var 15px/400
@@ -165,8 +158,6 @@ Driven exclusively by sohne-var, the type system scales gracefully from lightwei
 
 ## Layout
 
-An architectural grid is made visible through fine Ghost Wireframe dividers. Generous padding creates distinct, breathable zones that separate complex technical diagrams from plainspoken marketing copy.
-
 Layout principles derived from observed component spacing and grid behavior. See spacing tokens below.
 
 ## Elevation & Depth
@@ -175,18 +166,18 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Shapes
 
-- **xl-7** `17px`
 - **2xl** `8px`
+- **md** `5px`
 
 ## Components
-
-Interactive surfaces are contained within tightly rounded cards, often framed by Soft Lavender Line borders. Buttons are compact and unadorned, relying purely on Stripe Blurple and crisp sohne-var text to signal action without unnecessary decoration.
 
 - **button-tertiary**
 - **button-tertiary-hover**
 - **button-tertiary-focus**
+- **button-tertiary-hover-2**
 - **button-secondary**
 - **button-secondary-hover**
+- **button-secondary-focus**
 - **button-secondary-hover-2**
 - **button-secondary-focus-2**
 - **hero-section**
@@ -197,22 +188,106 @@ Interactive surfaces are contained within tightly rounded cards, often framed by
 - **nav**
 - **top-nav**
 - **footer**
-- **button-primary**
-- **button-primary-hover**
-- **button-primary-focus**
 - **pricing-card**
 - **status-badge**
 - **testimonial-card**
 - **text-input**
+- **button-primary**
+
+## Motion
+
+| Tier | Duration | Probes |
+|---|---|---|
+| `motion.fast` | 150ms | 41 |
+| `motion.medium` | 300ms | 99 |
+| `motion.slow` | 600ms | 50 |
+
+### Easings
+
+| Token | Curve | Probes |
+|---|---|---|
+| `motion.ease.ease` | `ease` | 154 |
+| `motion.ease.custom-2` | `cubic-bezier(0.25, 1, 0.5, 1)` | 47 |
+| `motion.ease.custom-3` | `cubic-bezier(0.215, 0.61, 0.355, 1)` | 32 |
+| `motion.ease.custom-4` | `cubic-bezier(0.45, 0.05, 0.55, 0.95)` | 31 |
+
+Sample transitions observed: color + background-color at 240ms cubic-bezier(0.45, 0.05, 0.55, 0.95); z-index at 100ms steps(1); background-color at 300ms cubic-bezier(0.25, 1, 0.5, 1).
+
+## Assets
+
+### Logo
+
+Saved at `assets/logo.svg` — 60×25.
+
+### Fonts
+
+Downloaded next to this file — drop the `assets/fonts/` directory into your project to use them directly.
+
+| Family | Weight | Style | File | Source |
+|---|---|---|---|---|
+| sohne-var | 1 1000 | normal | `assets/fonts/0ab0832c.woff2` | https://b.stripecdn.com/mkt-ssr-statics/assets/_next/static/media/Sohne.cb178166.woff2 |
+| SourceCodePro | 500 | normal | `assets/fonts/ec203ee5.woff2` | https://b.stripecdn.com/mkt-ssr-statics/assets/_next/static/media/SourceCodePro-Medium.f5ba3e6a.woff2 |
+| sohne-var | 1 1000 | normal | `assets/fonts/f5772cea.woff2` | https://b.stripecdn.com/mkt-statics-srv/assets/v1/f965fdf4.woff2 |
+| SourceCodePro | 500 | normal | `assets/fonts/8d8b18c4.woff2` | https://b.stripecdn.com/mkt-statics-srv/assets/v1/1a930247.woff2 |
 
 ## Do's and Don'ts
 
 - **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.
 - **Don't** introduce new color roles outside the documented palette without updating this file.
 
+## Breakpoints
+
+Per-viewport probe metrics captured at mobile 390px / tablet 768px / desktop 1440px. Properties whose computed value differs across viewports surface here.
+
+| Element | Property | Mobile | Tablet | Desktop |
+|---|---|---|---|---|
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `fontSize` | 18px | 18px | 14px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingTop` | 16px | 16px | 10.5px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingRight` | 0px | 0px | 20px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingBottom` | 16px | 16px | 13.5px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingLeft` | 0px | 0px | 20px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `boundingWidth` | 0 | 0 | 84 |
+| `h2.CopyTitle.CopyTitle--variantDetail.BlogIndexP` | `fontSize` | 18px | 18px | 14px |
+| `h2.CopyTitle.CopyTitle--variantDetail.BlogIndexP` | `paddingTop` | 16px | 16px | 11.5px |
+| `h2.CopyTitle.CopyTitle--variantDetail.BlogIndexP` | `paddingRight` | 0px | 0px | 20px |
+| `h2.CopyTitle.CopyTitle--variantDetail.BlogIndexP` | `paddingBottom` | 16px | 16px | 14.5px |
+| `h2.CopyTitle.CopyTitle--variantDetail.BlogIndexP` | `paddingLeft` | 0px | 0px | 20px |
+| `h2.CopyTitle.CopyTitle--variantDetail.BlogIndexP` | `boundingWidth` | 0 | 0 | 137 |
+| `span.AnimatedCardGraphic__name` | `paddingTop` | 12px | 12px | 10px |
+| `span.AnimatedCardGraphic__name` | `paddingRight` | 12px | 24px | 16px |
+| `span.AnimatedCardGraphic__name` | `paddingBottom` | 14px | 14px | 10px |
+| `span.AnimatedCardGraphic__name` | `paddingLeft` | 16px | 32px | 16px |
+| `span.AnimatedCardGraphic__name` | `gap` | 16px | 16px | 28px |
+| `span.AnimatedCardGraphic__name` | `boundingWidth` | 390 | 768 | 1262 |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `fontSize` | 18px | 18px | 14px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingTop` | 16px | 16px | 12px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingBottom` | 16px | 16px | 12px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `display` | inline-flex | inline-flex | flex |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `boundingWidth` | 0 | 0 | 60 |
+| `button.hds-button.personalize-page__retry-button` | `fontSize` | 18px | 18px | 14px |
+| `button.hds-button.personalize-page__retry-button` | `paddingTop` | 16px | 16px | 12px |
+| `button.hds-button.personalize-page__retry-button` | `paddingBottom` | 16px | 16px | 12px |
+| `button.hds-button.personalize-page__retry-button` | `boundingWidth` | 0 | 0 | 91 |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `fontSize` | 18px | 18px | 14px |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `paddingTop` | 16px | 16px | 12px |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `paddingBottom` | 16px | 16px | 12px |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `boundingWidth` | 0 | 0 | 77 |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `fontSize` | 18px | 18px | 14px |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `paddingTop` | 16px | 16px | 12px |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `paddingBottom` | 16px | 16px | 12px |
+| `button.SiteHeaderNavItem__link.SiteHeaderNavItem` | `boundingWidth` | 0 | 0 | 78 |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `fontSize` | 18px | 18px | 14px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingTop` | 16px | 16px | 12px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `paddingBottom` | 16px | 16px | 12px |
+| `h1.CopyTitle.CopyTitle--variant.CopyTitle--inlin` | `boundingWidth` | 0 | 0 | 44 |
+
+_158 additional probe(s) shift across viewports — see `output/screenshots/index.json` per-viewport metrics for the full set._
+
+_Stats: 166/193 probes shift across viewports; 8 distinct properties affected._
+
 ## Responsive Behavior
 
-Harvest taken at 1440×900 (5 pages crawled). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.
+Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.
 
 ## Iteration Guide
 

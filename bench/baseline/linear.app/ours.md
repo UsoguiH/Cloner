@@ -1,6 +1,6 @@
 ---
 name: Linear
-description: Linear is a precision-grade development system that presents a dense, dark-mode native interface optimized for focus, speed, and high-fidelity software creation.
+description: "Design system extracted from a structural clone. Canvas #08090a, primary accent #5e6ad2, dominant typeface Inter Variable. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   canvas: "#08090a"
   primary: "#5e6ad2"
@@ -15,9 +15,9 @@ colors:
   hairline: "#23252a"
   hairline-strong: "#2f2f31"
   hairline-tertiary: "#5c5d5f"
-  ink-hover: "#666a71"
   surface-hover: "#5e69c1"
-  ink-hover-2: "#34343a"
+  surface-hover-2: "#eaeaeb"
+  ink-hover: "#34343a"
 typography:
   button:
     fontFamily: Inter Variable
@@ -58,15 +58,10 @@ components:
     padding: 0px 5px 0px 2px
     height: 36px
   button-tertiary-hover:
-    textColor: "{colors.ink-hover}"
-    borderColor: "{colors.ink-hover}"
-  button-tertiary-focus:
-    textColor: "{colors.ink-hover}"
-    borderColor: "{colors.ink-hover}"
-  button-tertiary-hover-2:
     backgroundColor: "{colors.surface-1}"
     textColor: "{colors.ink-subtle}"
-    borderColor: "{colors.ink-subtle}"
+  button-tertiary-hover-2:
+    textColor: "{colors.ink-muted}"
   button-secondary:
     typography: "{typography.button-4}"
     rounded: "{rounded.full}"
@@ -76,6 +71,8 @@ components:
     backgroundColor: "{colors.surface-hover}"
   button-secondary-focus:
     backgroundColor: "{colors.surface-hover}"
+  button-secondary-hover-2:
+    backgroundColor: "{colors.surface-hover-2}"
   text-input:
     typography: "{typography.mono}"
     padding: 0px 32px 0px 56px
@@ -96,10 +93,8 @@ components:
     typography: "{typography.body-2}"
   feature-card-hover:
     backgroundColor: "{colors.hairline}"
-    borderColor: "{colors.ink-hover-2}"
   feature-card-focus:
     backgroundColor: "{colors.hairline}"
-    borderColor: "{colors.ink-hover-2}"
   hero-section:
     textColor: "{colors.ink}"
     typography: "{typography.body-2}"
@@ -125,39 +120,28 @@ components:
 
 ## Overview
 
-The visual identity of Linear is indistinguishable from its application interface. It leverages a strict monochrome foundation, purposeful typographic contrast, and utilitarian components to build an environment tuned for high-velocity software development.
-
-## Voice
-
-- **Precise** — The interface relies on strict geometric alignments, one-pixel Primary Hairline borders, and dense informational hierarchies to project exactness.
-- **Subdued** — By grounding the canvas in Deep Space Black and reserving Primary Button Fill for primary actions, the surface fades away to let the user's work stand out.
-- **Builder-focused** — The integration of Berkeley Mono for technical data and dense tabular layouts signals a tool built exclusively for technical teams.
-- **Uncompromising** — High-contrast typography using Primary Ink against Primary Surface backgrounds demands attention without relying on superfluous ornamentation.
+Design system extracted from a structural clone. Canvas #08090a, primary accent #5e6ad2, dominant typeface Inter Variable. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-Linear uses a deliberately restrained dark palette anchored by Deep Space Black and Primary Surface to reduce eye strain during long sessions. Linear Violet acts as a sole programmatic accent, guiding the eye toward key interactive states without overwhelming the data.
-
-- **Deep Space Black** `#08090a` (`canvas`) — This is the primary background color for the entire Linear marketing site, establishing the deep, focused canvas for all content.
-- **Linear Violet** `#5e6ad2` (`primary`) — Linear Violet serves as the primary accent color for links, highlights, and key interactive elements, drawing user attention to important actions.
-- **Primary Ink** `#f7f8f8` (`ink`) — Primary Ink is used for high-emphasis text, like headlines and main navigation, ensuring maximum readability against dark backgrounds on the Linear site.
-- **Muted Prose** `#d0d6e0` (`ink-muted`) — Muted Prose provides the color for secondary body copy and descriptions, offering clear legibility without competing with primary headlines in the Linear interface.
-- **Subtle Interface Text** `#8a8f98` (`ink-subtle`) — This subtle gray is used for standard interface text and metadata throughout the Linear product, maintaining a clean and focused user experience.
-- **Tertiary Metadata** `#62666d` (`ink-tertiary`) — Tertiary Metadata is applied to the least prominent text elements, such as timestamps and secondary identifiers, ensuring they remain available but unobtrusive.
-- **Primary Button Fill** `#ffffff` (`on-primary`) — This pure white is reserved for high-contrast fills, most notably on primary call-to-action buttons, making them stand out on the Linear homepage.
-- **Primary Surface** `#0f1011` (`surface-1`) — Primary Surface provides the foundational background color for the main content areas and panels within the Linear application interface.
-- **Subtle Component Surface** `#3b3b3b` (`surface-2`) — This subtle surface color is used for contained elements like code blocks or highlighted regions, providing slight separation from the primary background in Linear.
-- **Popover Surface** `#474747` (`surface-3`) — This distinct surface color is used for elevated components like tooltips and popovers, visually lifting them from the main Linear application pane.
-- **Primary Hairline** `#23252a` (`hairline`) — The Primary Hairline defines soft borders and dividers between major UI regions in the Linear application, creating structure without visual noise.
-- **Strong Hairline** `#2f2f31` (`hairline-strong`) — This more prominent hairline is used to outline key containers, providing a clear visual boundary for the main application window within the Linear site.
-- **Component Border** `#5c5d5f` (`hairline-tertiary`) — This visible border is applied to smaller, self-contained components like avatars or tags to give them definition against their background in the Linear UI.
-- **Interface Hints** `#666a71` (`ink-hover`) — This subtle ink is used for placeholder text and contextual hints, guiding users without demanding attention in the Linear application.
-- **Primary Accent Hover** `#5e69c1` (`surface-hover`) — Primary Accent Hover provides immediate visual feedback when a user interacts with key links or calls to action within the Linear brand experience.
-- **Ink on Light** `#34343a` (`ink-hover-2`) — This dark ink is used for text on light-colored backgrounds, such as primary buttons, ensuring high contrast and legibility for key actions on the Linear site.
+- **canvas** `#08090a`
+- **primary** `#5e6ad2`
+- **ink** `#f7f8f8`
+- **ink-muted** `#d0d6e0`
+- **ink-subtle** `#8a8f98`
+- **ink-tertiary** `#62666d`
+- **on-primary** `#ffffff`
+- **surface-1** `#0f1011`
+- **surface-2** `#3b3b3b`
+- **surface-3** `#474747`
+- **hairline** `#23252a`
+- **hairline-strong** `#2f2f31`
+- **hairline-tertiary** `#5c5d5f`
+- **surface-hover** `#5e69c1`
+- **surface-hover-2** `#eaeaeb`
+- **ink-hover** `#34343a`
 
 ## Typography
-
-The typographic system pairs the utilitarian legibility of Inter Variable with the mechanical precision of Berkeley Mono. Linear uses stark contrast, scaling from Primary Ink headlines down to Subtle Interface Text, to establish a strict reading hierarchy across dense application views.
 
 - **button** — Inter Variable 14px/500
 - **button-4** — Inter Variable 13px/500
@@ -182,15 +166,13 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Components
 
-Application components in Linear are designed to be tightly packed and functionally dense, separated only by subtle Primary Hairline borders. This approach favors raw utility, surfacing metadata and actions inline to keep users in a state of flow.
-
 - **button-tertiary**
 - **button-tertiary-hover**
-- **button-tertiary-focus**
 - **button-tertiary-hover-2**
 - **button-secondary**
 - **button-secondary-hover**
 - **button-secondary-focus**
+- **button-secondary-hover-2**
 - **text-input**
 - **top-nav**
 - **nav**
@@ -203,14 +185,135 @@ Application components in Linear are designed to be tightly packed and functiona
 - **status-badge**
 - **button-primary**
 
+## Motion
+
+| Tier | Duration | Probes |
+|---|---|---|
+| `motion.fast` | 160ms | 73 |
+| `motion.slow` | 1750ms | 1 |
+
+### Easings
+
+| Token | Curve | Probes |
+|---|---|---|
+| `motion.ease.ease` | `ease` | 86 |
+| `motion.ease.custom-2` | `cubic-bezier(0.25, 0.46, 0.45, 0.94)` | 50 |
+| `motion.ease.custom-3` | `cubic-bezier(0.215, 0.61, 0.355, 1)` | 3 |
+| `motion.ease.custom-4` | `cubic-bezier(0.66, 0, 0, 1)` | 1 |
+
+Sample transitions observed: color + background at 100ms cubic-bezier(0.25, 0.46, 0.45, 0.94); background at 160ms cubic-bezier(0.25, 0.46, 0.45, 0.94); transform at 160ms cubic-bezier(0.25, 0.46, 0.45, 0.94).
+
+## Assets
+
+### Logo
+
+Saved at `assets/logo.svg` — 88×22.
+
+### Favicon
+
+Saved at `assets/favicon.png` (source: https://linear.app/static/apple-touch-icon.png?v=2).
+
+### Fonts
+
+Downloaded next to this file — drop the `assets/fonts/` directory into your project to use them directly.
+
+| Family | Weight | Style | File | Source |
+|---|---|---|---|---|
+| Inter Variable | 100 900 | normal | `assets/fonts/8f9c25ec.woff2` | https://static.linear.app/fonts/InterVariable.woff2?v=4.1 |
+| Inter Variable | 100 900 | italic | `assets/fonts/e6116d47.woff2` | https://static.linear.app/fonts/InterVariable-Italic.woff2?v=4.1 |
+| Berkeley Mono | 100 900 | normal | `assets/fonts/ab475c71.woff2` | https://static.linear.app/fonts/Berkeley-Mono-Variable.woff2?v=3.2 |
+
+## Brand principles
+
+Quoted from the brand's own published design / principles / brand pages — not interpreted, not paraphrased.
+
+### Naming
+
+“Linear” is a single word, always spelled with a capital “L”. It is the brand name of both our company and our application (not “Linear app”). When referring to dedicated releases from Linear, we ask that you capitalize them as proper nouns (e.g. “Linear Method”).
+
+_Source: https://linear.app/brand_
+
+### Linear wordmark
+
+The Linear wordmark should be used in all references to Linear as space allows. Monochrome usage is preferred with the brand colors below.
+
+_Source: https://linear.app/brand_
+
+### Linear logo
+
+For tight layouts or logo-only grids, the Linear logomark is a concise way to refer to Linear. Use with good judgment for your audience, as the Linear wordmark has stronger brand recognition.
+
+_Source: https://linear.app/brand_
+
+### Linear icon
+
+When referring to Linear as a company, such as on social media, or where a “chip” design is required, it is acceptable to use this stylized icon with an appropriate corner radius.
+
+_Source: https://linear.app/brand_
+
+### Colors
+
+Comfortable against light and dark backgrounds, Linear’s primary brand color is a subtle desaturated blue. The following light and dark accents are preferred for monochrome wordmark usage, while the brand color is typically reserved for backgrounds.
+
+_Source: https://linear.app/brand_
+
+### Company
+
+About Customers Careers Blog Method Quality Brand
+
+_Source: https://linear.app/brand_
+
+### Usage
+
+Provide plenty of space around Linear assets. Make them big or make them small, but give them room to breathe. They shouldn’t feel cramped or cluttered.
+
+_Source: https://linear.app/brand_
+
+### Product
+
+Intake Plan Build Diffs Monitor Pricing Security
+
+_Source: https://linear.app/brand_
+
 ## Do's and Don'ts
 
 - **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.
 - **Don't** introduce new color roles outside the documented palette without updating this file.
 
+## Breakpoints
+
+Per-viewport probe metrics captured at mobile 390px / tablet 768px / desktop 1440px. Properties whose computed value differs across viewports surface here.
+
+| Element | Property | Mobile | Tablet | Desktop |
+|---|---|---|---|---|
+| `h2.sc-d5151d0-0.exSLMF.utils_inset__Xhl3T.utils_` | `fontSize` | 24px | 32px | 48px |
+| `h2.sc-d5151d0-0.exSLMF.utils_inset__Xhl3T.utils_` | `paddingRight` | 8px | 8px | 32px |
+| `h2.sc-d5151d0-0.exSLMF.utils_inset__Xhl3T.utils_` | `paddingLeft` | 8px | 8px | 32px |
+| `h2.sc-d5151d0-0.exSLMF.utils_inset__Xhl3T.utils_` | `boundingWidth` | 359 | 714 | 1250 |
+| `div.Hero_container__inGFW.utils_inset__Xhl3T` | `paddingRight` | 8px | 8px | 32px |
+| `div.Hero_container__inGFW.utils_inset__Xhl3T` | `paddingLeft` | 8px | 8px | 32px |
+| `div.Hero_container__inGFW.utils_inset__Xhl3T` | `boundingWidth` | 358 | 712 | 1344 |
+| `div.Hero_descriptionContainer__PeKJU.Flex_root__` | `gap` | 20px | 20px | normal |
+| `div.Hero_descriptionContainer__PeKJU.Flex_root__` | `flexDirection` | column | column | row |
+| `div.Hero_descriptionContainer__PeKJU.Flex_root__` | `boundingWidth` | 342 | 696 | 1280 |
+| `a.hide-mobile.Hero_newFeatureLink__PHt6b.Link_ro` | `display` | none | block | block |
+| `a.hide-mobile.Hero_newFeatureLink__PHt6b.Link_ro` | `boundingWidth` | 0 | 313 | 313 |
+| `h1.sc-d5151d0-0.bgDIHX.utils_insetLarge__6UCke.H` | `fontSize` | 38px | 56px | 64px |
+| `h1.sc-d5151d0-0.bgDIHX.utils_insetLarge__6UCke.H` | `boundingWidth` | 343 | 698 | 1282 |
+| `h2.sc-d5151d0-0.bHseLi` | `fontSize` | 24px | 40px | 48px |
+| `h2.sc-d5151d0-0.bHseLi` | `boundingWidth` | 275 | 451 | 542 |
+| `h2.sc-d5151d0-0.bHseLi` | `fontSize` | 24px | 40px | 48px |
+| `h2.sc-d5151d0-0.bHseLi` | `boundingWidth` | 275 | 451 | 542 |
+| `h2.sc-d5151d0-0.bHseLi` | `fontSize` | 24px | 40px | 48px |
+| `h2.sc-d5151d0-0.bHseLi` | `boundingWidth` | 275 | 451 | 542 |
+
+_82 additional probe(s) shift across viewports — see `output/screenshots/index.json` per-viewport metrics for the full set._
+
+_Stats: 90/102 probes shift across viewports; 7 distinct properties affected._
+
 ## Responsive Behavior
 
-Harvest taken at 1440×900 (5 pages crawled). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.
+Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.
 
 ## Iteration Guide
 

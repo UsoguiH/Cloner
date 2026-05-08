@@ -1,6 +1,6 @@
 ---
 name: Notion
-description: Notion is a connected workspace platform that pairs stark, high-contrast utility with playful, hand-drawn accents to humanize complex information architecture.
+description: "Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources."
 colors:
   canvas: "#ffffff"
   primary: "#191918"
@@ -14,8 +14,10 @@ colors:
   surface-4: "#e6f3fe"
   hairline: "#f6f5f4"
   hairline-strong: "#dddddd"
-  surface-hover: "#005bab"
+  surface-hover: "#fefefe"
+  surface-hover-2: "#005bab"
   ink-focus: "#494744"
+  ink-focus-2: "#dadcdd"
 typography:
   button-3:
     fontFamily: NotionInter
@@ -43,21 +45,18 @@ components:
     rounded: "{rounded.lg}"
   button-tertiary-hover:
     textColor: "{colors.ink-subtle}"
-    borderColor: "{colors.ink-subtle}"
   button-tertiary-hover-2:
-    backgroundColor: "{colors.canvas}"
-  button-tertiary-focus-2:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "{colors.surface-hover}"
   button-secondary:
     textColor: "{colors.canvas}"
     typography: "{typography.button-4}"
     rounded: "{rounded.sm}"
     padding: 4px 14px
     height: 36px
-  button-secondary-hover:
-    backgroundColor: "{colors.surface-hover}"
-  button-secondary-focus:
-    backgroundColor: "{colors.surface-hover}"
+  button-secondary-hover-2:
+    backgroundColor: "{colors.surface-hover-2}"
+  button-secondary-focus-2:
+    backgroundColor: "{colors.surface-hover-2}"
   button-primary:
     backgroundColor: "{colors.primary}"
     typography: "{typography.button-3}"
@@ -108,37 +107,28 @@ components:
 
 ## Overview
 
-Notion balances the stark utility of a text editor with the structured logic of a database. The brand's visual identity relies on high-contrast, black-and-white foundations punctuated by moments of hand-drawn whimsy, ensuring dense workspaces feel both powerful and approachable.
-
-## Voice
-
-- **Utilitarian** — The interface relies on stark Canvas White backgrounds and Notion Core Black typography to prioritize functional legibility over ornamental design.
-- **Whimsical** — Hand-drawn, sketch-like spot illustrations float across the interface, injecting a distinct sense of humanity and playfulness into dense technical workspaces.
-- **Modular** — Information is tightly contained within distinct cards and grid structures separated by clear Structured Border and Soft Hairline strokes.
-- **Restrained** — The application maintains a disciplined hierarchy of Pure Ink and Muted Ink to ensure complex nested databases and sidebars remain visually digestible without color fatigue.
+Design system extracted from a structural clone. Canvas #ffffff, primary accent #191918, dominant typeface NotionInter. Tokens are derived from observed root-scope custom properties cross-referenced with computed styles on representative DOM probes; component blocks reflect cascade-resolved values, not declared sources.
 
 ## Colors
 
-The palette is intentionally subdued, treating Canvas White and Notion Core Black as the primary stage for user content. Subtle spatial shifts are achieved through Sidebar Alabaster and Soft Hairline boundaries, while interactive moments are selectively signaled by Action Blue.
-
-- **Canvas White** `#ffffff` (`canvas`) — Serves as the foundational white canvas for Notion documents and primary application interfaces.
-- **Notion Core Black** `#191918` (`primary`) — Drives our primary typography and essential UI elements, anchoring the Notion brand with sharp readability.
-- **Pure Ink** `#000000` (`ink`) — Provides maximum contrast for critical elements and bold structural boundaries across the interface.
-- **Muted Ink** `#31302e` (`ink-muted`) — Softens secondary text and sidebar typography, creating a balanced visual hierarchy within complex workspaces.
-- **Subtle Ink** `#615d59` (`ink-subtle`) — Supports metadata, timestamps, and tertiary labels to ensure background information remains quiet but legible.
-- **Primary Knockout** `#ffffff` (`on-primary`) — Ensures crisp, accessible text and iconography when overlaid on deep background colors or active states.
-- **Sidebar Alabaster** `#f9f9f8` (`surface-1`) — Defines the distinct but gentle background of our navigational sidebars and elevated workspace surfaces.
-- **Soft Blue Surface** `#f2f9ff` (`surface-2`) — Washes specific board columns and subtle interactive states with a cool, focused tint.
-- **Warm Wash** `#fef3f1` (`surface-3`) — Highlights specific organizational elements or tags within databases with a delicate, inviting warmth.
-- **Highlight Blue** `#e6f3fe` (`surface-4`) — Elevates active components, selected tags, and interactive surfaces with a clear, engaging blue.
-- **Soft Hairline** `#f6f5f4` (`hairline`) — Draws the most delicate boundaries between structural sections without adding visual noise to the page.
-- **Structured Border** `#dddddd` (`hairline-strong`) — Establishes clear, definitive separations around cards, modals, and distinct workspace modules.
-- **Action Blue** `#005bab` (`surface-hover`) — Signals interactivity and dynamic hover states for primary navigational links and core application actions.
-- **Focus Graphite** `#494744` (`ink-focus`) — Guides the user's attention during keyboard navigation and active input states across the platform.
+- **canvas** `#ffffff`
+- **primary** `#191918`
+- **ink** `#000000`
+- **ink-muted** `#31302e`
+- **ink-subtle** `#615d59`
+- **on-primary** `#ffffff`
+- **surface-1** `#f9f9f8`
+- **surface-2** `#f2f9ff`
+- **surface-3** `#fef3f1`
+- **surface-4** `#e6f3fe`
+- **hairline** `#f6f5f4`
+- **hairline-strong** `#dddddd`
+- **surface-hover** `#fefefe`
+- **surface-hover-2** `#005bab`
+- **ink-focus** `#494744`
+- **ink-focus-2** `#dadcdd`
 
 ## Typography
-
-NotionInter anchors the typographic system, delivering crisp, geometric legibility across dense data views. Bold 42px headlines establish definitive page hierarchies, while 16px structural text maintains comfortable reading within nested sidebars and table cells.
 
 - **button-3** — NotionInter 16px/400
 - **button-4** — NotionInter 16px/500
@@ -160,15 +150,12 @@ No `box-shadow` tokens harvested from probes on this site. If the brand uses ele
 
 ## Components
 
-Surfaces and modules are treated as distinct, stackable blocks. Containers leverage Structured Border outlines and Sidebar Alabaster fills to establish clear boundaries for tasks, calendar events, and database entries, rendering every element as a movable, discrete unit of work.
-
 - **button-tertiary**
 - **button-tertiary-hover**
 - **button-tertiary-hover-2**
-- **button-tertiary-focus-2**
 - **button-secondary**
-- **button-secondary-hover**
-- **button-secondary-focus**
+- **button-secondary-hover-2**
+- **button-secondary-focus-2**
 - **button-primary**
 - **button-primary-hover**
 - **button-primary-focus**
@@ -182,14 +169,130 @@ Surfaces and modules are treated as distinct, stackable blocks. Containers lever
 - **cta-banner**
 - **pricing-card**
 
+## Motion
+
+| Tier | Duration | Probes |
+|---|---|---|
+| `motion.fast` | 200ms | 75 |
+| `motion.slow` | 600ms | 4 |
+
+### Easings
+
+| Token | Curve | Probes |
+|---|---|---|
+| `motion.ease.ease` | `ease` | 85 |
+| `motion.ease.ease-in` | `ease-in` | 32 |
+| `motion.ease.custom-3` | `cubic-bezier(0.45, 0, 0.55, 1)` | 18 |
+| `motion.ease.linear` | `linear` | 5 |
+
+Sample transitions observed: background-color at 150ms ease; color + background-color at 150ms cubic-bezier(0.45, 0, 0.55, 1).
+
+## Assets
+
+### Favicon
+
+Saved at `assets/favicon.ico` (source: https://www.notion.com/front-static/favicon.ico).
+
+### Fonts
+
+Downloaded next to this file — drop the `assets/fonts/` directory into your project to use them directly.
+
+| Family | Weight | Style | File | Source |
+|---|---|---|---|---|
+| NotionInter | 400 | normal | `assets/fonts/39bfede2.woff2` | https://www.notion.com/front-static/fonts/NotionInter-Regular.woff2 |
+| NotionInter | 500 | normal | `assets/fonts/2f33bc8b.woff2` | https://www.notion.com/front-static/fonts/NotionInter-Medium.woff2 |
+| NotionInter | 600 | normal | `assets/fonts/b32cb5a5.woff2` | https://www.notion.com/front-static/fonts/NotionInter-SemiBold.woff2 |
+| NotionInter | 700 | normal | `assets/fonts/fd301286.woff2` | https://www.notion.com/front-static/fonts/NotionInter-Bold.woff2 |
+| Noto Sans Arabic | 100 900 | normal | `assets/fonts/456911d8.woff2` | https://www.notion.com/front-static/fonts/noto-sans-arabic.woff2 |
+| Noto Sans Hebrew | 100 900 | normal | `assets/fonts/c0752d42.woff2` | https://www.notion.com/front-static/fonts/noto-sans-hebrew.woff2 |
+| NotionInter | 400 | italic | `assets/fonts/7ce7c5e8.woff2` | https://www.notion.com/_next/static/media/NotionInter-Italic.556b6a81.woff2 |
+| NotionInter | 500 | italic | `assets/fonts/12a73c6b.woff2` | https://www.notion.com/_next/static/media/NotionInter-MediumItalic.bc4c8878.woff2 |
+| NotionInter | 600 | italic | `assets/fonts/c49605ce.woff2` | https://www.notion.com/_next/static/media/NotionInter-SemiBoldItalic.cb46786e.woff2 |
+| NotionInter | 700 | italic | `assets/fonts/066b80b1.woff2` | https://www.notion.com/_next/static/media/NotionInter-BoldItalic.e4b84cf2.woff2 |
+| Lyon Text | 400 | normal | `assets/fonts/934cd70b.woff2` | https://www.notion.com/_next/static/media/LyonText-Regular-Web.d7bfb4be.woff2 |
+| Lyon Text | 400 | italic | `assets/fonts/f24caa65.woff2` | https://www.notion.com/_next/static/media/LyonText-RegularItalic-Web.f823179b.woff2 |
+| Lyon Text | 600 | normal | `assets/fonts/7cdf2551.woff2` | https://www.notion.com/_next/static/media/LyonText-Bold-Web.98529464.woff2 |
+| Lyon Text | 600 | italic | `assets/fonts/bb4e3542.woff2` | https://www.notion.com/_next/static/media/LyonText-BoldItalic-Web.8907ab5f.woff2 |
+| iA Writer Mono | 400 | normal | `assets/fonts/197b10a7.woff2` | https://www.notion.com/_next/static/media/iAWriterMonoS-Regular.bf09337b.woff2 |
+| iA Writer Mono | 400 | italic | `assets/fonts/96695283.woff2` | https://www.notion.com/_next/static/media/iAWriterMonoS-Italic.176fc5a8.woff2 |
+
 ## Do's and Don'ts
 
 - **Do** reference design tokens via `{colors.*}` / `{typography.*}` rather than raw hex.
 - **Don't** introduce new color roles outside the documented palette without updating this file.
 
+## Breakpoints
+
+Per-viewport probe metrics captured at mobile 390px / tablet 768px / desktop 1440px. Properties whose computed value differs across viewports surface here.
+
+| Element | Property | Mobile | Tablet | Desktop |
+|---|---|---|---|---|
+| `button.HeroMedia_playPauseController__3hTu3` | `fontSize` | — | — | 16px |
+| `button.HeroMedia_playPauseController__3hTu3` | `paddingTop` | — | — | 0px |
+| `button.HeroMedia_playPauseController__3hTu3` | `paddingRight` | — | — | 0px |
+| `button.HeroMedia_playPauseController__3hTu3` | `paddingBottom` | — | — | 0px |
+| `button.HeroMedia_playPauseController__3hTu3` | `paddingLeft` | — | — | 0px |
+| `button.HeroMedia_playPauseController__3hTu3` | `gap` | — | — | normal |
+| `button.HeroMedia_playPauseController__3hTu3` | `display` | — | — | flex |
+| `button.HeroMedia_playPauseController__3hTu3` | `flexDirection` | — | — | row |
+| `button.HeroMedia_playPauseController__3hTu3` | `boundingWidth` | — | — | 32 |
+| `span.HeroMedia_icon__wYd2f` | `fontSize` | — | — | 16px |
+| `span.HeroMedia_icon__wYd2f` | `paddingTop` | — | — | 0px |
+| `span.HeroMedia_icon__wYd2f` | `paddingRight` | — | — | 0px |
+| `span.HeroMedia_icon__wYd2f` | `paddingBottom` | — | — | 0px |
+| `span.HeroMedia_icon__wYd2f` | `paddingLeft` | — | — | 0px |
+| `span.HeroMedia_icon__wYd2f` | `gap` | — | — | normal |
+| `span.HeroMedia_icon__wYd2f` | `display` | — | — | flex |
+| `span.HeroMedia_icon__wYd2f` | `flexDirection` | — | — | row |
+| `span.HeroMedia_icon__wYd2f` | `boundingWidth` | — | — | 12 |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `fontSize` | — | — | 16px |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `paddingTop` | — | — | 0px |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `paddingRight` | — | — | 0px |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `paddingBottom` | — | — | 0px |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `paddingLeft` | — | — | 0px |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `gap` | — | — | normal |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `display` | — | — | block |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `flexDirection` | — | — | row |
+| `span.HeroMedia_visuallyHidden__H3Ck3` | `boundingWidth` | — | — | 1 |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `fontSize` | — | — | 16px |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `paddingTop` | — | — | 0px |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `paddingRight` | — | — | 0px |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `paddingBottom` | — | — | 0px |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `paddingLeft` | — | — | 0px |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `gap` | — | — | normal |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `display` | — | — | block |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `flexDirection` | — | — | row |
+| `video.Video_video__KYz0l.Video_videoAspectRatio_` | `boundingWidth` | — | — | 958 |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `paddingTop` | 40px | 80px | 80px |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `paddingRight` | 16px | 66px | 125px |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `paddingBottom` | 40px | 80px | 80px |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `paddingLeft` | 16px | 66px | 125px |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `gap` | 36px | 36px | 24px |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `flexDirection` | column | column | row |
+| `div.card_cardMeta__IkqBQ.customers_mediaCardStat` | `boundingWidth` | 390 | 768 | 1440 |
+| `div.customers_hero__yvH7V` | `paddingTop` | 16px | 24px | 24px |
+| `div.customers_hero__yvH7V` | `paddingRight` | 16px | 24px | 24px |
+| `div.customers_hero__yvH7V` | `paddingBottom` | 16px | 24px | 24px |
+| `div.customers_hero__yvH7V` | `paddingLeft` | 16px | 24px | 24px |
+| `div.customers_hero__yvH7V` | `boundingWidth` | 358 | 653 | 602 |
+| `div.logoWallMarquee_logoWallMarquee__DBKiq.logoW` | `paddingTop` | 16px | 24px | 24px |
+| `div.logoWallMarquee_logoWallMarquee__DBKiq.logoW` | `paddingRight` | 16px | 24px | 24px |
+| `div.logoWallMarquee_logoWallMarquee__DBKiq.logoW` | `paddingBottom` | 16px | 24px | 24px |
+| `div.logoWallMarquee_logoWallMarquee__DBKiq.logoW` | `paddingLeft` | 16px | 24px | 24px |
+| `div.logoWallMarquee_logoWallMarquee__DBKiq.logoW` | `boundingWidth` | 358 | 653 | 239 |
+| `h2.semanticTypography_semanticTypography__mWJkv.` | `paddingTop` | 16px | 24px | 24px |
+| `h2.semanticTypography_semanticTypography__mWJkv.` | `paddingRight` | 16px | 24px | 24px |
+| `h2.semanticTypography_semanticTypography__mWJkv.` | `paddingBottom` | 16px | 24px | 24px |
+| `h2.semanticTypography_semanticTypography__mWJkv.` | `paddingLeft` | 16px | 24px | 24px |
+| `h2.semanticTypography_semanticTypography__mWJkv.` | `boundingWidth` | 358 | 653 | 498 |
+
+_66 additional probe(s) shift across viewports — see `output/screenshots/index.json` per-viewport metrics for the full set._
+
+_Stats: 74/98 probes shift across viewports; 9 distinct properties affected._
+
 ## Responsive Behavior
 
-Harvest taken at 1440×900 (5 pages crawled). Per-breakpoint scales — phone/tablet/desktop variants — are not yet sampled; the next coverage phase will re-harvest at multiple viewport widths.
+Harvest taken at 1440×900 (5 pages crawled). See **Breakpoints** above for token-level deltas observed across the three sampled viewports.
 
 ## Iteration Guide
 
